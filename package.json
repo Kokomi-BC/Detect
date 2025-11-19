@@ -1,24 +1,37 @@
 {
-  "name": "chat",
-  "version": "1.0.0",
+  "name": "detect-fake-news",
+  "version": "1.2.1",
   "description": "假新闻检测应用",
-  "main": "src/main/main.js",
+  "main": "src/main/index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "dev": "cross-env NODE_ENV=development concurrently \"webpack serve --mode development\" \"wait-on http://localhost:8080 && electron .\"",
     "build:renderer": "webpack --mode production",
     "build": "npm run build:renderer",
     "build:electron": "electron-builder",
-    "start": "electron ."
+    "start": "electron .",
+    "prepublishOnly": "npm run build",
+    "prepare": "npm run build"
   },
   "keywords": [
     "electron",
-    "chatui",
+    "fake-news",
     "react"
   ],
   "author": "",
   "license": "ISC",
   "type": "commonjs",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/yourusername/detect-fake-news.git"
+  },
+  "bugs": {
+    "url": "https://github.com/yourusername/detect-fake-news/issues"
+  },
+  "homepage": "https://github.com/yourusername/detect-fake-news#readme",
+  "engines": {
+    "node": ">=14.0.0"
+  },
   "dependencies": {
     "@chatui/core": "^3.4.0",
     "@mozilla/readability": "^0.6.0",
@@ -50,7 +63,7 @@
     "webpack-dev-server": "^5.2.2"
   },
   "build": {
-    "appId": "com.chatui.app",
+    "appId": "com.detectfake.app",
     "productName": "假新闻检测应用",
     "electronDownload": {
       "mirror": "https://cdn.npmmirror.com/binaries/electron/"
@@ -66,12 +79,14 @@
       "target": [
         "nsis",
         "portable"
-      ]
+      ],
+      "sign": false
     },
     "nsis": {
       "oneClick": true,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true
-    }
+    },
+    "publish": null
   }
 }

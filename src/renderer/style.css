@@ -79,3 +79,30 @@ body {
 .mdui-btn:hover {
   background-color: #D1A7A7 !important; /* 悬停时更深的粉色 */
 }
+
+/* 下拉菜单动画样式 */
+@keyframes menuSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes menuSlideOut {
+  from {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+}
+
+.dropdown-menu {
+  animation: menuSlideIn 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}

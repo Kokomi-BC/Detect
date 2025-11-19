@@ -1,5 +1,6 @@
 const path = require('path');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
+const webpack = require('webpack');
 
 module.exports = {
   mode: process.env.NODE_ENV === 'production' ? 'production' : 'development',
@@ -38,6 +39,9 @@ module.exports = {
       template: path.join(__dirname, 'public/index.html'),
       cache: false,
     }),
+    new webpack.DefinePlugin({
+      'global': 'global',
+    }),
   ],
   devServer: {
     static: {
@@ -48,4 +52,8 @@ module.exports = {
     historyApiFallback: true,
   },
   target: 'electron-renderer',
+  // 修复 global is not defined 错误
+  node: {
+    global: true,
+  },
 };

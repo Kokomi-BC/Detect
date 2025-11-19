@@ -125,6 +125,9 @@ build/
 *.pkg
 *.msi
 
+# Release folders
+/release/
+
 # Test coverage
 coverage/
 .nyc_output/

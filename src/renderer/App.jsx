@@ -1,12 +1,29 @@
 import React, { useState, useEffect, useRef } from 'react';
 import './style.css';
-import { setColorScheme } from 'mdui';
+import { setColorScheme, setTheme } from 'mdui';
 const { ipcRenderer } = require('electron');
 
 function App() {
-  // 设置淡粉色莫冉迪配色方案
+  // 初始化主题和配色方案
   useEffect(() => {
+    // 设置淡粉色莫兰迪配色方案 (#F5E6E6)
     setColorScheme('#F5E6E6');
+    
+    // 检测系统深色模式并设置
+    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)');
+    const setSystemTheme = (e) => {
+      setTheme(e.matches ? 'dark' : 'light');
+    };
+    
+    // 初始设置
+    setTheme(prefersDark.matches ? 'dark' : 'light');
+    
+    // 监听系统主题变化
+    prefersDark.addEventListener('change', setSystemTheme);
+    
+    return () => {
+      prefersDark.removeEventListener('change', setSystemTheme);
+    };
   }, []);
   // 状态管理
   const [inputText, setInputText] = useState('');
@@ -21,7 +38,7 @@ function App() {
   const [menuY, setMenuY] = useState(0);
   const [selectedText, setSelectedText] = useState('');
   const [targetElement, setTargetElement] = useState(null);
-  // 清理菜单状态
+  // 清理菜单状态 - 重新添加
   const [showClearMenu, setShowClearMenu] = useState(false);
   // 菜单引用
 const menuRef = useRef(null);
@@ -66,8 +83,12 @@ const [toastType, setToastType] = useState('success');
       setExtracting(false);
       setIsCancelling(false);
       if (result.success) {
+        // 成功提取URL内容时，清除之前的文本检测结果
+        setDetectedResult([]);
         setExtractedContent(result);
       } else {
+        // 提取失败时，清除之前的文本检测结果
+        setDetectedResult([]);
         setExtractionError(result.error);
       }
     };
@@ -89,14 +110,27 @@ const [toastType, setToastType] = useState('success');
 
   // 模拟检测假新闻的处理函数
   const handleDetect = () => {
-    if (!inputText.trim()) return;
+    if (!inputText.trim()) {
+      setToastMessage('请输入要检测的文本内容！');
+      setToastType('error');
+      setShowToast(true);
+      setTimeout(() => setShowToast(false), 3000);
+      return;
+    }
 
     // 检查输入是否为URL
     if (isURL(inputText)) {
+      // URL输入时，清除文本检测结果，专注于URL内容提取
+      setDetectedResult([]);
       extractContent(inputText);
       return;
     }
 
+    // 非URL文本输入时，清除URL提取相关内容
+    setExtractedContent(null);
+    setExtractionError(null);
+    setExtracting(false);
+    
     // 模拟检测结果：将每3句话标记为可疑
     const sentences = inputText.split(/(?<=[。.!?])\s*/);
     const labelsList = ['可疑事实', '来源存疑', '逻辑矛盾', '夸大其词', '图片不符'];
@@ -115,11 +149,17 @@ const [toastType, setToastType] = useState('success');
     });
 
     setDetectedResult(result);
+    
+    // 显示成功提示
+    setToastMessage('文本检测完成！');
+    setToastType('success');
+    setShowToast(true);
+    setTimeout(() => setShowToast(false), 2000);
   };
 
 
 
-  // 点击页面其他区域关闭菜单
+  // 点击页面其他区域关闭右键菜单
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (menuRef.current && !menuRef.current.contains(event.target)) {
@@ -144,7 +184,13 @@ const [toastType, setToastType] = useState('success');
     e.preventDefault();
     const selection = window.getSelection();
     const text = selection.toString();
-    // 当有选中文字或点击的是左侧输入框时，显示菜单
+    
+    // 当在提示信息区域且没有焦点元素时，完全禁用菜单
+    if (!extracting && !extractedContent && !detectedResult.length && !element) {
+      return;
+    }
+    
+    // 当有选中文字或点击的是输入框时，显示菜单
     if (text || element) {
       setSelectedText(text);
       setTargetElement(element);
@@ -193,8 +239,15 @@ const [toastType, setToastType] = useState('success');
 
   const handleSearch = () => {
     const searchUrl = `https://www.bing.com/search?q=${encodeURIComponent(selectedText)}`;
-    window.open(searchUrl, '_blank');
+    ipcRenderer.send('open-url-in-window', searchUrl);
     setShowMenu(false);
+  };
+
+  const handleOpenLink = () => {
+    if (isURL(selectedText)) {
+      ipcRenderer.send('open-url-in-window', selectedText);
+      setShowMenu(false);
+    }
   };
 
   const handleClearBrowserData = () => {
@@ -251,7 +304,6 @@ const [toastType, setToastType] = useState('success');
           width: `${dividerPosition}%`,
           height: '100vh',
           padding: '20px',
-          borderRight: '1px solid #e8e8e8',
           overflowY: 'auto',
           boxSizing: 'border-box'
         }}
@@ -260,81 +312,99 @@ const [toastType, setToastType] = useState('success');
           <h2 className="mdui-typography-headline" style={{ fontSize: '18px', fontWeight: 600, color: '#262626', margin: 0 }}>
             新闻原文输入
           </h2>
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              setShowClearMenu(!showClearMenu);
-            }}
-            style={{
-              background: 'none',
-              border: 'none',
-              fontSize: '24px',
-              cursor: 'pointer',
-              color: '#999',
-              padding: '0',
-              lineHeight: '1'
-            }}
-            title="更多选项"
+          <div 
+            ref={clearMenuRef}
+            style={{ position: 'relative', display: 'inline-block' }}
           >
-            ⋮
-          </button>
-          {showClearMenu && (
-            <div
-              ref={clearMenuRef}
-              style={{
-                position: 'absolute',
-                top: '100%',
-                right: '0',
-                backgroundColor: '#fff',
-                border: '1px solid #e0e0e0',
-                borderRadius: '4px',
-                boxShadow: '0 2px 10px rgba(0, 0, 0, 0.1)',
-                padding: '8px 0',
-                zIndex: 1000,
-                minWidth: '150px'
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setShowClearMenu(!showClearMenu);
               }}
+              style={{
+                background: 'none',
+                border: 'none',
+                fontSize: '24px',
+                cursor: 'pointer',
+                color: '#999',
+                padding: '0',
+                lineHeight: '1',
+                transition: 'color 0.2s ease'
+              }}
+              onMouseEnter={(e) => e.target.style.color = '#666'}
+              onMouseLeave={(e) => e.target.style.color = '#999'}
+              title="更多选项"
             >
+              ⋮
+            </button>
+            {/* 下拉菜单 */}
+            {showClearMenu && (
               <div
-          onClick={handleClearBrowserData}
-          style={{
-            padding: '8px 16px',
-            cursor: 'pointer',
-            fontSize: '14px',
-            color: '#333',
-            transition: 'background-color 0.2s'
-          }}
-          onMouseEnter={(e) => e.target.style.backgroundColor = '#f5f5f5'}
-          onMouseLeave={(e) => e.target.style.backgroundColor = 'transparent'}
-        >
-          清理浏览器数据
+                className="dropdown-menu"
+                style={{
+                  position: 'absolute',
+                  top: '100%',
+                  right: 0,
+                  marginTop: '4px',
+                  backgroundColor: 'white',
+                  border: '1px solid #E6C0C0',
+                  borderRadius: '4px',
+                  boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
+                  zIndex: 10000,
+                  minWidth: '180px',
+                  animation: 'menuSlideIn 0.2s ease-out'
+                }}
+              >
+                <button
+                  onClick={() => {
+                    handleClearBrowserData();
+                  }}
+                  style={{
+                    display: 'block',
+                    width: '100%',
+                    padding: '12px 16px',
+                    border: 'none',
+                    background: 'none',
+                    textAlign: 'left',
+                    cursor: 'pointer',
+                    fontSize: '14px',
+                    color: '#262626',
+                    transition: 'background-color 0.15s ease'
+                  }}
+                  onMouseEnter={(e) => e.target.style.backgroundColor = '#F5E6E6'}
+                  onMouseLeave={(e) => e.target.style.backgroundColor = 'transparent'}
+                >
+                  清理浏览器数据
+                </button>
               </div>
-            </div>
-          )}
+            )}
+          </div>
         </div>
-        <textarea
+        <mdui-text-field
           value={inputText}
-          onChange={(e) => setInputText(e.target.value)}
+          onChange={(e) => setInputText(e.currentTarget.value)}
           placeholder="请输入或粘贴待检测的新闻文本..."
-          className="mdui-textfield-input"
-          style={{ 
-            height: 'calc(100% - 100px)', 
-            resize: 'none',
-            width: '100%',
-            padding: '8px',
-            boxSizing: 'border-box',
-            border: '1px solid #ccc',
-            borderRadius: '4px',
-            textAlign: 'left'
+          onContextMenu={(e) => {
+            const target = e.currentTarget;
+            target.focus();
+            setTimeout(() => handleContextMenu(e, target), 0);
           }}
-          onContextMenu={(e) => handleContextMenu(e, e.target)}
-        />
-        <button 
-          className="mdui-btn mdui-btn-raised mdui-ripple mdui-color-theme"
-          onClick={handleDetect} 
-          style={{ width: '100%', marginTop: '12px' }}
+          style={{ 
+            width: '100%',
+            marginBottom: '12px',
+            '--md-text-field-container-height': '200px'
+          }}
+          rows="8"
+          multiline
+        ></mdui-text-field>
+        <mdui-button
+          onClick={handleDetect}
+          style={{ width: '100%' }}
+          variant="raised"
+          fullwidth
         >
           开始检测
-        </button>
+        </mdui-button>
       </div>
 
       {/* 可拖动分隔线 */}
@@ -356,8 +426,6 @@ const [toastType, setToastType] = useState('success');
         style={{ 
           width: `${100 - dividerPosition}%`,
           height: '100vh',
-          padding: '20px',
-          borderRight: 'none',
           overflowY: 'auto',
           boxSizing: 'border-box'
         }}
@@ -367,18 +435,13 @@ const [toastType, setToastType] = useState('success');
             检测结果输出
           </h2>
           {extracting && (
-            <button 
-              className="mdui-btn mdui-btn-outlined"
+            <mdui-button
               onClick={cancelExtraction}
               disabled={isCancelling}
-              style={{ 
-                padding: '6px 16px',
-                fontSize: '14px',
-                minWidth: 'auto'
-              }}
+              variant="outlined"
             >
               {isCancelling ? '正在终止...' : '终止'}
-            </button>
+            </mdui-button>
           )}
         </div>
         <div 
@@ -386,14 +449,50 @@ const [toastType, setToastType] = useState('success');
             fontSize: '14px', 
             lineHeight: '1.6', 
             color: '#262626',
-            padding: '8px',
+            padding: extracting ? '0' : '8px',
             boxSizing: 'border-box',
-            textAlign: 'left'
+            textAlign: 'left',
+            userSelect: (!extracting && !extractedContent && !detectedResult.length) ? 'none' : 'auto',
+            height: '100%',
+            display: extracting ? 'flex' : 'block'
           }}
           onContextMenu={(e) => handleContextMenu(e, null)}
+          onMouseDown={(e) => {
+            if (!extracting && !extractedContent && !detectedResult.length) {
+              e.preventDefault();
+              e.stopPropagation();
+              return false;
+            }
+          }}
+          onMouseUp={(e) => {
+            if (!extracting && !extractedContent && !detectedResult.length) {
+              e.preventDefault();
+              e.stopPropagation();
+              window.getSelection()?.removeAllRanges();
+              return false;
+            }
+          }}
+          onSelectStart={(e) => {
+            if (!extracting && !extractedContent && !detectedResult.length) {
+              e.preventDefault();
+              return false;
+            }
+          }}
         >
           {/* 显示URL提取的内容 */}
-          {extracting && <p>正在提取内容...</p>}
+          {extracting && (
+            <div style={{
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              flex: 1,
+              gap: '20px'
+            }}>
+              <mdui-circular-progress indeterminate></mdui-circular-progress>
+              <p style={{ margin: 0, fontSize: '16px', color: '#666' }}>正在提取内容...</p>
+            </div>
+          )}
           {extractionError && <p style={{ color: 'red' }}>{extractionError}</p>}
           {extractedContent && (
             <div>
@@ -447,79 +546,61 @@ const [toastType, setToastType] = useState('success');
 
       {/* Toast提示 */}
       {showToast && (
-        <div
-          className={`toast ${toastType}`}
+        <mdui-snackbar
+          open={showToast}
+          onClose={() => setShowToast(false)}
           style={{
-            position: 'fixed',
-            bottom: '20px',
-            right: '20px',
-            padding: '12px 24px',
-            borderRadius: '4px',
-            color: '#fff',
-            fontSize: '14px',
-            fontWeight: 500,
-            boxShadow: '0 2px 10px rgba(0, 0, 0, 0.15)',
-            zIndex: 9999,
-            backgroundColor: toastType === 'success' ? '#52c41a' : '#f5222d'
+            '--md-snackbar-container-color': toastType === 'success' ? '#52c41a' : '#f5222d'
           }}
         >
           {toastMessage}
-        </div>
+        </mdui-snackbar>
       )}
 
       {/* 右键菜单 */}
       {showMenu && (
-        <div
+        <mdui-menu
           ref={menuRef}
+          open={showMenu}
+          onClose={() => setShowMenu(false)}
           style={{
             position: 'fixed',
-            top: menuY,
-            left: menuX,
-            backgroundColor: '#fff',
-            border: '1px solid #ccc',
-            borderRadius: '4px',
-            boxShadow: '0 2px 10px rgba(0, 0, 0, 0.1)',
-            padding: '8px 0',
+            top: `${menuY}px`,
+            left: `${menuX}px`,
             zIndex: 9999
           }}
         >
           {/* 只有当有选中文字时显示复制 */}
           {selectedText && (
-            <div
-              style={{ padding: '8px 16px', cursor: 'pointer', fontSize: '14px' }}
-              onClick={handleCopy}
-            >
+            <mdui-menu-item onClick={handleCopy}>
               复制
-            </div>
+            </mdui-menu-item>
           )}
           {/* 只有当有选中文字且点击的是输入框时显示剪切 */}
           {selectedText && targetElement && (
-            <div
-              style={{ padding: '8px 16px', cursor: 'pointer', fontSize: '14px' }}
-              onClick={handleCut}
-            >
+            <mdui-menu-item onClick={handleCut}>
               剪切
-            </div>
+            </mdui-menu-item>
           )}
           {/* 点击的是输入框时显示粘贴 */}
           {targetElement && (
-            <div
-              style={{ padding: '8px 16px', cursor: 'pointer', fontSize: '14px' }}
-              onClick={handlePaste}
-            >
+            <mdui-menu-item onClick={handlePaste}>
               粘贴
-            </div>
+            </mdui-menu-item>
           )}
           {/* 只有当有选中文字时显示搜索，且显示搜索内容 */}
           {selectedText && (
-            <div
-              style={{ padding: '8px 16px', cursor: 'pointer', fontSize: '14px' }}
-              onClick={handleSearch}
-            >
+            <mdui-menu-item onClick={handleSearch}>
               搜索 {selectedText}
-            </div>
+            </mdui-menu-item>
           )}
-        </div>
+          {/* 只有当选中的文字是URL时显示转到链接 */}
+          {selectedText && isURL(selectedText) && (
+            <mdui-menu-item onClick={handleOpenLink}>
+              转到 {selectedText}
+            </mdui-menu-item>
+          )}
+        </mdui-menu>
       )}
     </div>
   );
