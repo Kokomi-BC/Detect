@@ -1,0 +1,77 @@
+{
+  "name": "chat",
+  "version": "1.0.0",
+  "description": "假新闻检测应用",
+  "main": "src/main/main.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "dev": "cross-env NODE_ENV=development concurrently \"webpack serve --mode development\" \"wait-on http://localhost:8080 && electron .\"",
+    "build:renderer": "webpack --mode production",
+    "build": "npm run build:renderer",
+    "build:electron": "electron-builder",
+    "start": "electron ."
+  },
+  "keywords": [
+    "electron",
+    "chatui",
+    "react"
+  ],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "@chatui/core": "^3.4.0",
+    "@mozilla/readability": "^0.6.0",
+    "cheerio": "^1.1.2",
+    "image-size": "^2.0.2",
+    "jsdom": "^27.2.0",
+    "mdui": "^2.1.4",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.28.5",
+    "@babel/preset-env": "^7.28.5",
+    "@babel/preset-react": "^7.28.5",
+    "@babel/preset-typescript": "^7.28.5",
+    "babel-loader": "^10.0.0",
+    "concurrently": "^8.2.2",
+    "cross-env": "^10.1.0",
+    "css-loader": "^7.1.2",
+    "electron": "^39.1.2",
+    "electron-builder": "^25.0.5",
+    "html-webpack-plugin": "^5.6.5",
+    "style-loader": "^4.0.0",
+    "ts-loader": "^9.5.4",
+    "typescript": "^5.9.3",
+    "wait-on": "^7.2.0",
+    "webpack": "^5.102.1",
+    "webpack-cli": "^6.0.1",
+    "webpack-dev-server": "^5.2.2"
+  },
+  "build": {
+    "appId": "com.chatui.app",
+    "productName": "假新闻检测应用",
+    "electronDownload": {
+      "mirror": "https://cdn.npmmirror.com/binaries/electron/"
+    },
+    "files": [
+      "dist/**/*",
+      "src/main/**/*"
+    ],
+    "directories": {
+      "output": "release"
+    },
+    "win": {
+      "target": [
+        "nsis",
+        "portable"
+      ]
+    },
+    "nsis": {
+      "oneClick": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true
+    }
+  }
+}

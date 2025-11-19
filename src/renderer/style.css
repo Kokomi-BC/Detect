@@ -1,0 +1,81 @@
+/* 应用容器 */
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+  font-size: 14px;
+  line-height: 1.6;
+  color: #5C5C5C;
+  background-color: #F5E6E6; /* 淡粉色莫冉迪背景 */
+}
+
+.app-container {
+  height: 100vh;
+  display: flex;
+  flex-direction: row;
+  overflow: hidden;
+}
+
+/* 左侧输入区域 */
+.input-area {
+  width: 50%;
+  padding: 20px;
+  border-right: 1px solid #E6C0C0; /* 淡粉色边框 */
+  overflow-y: auto;
+  box-sizing: border-box;
+  background-color: #FAF0F0; /* 更淡的粉色背景 */
+}
+
+/* 右侧输出区域 */
+.output-area {
+  width: 50%;
+  padding: 20px;
+  overflow-y: auto;
+  box-sizing: border-box;
+  background-color: #FAF0F0; /* 更淡的粉色背景 */
+}
+
+/* 响应式设计：屏幕宽度小于768px时 */
+@media (max-width: 768px) {
+  .app-container {
+    flex-direction: column;
+  }
+  
+  .input-area {
+    width: 100%;
+    border-right: none;
+    height: 50vh;
+    border-bottom: 1px solid #e8e8e8;
+  }
+  
+  .output-area {
+    width: 100%;
+    height: 50vh;
+  }
+}
+
+/* 高亮文本样式 */
+.highlight-text {
+  background-color: #F5D5D5; /* 淡粉色高亮 */
+  padding: 3px 6px;
+  border-radius: 3px;
+}
+
+/* 可疑标签样式 */
+.suspicious-label {
+  display: inline-block;
+  background-color: #D1A7A7; /* 莫冉迪粉色 */
+  color: #fff;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 12px;
+  margin-left: 8px;
+}
+
+/* mdui 按钮样式覆盖 */
+.mdui-btn {
+  background-color: #E6C0C0 !important; /* 淡粉色按钮 */
+  color: #FFFFFF !important;
+}
+
+.mdui-btn:hover {
+  background-color: #D1A7A7 !important; /* 悬停时更深的粉色 */
+}
