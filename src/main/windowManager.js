@@ -7,6 +7,68 @@ const path = require('path');
 class WindowManager {
   constructor() {
     this.mainWindow = null;
+    this.setupContextMenu();
+  }
+
+  /**
+   * 设置原生右键菜单
+   */
+  setupContextMenu() {
+    // 我们在 createMainWindow 方法中会设置右键菜单
+  }
+
+  /**
+   * 构建右键菜单
+   */
+  buildContextMenu() {
+    return Menu.buildFromTemplate([
+      {
+        label: '全选',
+        accelerator: 'CmdOrCtrl+A',
+        click: (menuItem, browserWindow) => {
+          if (browserWindow) {
+            browserWindow.webContents.send('context-menu-select-all');
+          }
+        }
+      },
+      { type: 'separator' },
+      {
+        label: '复制',
+        accelerator: 'CmdOrCtrl+C',
+        click: (menuItem, browserWindow) => {
+          if (browserWindow) {
+            browserWindow.webContents.send('context-menu-copy');
+          }
+        }
+      },
+      {
+        label: '剪切',
+        accelerator: 'CmdOrCtrl+X',
+        click: (menuItem, browserWindow) => {
+          if (browserWindow) {
+            browserWindow.webContents.send('context-menu-cut');
+          }
+        }
+      },
+      {
+        label: '粘贴',
+        accelerator: 'CmdOrCtrl+V',
+        click: (menuItem, browserWindow) => {
+          if (browserWindow) {
+            browserWindow.webContents.send('context-menu-paste');
+          }
+        }
+      },
+      { type: 'separator' },
+      {
+        label: '搜索',
+        click: (menuItem, browserWindow) => {
+          if (browserWindow) {
+            browserWindow.webContents.send('context-menu-search');
+          }
+        }
+      }
+    ]);
   }
 
   /**
@@ -18,16 +80,23 @@ class WindowManager {
     // 隐藏应用程序菜单
     this.setupApplicationMenu();
     
+    // 使用无框窗口（frameless）作为兼容沉浸式标题栏的回退方案
     this.mainWindow = new BrowserWindow({
       width: 800,
       height: 600,
+      frame: false,
+      backgroundColor: '#F5E6E6',
       webPreferences: {
         preload: path.join(__dirname, 'preload.js'),
-        nodeIntegration: true,
-        contextIsolation: false,
-        webSecurity: false
+        nodeIntegration: false,
+        contextIsolation: true,
+        webSecurity: false,
+        allowRunningInsecureContent: true
       }
     });
+
+    // 设置原生右键菜单
+    this.setupWindowContextMenu(this.mainWindow);
 
     // 在开发模式下加载webpack开发服务器
     if (process.env.NODE_ENV === 'development') {
@@ -54,6 +123,15 @@ class WindowManager {
     this.setupMainWindowEvents();
 
     return this.mainWindow;
+  }
+
+  /**
+   * 设置窗口的原生右键菜单
+   * @param {BrowserWindow} window 窗口实例
+   */
+  setupWindowContextMenu(window) {
+    // 右键菜单由main.js中的setupContextMenu()方法统一处理
+    // 这里不需要额外的设置
   }
 
   /**

@@ -1,30 +1,74 @@
 import React, { useState, useEffect, useRef } from 'react';
 import './style.css';
 import { setColorScheme, setTheme } from 'mdui';
-const { ipcRenderer } = require('electron');
 
 function App() {
+  // 深色模式状态
+  const [isDarkMode, setIsDarkMode] = useState(false);
+
   // 初始化主题和配色方案
   useEffect(() => {
-    // 设置淡粉色莫兰迪配色方案 (#F5E6E6)
-    setColorScheme('#F5E6E6');
+    // 检查系统深色模式偏好
+    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    const savedTheme = localStorage.getItem('app-theme');
+    const initialDarkMode = savedTheme ? savedTheme === 'dark' : prefersDark;
     
-    // 检测系统深色模式并设置
-    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)');
-    const setSystemTheme = (e) => {
-      setTheme(e.matches ? 'dark' : 'light');
-    };
-    
-    // 初始设置
-    setTheme(prefersDark.matches ? 'dark' : 'light');
+    setIsDarkMode(initialDarkMode);
+    applyTheme(initialDarkMode);
     
     // 监听系统主题变化
-    prefersDark.addEventListener('change', setSystemTheme);
+    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+    const handleThemeChange = (e) => {
+      if (!localStorage.getItem('app-theme')) {
+        setIsDarkMode(e.matches);
+        applyTheme(e.matches);
+      }
+    };
     
+    mediaQuery.addEventListener('change', handleThemeChange);
+    return () => mediaQuery.removeEventListener('change', handleThemeChange);
+  }, []);
+
+  // 窗口最大化状态（用于自定义无框窗口控制）
+  const [isWindowMaximized, setIsWindowMaximized] = useState(false);
+
+  useEffect(() => {
+    const handleMax = () => setIsWindowMaximized(true);
+    const handleUnmax = () => setIsWindowMaximized(false);
+    window.electronAPI.on('window-maximized', handleMax);
+    window.electronAPI.on('window-unmaximized', handleUnmax);
+
+    // 查询当前状态
+    window.electronAPI.invoke('window-is-maximized').then((res) => {
+      setIsWindowMaximized(!!res);
+    }).catch(() => {});
+
     return () => {
-      prefersDark.removeEventListener('change', setSystemTheme);
+      window.electronAPI.removeListener('window-maximized', handleMax);
+      window.electronAPI.removeListener('window-unmaximized', handleUnmax);
     };
   }, []);
+
+  // 应用主题
+  const applyTheme = (darkMode) => {
+    if (darkMode) {
+      setTheme('dark');
+      setColorScheme('#C89B9B'); // 深色模式下的莫兰迪粉
+      document.body.classList.add('dark');
+    } else {
+      setTheme('light');
+      setColorScheme('#F5E6E6'); // 浅色模式下的莫兰迪粉
+      document.body.classList.remove('dark');
+    }
+  };
+
+  // 切换深色模式
+  const toggleDarkMode = () => {
+    const newDarkMode = !isDarkMode;
+    setIsDarkMode(newDarkMode);
+    localStorage.setItem('app-theme', newDarkMode ? 'dark' : 'light');
+    applyTheme(newDarkMode);
+  };
   // 状态管理
   const [inputText, setInputText] = useState('');
   const [detectedResult, setDetectedResult] = useState([]);
@@ -32,17 +76,10 @@ function App() {
   const [extracting, setExtracting] = useState(false);
   const [extractionError, setExtractionError] = useState(null);
   const [isCancelling, setIsCancelling] = useState(false);
-  // 右键菜单状态
-  const [showMenu, setShowMenu] = useState(false);
-  const [menuX, setMenuX] = useState(0);
-  const [menuY, setMenuY] = useState(0);
-  const [selectedText, setSelectedText] = useState('');
-  const [targetElement, setTargetElement] = useState(null);
-  // 清理菜单状态 - 重新添加
+  // 清理菜单状态
   const [showClearMenu, setShowClearMenu] = useState(false);
   // 菜单引用
-const menuRef = useRef(null);
-const clearMenuRef = useRef(null);
+  const clearMenuRef = useRef(null);
 
 // 分隔线位置状态
 const [dividerPosition, setDividerPosition] = useState(50);
@@ -68,13 +105,13 @@ const [toastType, setToastType] = useState('success');
     setExtractionError(null);
     setExtractedContent(null);
     setIsCancelling(false);
-    ipcRenderer.send('extract-content', url);
+    window.electronAPI.send('extract-content', url);
   };
 
   // 终止提取函数
   const cancelExtraction = () => {
     setIsCancelling(true);
-    ipcRenderer.send('cancel-extraction');
+    window.electronAPI.send('cancel-extraction');
   };
 
   // 监听主进程的内容提取结果
@@ -99,12 +136,12 @@ const [toastType, setToastType] = useState('success');
       setExtractionError('提取已取消');
     };
 
-    ipcRenderer.on('extract-content-result', handleExtractResult);
-    ipcRenderer.on('extraction-cancelled', handleExtractionCancelled);
+    window.electronAPI.on('extract-content-result', handleExtractResult);
+    window.electronAPI.on('extraction-cancelled', handleExtractionCancelled);
 
     return () => {
-      ipcRenderer.removeListener('extract-content-result', handleExtractResult);
-      ipcRenderer.removeListener('extraction-cancelled', handleExtractionCancelled);
+      window.electronAPI.removeListener('extract-content-result', handleExtractResult);
+      window.electronAPI.removeListener('extraction-cancelled', handleExtractionCancelled);
     };
   }, []);
 
@@ -159,99 +196,12 @@ const [toastType, setToastType] = useState('success');
 
 
 
-  // 点击页面其他区域关闭右键菜单
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (menuRef.current && !menuRef.current.contains(event.target)) {
-        setShowMenu(false);
-      }
-      if (clearMenuRef.current && !clearMenuRef.current.contains(event.target)) {
-        setShowClearMenu(false);
-      }
-    };
 
-    if (showMenu || showClearMenu) {
-      document.addEventListener('mousedown', handleClickOutside);
-    }
 
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, [showMenu, showClearMenu]);
 
-  // 右键菜单处理
-  const handleContextMenu = (e, element) => {
-    e.preventDefault();
-    const selection = window.getSelection();
-    const text = selection.toString();
-    
-    // 当在提示信息区域且没有焦点元素时，完全禁用菜单
-    if (!extracting && !extractedContent && !detectedResult.length && !element) {
-      return;
-    }
-    
-    // 当有选中文字或点击的是输入框时，显示菜单
-    if (text || element) {
-      setSelectedText(text);
-      setTargetElement(element);
-      setMenuX(e.clientX);
-      setMenuY(e.clientY);
-      setShowMenu(true);
-    }
-  };
-
-  // 菜单事件处理
-  const handleCopy = () => {
-    navigator.clipboard.writeText(selectedText).then(() => {
-      setShowMenu(false);
-    }).catch(err => {
-      console.error('复制失败:', err);
-    });
-  };
-
-  const handleCut = () => {
-    if (!targetElement) return;
-    navigator.clipboard.writeText(selectedText).then(() => {
-      const value = targetElement.value;
-      const start = targetElement.selectionStart;
-      const end = targetElement.selectionEnd;
-      const newText = value.slice(0, start) + value.slice(end);
-      setInputText(newText);
-      setShowMenu(false);
-    }).catch(err => {
-      console.error('剪切失败:', err);
-    });
-  };
-
-  const handlePaste = () => {
-    if (!targetElement) return;
-    navigator.clipboard.readText().then(pastedText => {
-      const value = targetElement.value;
-      const start = targetElement.selectionStart;
-      const end = targetElement.selectionEnd;
-      const newText = value.slice(0, start) + pastedText + value.slice(end);
-      setInputText(newText);
-      setShowMenu(false);
-    }).catch(err => {
-      console.error('粘贴失败:', err);
-    });
-  };
-
-  const handleSearch = () => {
-    const searchUrl = `https://www.bing.com/search?q=${encodeURIComponent(selectedText)}`;
-    ipcRenderer.send('open-url-in-window', searchUrl);
-    setShowMenu(false);
-  };
-
-  const handleOpenLink = () => {
-    if (isURL(selectedText)) {
-      ipcRenderer.send('open-url-in-window', selectedText);
-      setShowMenu(false);
-    }
-  };
 
   const handleClearBrowserData = () => {
-    ipcRenderer.invoke('clear-browser-data')
+    window.electronAPI.invoke('clear-browser-data')
       .then((result) => {
         if (result.success) {
           setToastMessage('浏览器数据清理成功！');
@@ -297,44 +247,100 @@ const [toastType, setToastType] = useState('success');
 
   return (
     <div className="app-container">
+      {/* 自定义无框标题栏（跨全宽） */}
+      <div className="native-titlebar titlebar" style={{ height: '36px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '4px 12px', width: '100%' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <div style={{ width: 18, height: 18, borderRadius: 4, background: 'var(--mdui-color-primary)', boxShadow: 'var(--mdui-shadow-level1)' }} />
+          <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--color-text)' }}>ChatUI Electron 应用</div>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }} className="no-drag">
+          <button className="window-btn" title="最小化" onClick={() => window.electronAPI.send('window-minimize')} style={{ WebkitAppRegion: 'no-drag' }}>
+            —
+          </button>
+          <button className="window-btn" title={isWindowMaximized ? '还原' : '最大化'} onClick={() => window.electronAPI.send('window-maximize')} style={{ WebkitAppRegion: 'no-drag' }}>
+            {isWindowMaximized ? '❐' : '▢'}
+          </button>
+          <button className="window-btn" title="关闭" onClick={() => window.electronAPI.send('window-close')} style={{ WebkitAppRegion: 'no-drag' }}>
+            ✕
+          </button>
+        </div>
+      </div>
       {/* 左侧输入区域 */}
-      <div 
+        <div 
         className="input-area" 
         style={{ 
           width: `${dividerPosition}%`,
-          height: '100vh',
+          height: 'calc(100vh - 36px)',
           padding: '20px',
           overflowY: 'auto',
           boxSizing: 'border-box'
         }}
       >
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', position: 'relative' }}>
-          <h2 className="mdui-typography-headline" style={{ fontSize: '18px', fontWeight: 600, color: '#262626', margin: 0 }}>
+        <div className="titlebar" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', position: 'relative' }}>
+          <h2 className="mdui-typography-headline" style={{ fontSize: '18px', fontWeight: 600, color: 'var(--color-text)', margin: 0 }}>
             新闻原文输入
           </h2>
-          <div 
-            ref={clearMenuRef}
-            style={{ position: 'relative', display: 'inline-block' }}
-          >
+          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+            {/* 深色模式切换按钮 */}
             <button
-              onClick={(e) => {
-                e.stopPropagation();
-                setShowClearMenu(!showClearMenu);
-              }}
+              className="control-btn no-drag"
+              onClick={toggleDarkMode}
               style={{
-                background: 'none',
-                border: 'none',
-                fontSize: '24px',
+                borderRadius: 'var(--radius-md)',
+                fontSize: '18px',
                 cursor: 'pointer',
-                color: '#999',
-                padding: '0',
+                padding: '6px 10px',
                 lineHeight: '1',
-                transition: 'color 0.2s ease'
+                transition: 'all 0.2s ease',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
               }}
-              onMouseEnter={(e) => e.target.style.color = '#666'}
-              onMouseLeave={(e) => e.target.style.color = '#999'}
-              title="更多选项"
+              onMouseEnter={(e) => {
+                e.target.style.backgroundColor = 'var(--color-accent-light)';
+                e.target.style.borderColor = 'var(--color-accent)';
+              }}
+              onMouseLeave={(e) => {
+                e.target.style.backgroundColor = 'transparent';
+                e.target.style.borderColor = 'var(--color-border)';
+              }}
+              title={isDarkMode ? '切换到浅色模式' : '切换到深色模式'}
             >
+              {isDarkMode ? '☀️' : '🌙'}
+            </button>
+            <div 
+              ref={clearMenuRef}
+              style={{ position: 'relative', display: 'inline-block' }}
+            >
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowClearMenu(!showClearMenu);
+                }}
+                className="control-btn no-drag"
+                style={{
+                  borderRadius: 'var(--radius-md)',
+                  fontSize: '24px',
+                  cursor: 'pointer',
+                  padding: '4px 8px',
+                  lineHeight: '1',
+                  transition: 'all 0.2s ease',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}
+                onMouseEnter={(e) => {
+                  e.target.style.backgroundColor = 'var(--color-accent-light)';
+                  e.target.style.borderColor = 'var(--color-accent)';
+                  e.target.style.color = 'var(--color-text)';
+                }}
+                onMouseLeave={(e) => {
+                  e.target.style.backgroundColor = 'transparent';
+                  e.target.style.borderColor = 'var(--color-border)';
+                  e.target.style.color = 'var(--color-text-secondary)';
+                }}
+                title="更多选项"
+              >
               ⋮
             </button>
             {/* 下拉菜单 */}
@@ -346,13 +352,14 @@ const [toastType, setToastType] = useState('success');
                   top: '100%',
                   right: 0,
                   marginTop: '4px',
-                  backgroundColor: 'white',
-                  border: '1px solid #E6C0C0',
-                  borderRadius: '4px',
-                  boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
+                    backgroundColor: 'var(--mdui-color-primary-container)',
+                  border: '1px solid var(--color-border)',
+                  borderRadius: '16px',
+                  boxShadow: 'var(--shadow-lg)',
                   zIndex: 10000,
                   minWidth: '180px',
-                  animation: 'menuSlideIn 0.2s ease-out'
+                  animation: 'menuSlideIn 0.2s ease-out',
+                  overflow: 'hidden'
                 }}
               >
                 <button
@@ -364,31 +371,26 @@ const [toastType, setToastType] = useState('success');
                     width: '100%',
                     padding: '12px 16px',
                     border: 'none',
-                    background: 'none',
                     textAlign: 'left',
                     cursor: 'pointer',
                     fontSize: '14px',
-                    color: '#262626',
+                    color: 'var(--color-text)',
                     transition: 'background-color 0.15s ease'
                   }}
-                  onMouseEnter={(e) => e.target.style.backgroundColor = '#F5E6E6'}
+                  onMouseEnter={(e) => e.target.style.backgroundColor = 'var(--color-accent-light)'}
                   onMouseLeave={(e) => e.target.style.backgroundColor = 'transparent'}
                 >
                   清理浏览器数据
                 </button>
               </div>
             )}
+            </div>
           </div>
         </div>
         <mdui-text-field
           value={inputText}
           onChange={(e) => setInputText(e.currentTarget.value)}
           placeholder="请输入或粘贴待检测的新闻文本..."
-          onContextMenu={(e) => {
-            const target = e.currentTarget;
-            target.focus();
-            setTimeout(() => handleContextMenu(e, target), 0);
-          }}
           style={{ 
             width: '100%',
             marginBottom: '12px',
@@ -399,8 +401,12 @@ const [toastType, setToastType] = useState('success');
         ></mdui-text-field>
         <mdui-button
           onClick={handleDetect}
-          style={{ width: '100%' }}
-          variant="raised"
+          style={{ 
+            width: '100%',
+            '--md-button-container-height': '48px',
+            '--md-button-label-text-size': '16px'
+          }}
+          variant="filled"
           fullwidth
         >
           开始检测
@@ -425,13 +431,13 @@ const [toastType, setToastType] = useState('success');
         className="output-area" 
         style={{ 
           width: `${100 - dividerPosition}%`,
-          height: '100vh',
+          height: 'calc(100vh - 36px)',
           overflowY: 'auto',
           boxSizing: 'border-box'
         }}
       >
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-          <h2 className="mdui-typography-headline" style={{ fontSize: '18px', fontWeight: 600, margin: 0, color: '#262626' }}>
+          <h2 className="mdui-typography-headline" style={{ fontSize: '18px', fontWeight: 600, margin: 0, color: 'var(--color-text)' }}>
             检测结果输出
           </h2>
           {extracting && (
@@ -448,7 +454,7 @@ const [toastType, setToastType] = useState('success');
           style={{ 
             fontSize: '14px', 
             lineHeight: '1.6', 
-            color: '#262626',
+            color: 'var(--color-text)',
             padding: extracting ? '0' : '8px',
             boxSizing: 'border-box',
             textAlign: 'left',
@@ -456,7 +462,6 @@ const [toastType, setToastType] = useState('success');
             height: '100%',
             display: extracting ? 'flex' : 'block'
           }}
-          onContextMenu={(e) => handleContextMenu(e, null)}
           onMouseDown={(e) => {
             if (!extracting && !extractedContent && !detectedResult.length) {
               e.preventDefault();
@@ -557,51 +562,7 @@ const [toastType, setToastType] = useState('success');
         </mdui-snackbar>
       )}
 
-      {/* 右键菜单 */}
-      {showMenu && (
-        <mdui-menu
-          ref={menuRef}
-          open={showMenu}
-          onClose={() => setShowMenu(false)}
-          style={{
-            position: 'fixed',
-            top: `${menuY}px`,
-            left: `${menuX}px`,
-            zIndex: 9999
-          }}
-        >
-          {/* 只有当有选中文字时显示复制 */}
-          {selectedText && (
-            <mdui-menu-item onClick={handleCopy}>
-              复制
-            </mdui-menu-item>
-          )}
-          {/* 只有当有选中文字且点击的是输入框时显示剪切 */}
-          {selectedText && targetElement && (
-            <mdui-menu-item onClick={handleCut}>
-              剪切
-            </mdui-menu-item>
-          )}
-          {/* 点击的是输入框时显示粘贴 */}
-          {targetElement && (
-            <mdui-menu-item onClick={handlePaste}>
-              粘贴
-            </mdui-menu-item>
-          )}
-          {/* 只有当有选中文字时显示搜索，且显示搜索内容 */}
-          {selectedText && (
-            <mdui-menu-item onClick={handleSearch}>
-              搜索 {selectedText}
-            </mdui-menu-item>
-          )}
-          {/* 只有当选中的文字是URL时显示转到链接 */}
-          {selectedText && isURL(selectedText) && (
-            <mdui-menu-item onClick={handleOpenLink}>
-              转到 {selectedText}
-            </mdui-menu-item>
-          )}
-        </mdui-menu>
-      )}
+
     </div>
   );
 }

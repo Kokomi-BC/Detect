@@ -1,31 +1,30 @@
-const { ipcRenderer } = require('electron');
+const { contextBridge, ipcRenderer } = require('electron');
 
 /**
  * 预加载脚本 - 在渲染进程加载前执行
- * 当 contextIsolation: false 时，这些对象会直接可用于渲染进程
+ * 通过 contextBridge 安全地向渲染进程暴露API
  */
 
-// 在全局对象上暴露 ipcRenderer
-if (!window.ipcRenderer) {
-  window.ipcRenderer = {
-    send: (channel, ...args) => {
-      ipcRenderer.send(channel, ...args);
-    },
-    on: (channel, listener) => {
-      ipcRenderer.on(channel, listener);
-    },
-    once: (channel, listener) => {
-      ipcRenderer.once(channel, listener);
-    },
-    off: (channel, listener) => {
-      ipcRenderer.off(channel, listener);
-    },
-    removeListener: (channel, listener) => {
-      ipcRenderer.removeListener(channel, listener);
-    },
-    invoke: (channel, ...args) => {
-      return ipcRenderer.invoke(channel, ...args);
-    }
-  };
-}
+// 核心API - 只保留必要的IPC操作
+contextBridge.exposeInMainWorld('electronAPI', {
+  // IPC通信方法
+  send: (channel, ...args) => {
+    ipcRenderer.send(channel, ...args);
+  },
+  on: (channel, listener) => {
+    ipcRenderer.on(channel, listener);
+  },
+  once: (channel, listener) => {
+    ipcRenderer.once(channel, listener);
+  },
+  off: (channel, listener) => {
+    ipcRenderer.off(channel, listener);
+  },
+  removeListener: (channel, listener) => {
+    ipcRenderer.removeListener(channel, listener);
+  },
+  invoke: (channel, ...args) => {
+    return ipcRenderer.invoke(channel, ...args);
+  }
+});
 
