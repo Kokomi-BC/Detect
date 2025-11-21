@@ -68,6 +68,9 @@ function App() {
     setIsDarkMode(newDarkMode);
     localStorage.setItem('app-theme', newDarkMode ? 'dark' : 'light');
     applyTheme(newDarkMode);
+    
+    // 同时切换Electron原生框架的深色模式
+    window.electronAPI.invoke('set-theme', newDarkMode);
   };
   // 状态管理
   const [inputText, setInputText] = useState('');
@@ -138,7 +141,7 @@ const [toastType, setToastType] = useState('success');
         setDetectedResult([]);
         setExtractedContent(result);
       } else {
-        // 提取失败时，清除之前的文本检测结果
+    
         setDetectedResult([]);
         setExtractionError(result.error);
       }
@@ -158,8 +161,6 @@ const [toastType, setToastType] = useState('success');
       setExtracting(false);
       setIsCancelling(false);
       console.log('右侧界面内容已清除');
-      
-      // 显示清除提示
       setToastMessage('结果已清除！');
       setToastType('success');
       setShowToast(true);

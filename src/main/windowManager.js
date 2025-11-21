@@ -20,15 +20,9 @@ class WindowManager {
     this.browserWindows = new Set(); // 所有浏览器窗口
     this.navigationWindows = new Set(); // 导航窗口
     this.extractionWindows = new Set(); // 提取窗口
-    this.setupContextMenu();
   }
 
-  /**
-   * 设置原生右键菜单
-   */
-  setupContextMenu() {
-    // 我们在 createMainWindow 方法中会设置右键菜单
-  }
+
 
   /**
    * 构建右键菜单
@@ -158,27 +152,7 @@ class WindowManager {
     return false;
   }
 
-  /**
-   * 检查窗口是否为浏览器窗口
-   * @param {BrowserWindow} window 窗口实例
-   * @returns {boolean}
-   */
-  isBrowserWindow(window) {
-    if (!window || window.isDestroyed()) return false;
-    
-    // 检查集合中是否存在
-    if (this.browserWindows.has(window)) return true;
-    
-    // 检查window对象上的标记
-    if (window.__windowType === WindowType.BROWSER) return true;
-    
-    // 检查webPreferences中的额外信息
-    if (window.webPreferences && window.webPreferences.extraInfo) {
-      return window.webPreferences.extraInfo.windowType === WindowType.BROWSER;
-    }
-    
-    return false;
-  }
+
 
   /**
    * 创建主窗口
@@ -419,36 +393,10 @@ class WindowManager {
           window.reload();
         }
       }));
-      
-      // 添加清除结果选项（仅在右边界面加载完成时显示）
-      // 放宽判断条件，确保在大多数情况下都能正确显示
-      const pageIsLoaded = true; // 设置为true以确保选项始终显示，便于测试
-      // 或者可以使用更复杂的检测逻辑：
-      // const pageIsLoaded = webContents.getURL() !== 'about:blank' && 
-      //                      (webContents.getTitle() && webContents.getTitle().trim() !== '');
-      
-      if (pageIsLoaded) {
-        menu.append(new MenuItem({
-          label: '清除结果',
-          click: () => {
-            console.log('执行清除结果操作，刷新界面');
-            window.reload();
-          }
-        }));
-      }
-      
-      menu.append(new MenuItem({ type: 'separator' }));
+
       
       // 链接相关功能（如果有链接）
       if (params.linkURL) {
-        menu.append(new MenuItem({
-          label: '在新窗口中打开链接',
-          accelerator: 'Shift+Click',
-          click: () => {
-            this.createBrowserWindow(params.linkURL);
-          }
-        }));
-        
         menu.append(new MenuItem({
           label: '复制链接地址',
           accelerator: 'Ctrl+Shift+C',
@@ -460,10 +408,9 @@ class WindowManager {
         menu.append(new MenuItem({
           label: '跳转到链接',
           click: () => {
-            this.navigateInNavigationWindow(params.linkURL);
+            this.jumpurl(params.linkURL);
           }
         }));
-        
         menu.append(new MenuItem({ type: 'separator' }));
       }
       
@@ -472,8 +419,8 @@ class WindowManager {
         menu.append(new MenuItem({
           label: '搜索 "' + params.selectionText + '"',
           click: () => {
-            const searchUrl = `https://www.google.com/search?q=${encodeURIComponent(params.selectionText)}`;
-            this.navigateInNavigationWindow(searchUrl);
+            const searchUrl = `https://www.bing.com/search?q=${encodeURIComponent(params.selectionText)}`;
+            this.jumpurl(searchUrl);
           }
         }));
         
@@ -579,27 +526,8 @@ class WindowManager {
         }
       }));
       
-      // 添加清除结果选项
-      menu.append(new MenuItem({
-        label: '清除结果',
-        click: () => {
-          console.log('执行清除结果操作，刷新界面');
-          window.reload();
-        }
-      }));
-      
-      menu.append(new MenuItem({ type: 'separator' }));
-      
       // 链接相关功能（如果有链接）
       if (params.linkURL) {
-        menu.append(new MenuItem({
-          label: '在新窗口中打开链接',
-          accelerator: 'Shift+Click',
-          click: () => {
-            this.createBrowserWindow(params.linkURL);
-          }
-        }));
-        
         menu.append(new MenuItem({
           label: '复制链接地址',
           accelerator: 'Ctrl+Shift+C',
@@ -611,7 +539,7 @@ class WindowManager {
         menu.append(new MenuItem({
           label: '跳转到链接',
           click: () => {
-            this.navigateInNavigationWindow(params.linkURL);
+            this.jumpurl(params.linkURL);
           }
         }));
         
@@ -623,8 +551,8 @@ class WindowManager {
         menu.append(new MenuItem({
           label: '搜索 "' + params.selectionText + '"',
           click: () => {
-            const searchUrl = `https://www.google.com/search?q=${encodeURIComponent(params.selectionText)}`;
-            this.navigateInNavigationWindow(searchUrl);
+            const searchUrl = `https://www.bing.com/search?q=${encodeURIComponent(params.selectionText)}`;
+            this.jumpurl(searchUrl);
           }
         }));
         
@@ -768,16 +696,36 @@ class WindowManager {
    * 在导航窗口中导航到指定URL
    * @param {string} url 要导航的URL
    */
-  navigateInNavigationWindow(url) {
-    console.log('在导航窗口中导航:', url);
+  jumpurl(url) {
+    console.log('跳转窗口:', url);
     try {
-      // 创建新的导航窗口
-      const navigationWindow = this.createNavigationWindow(url);
-      
-      // 显示窗口
-      navigationWindow.show();
-      
-      return navigationWindow;
+      // 如果没有导航窗口，创建新的导航窗口
+      if (this.navigationWindows.size === 0) {
+        const navigationWindow = this.createNavigationWindow(url);
+        navigationWindow.show();
+        return navigationWindow;
+      } else {
+        // 如果已有导航窗口，在第一个导航窗口中打开链接
+        const firstNavigationWindow = this.navigationWindows.values().next().value;
+        if (firstNavigationWindow && !firstNavigationWindow.isDestroyed()) {
+          firstNavigationWindow.show();
+          firstNavigationWindow.loadURL(url).catch((error) => {
+            console.error('导航窗口加载失败:', error);
+            this.destroyWindow(firstNavigationWindow);
+            // 如果加载失败，创建新的导航窗口
+            const newNavigationWindow = this.createNavigationWindow(url);
+            newNavigationWindow.show();
+            return newNavigationWindow;
+          });
+          return firstNavigationWindow;
+        } else {
+          // 如果现有窗口已销毁，创建新的导航窗口
+          this.navigationWindows.clear(); // 清理已销毁的窗口引用
+          const navigationWindow = this.createNavigationWindow(url);
+          navigationWindow.show();
+          return navigationWindow;
+        }
+      }
     } catch (error) {
       console.error('导航窗口导航失败:', error);
       throw error;

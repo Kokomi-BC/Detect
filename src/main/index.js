@@ -1,39 +1,31 @@
-/**
- * Chat应用启动入口
- * 
- * 这个文件作为主入口点，负责启动模块化的Electron应用
- */
-
 const { app } = require('electron');
-const ChatApp = require('./main');
-
-// 全局错误处理
+const DetectApp = require('./main');
 process.on('uncaughtException', (error) => {
-  console.error('未捕获的异常:', error);
+  console.error('Uncaught exception:', error);
   process.exit(1);
 });
 
 process.on('unhandledRejection', (reason, promise) => {
-  console.error('未处理的Promise拒绝:', reason);
+  console.error('Unhandled Promise Rejection:', reason);
   process.exit(1);
 });
 
 // 启动应用
 async function startChatApp() {
   try {
-    console.log('正在启动Chat应用...');
+    console.log('Starting application...');
     
     // 等待Electron完全准备就绪
     await app.whenReady();
     
     // 初始化并启动主应用
-    const chatApp = new ChatApp();
-    await chatApp.initialize();
+    const detectApp = new DetectApp();
+    await detectApp.initialize();
     
-    console.log('Chat应用已成功启动');
+    console.log('Application started successfully');
     
   } catch (error) {
-    console.error('Chat应用启动失败:', error);
+    console.error('Application startup failed:', error);
     
     // 优雅地退出
     app.quit();
@@ -45,4 +37,4 @@ async function startChatApp() {
 startChatApp();
 
 // 导出应用类供测试使用
-module.exports = { ChatApp };
+module.exports = { DetectApp };

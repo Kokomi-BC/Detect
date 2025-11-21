@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, session, Menu, MenuItem, shell } = require('electron');
+const { app, BrowserWindow, ipcMain, session, Menu, MenuItem, shell, nativeTheme } = require('electron');
 const path = require('path');
 const { WindowManager, WindowType } = require('./windowManager');
 const ExtractionManager = require('./extractionManager');
@@ -7,7 +7,7 @@ const { truncateText } = require('./utils');
 /**
  * 主应用入口 - 使用模块化架构的Electron应用
  */
-class ChatApp {
+class DetectApp {
   constructor() {
     this.mainWindow = null;
     this.isAppReady = false;
@@ -27,7 +27,7 @@ class ChatApp {
     }
 
     try {
-      console.log('正在初始化Chat应用...');
+      console.log('正在初始化应用...');
       
       // 设置应用基本配置
       this.setupApp();
@@ -35,14 +35,11 @@ class ChatApp {
       // 设置IPC事件监听
       this.setupIPC();
       
-      // 设置右键菜单
-      this.setupContextMenu();
-      
       // 创建主窗口
       this.createMainWindow();
       
       this.initialized = true;
-      console.log('Chat应用初始化完成');
+      console.log('应用初始化完成');
       
     } catch (error) {
       console.error('应用初始化失败:', error);
@@ -102,27 +99,10 @@ class ChatApp {
       this.isAppReady = true;
     });
 
-    // 设置安全策略
-    this.setupSecurity();
+
   }
 
-  /**
-   * 设置安全策略
-   */
-  setupSecurity() {
-    app.on('web-contents-created', (event, contents) => {
-      contents.on('new-window', (event, navigationUrl) => {
-        event.preventDefault();
-      });
-      
-      contents.on('will-navigate', (event, navigationUrl) => {
-        const parsedUrl = new URL(navigationUrl);
-        if (parsedUrl.origin !== 'file://') {
-          event.preventDefault();
-        }
-      });
-    });
-  }
+ 
 
   /**
    * 设置用户代理
@@ -141,114 +121,6 @@ class ChatApp {
     // 通过命令行开关禁用WebRTC
     app.commandLine.appendSwitch('disable-webrtc');
   }
-
-  /**
-   * 创建原生右键菜单
-   */
-  createContextMenu() {
-    const menu = new Menu();
-    
-    // 撤销
-    menu.append(new MenuItem({
-      label: '撤销',
-      accelerator: 'CmdOrCtrl+Z',
-      role: 'undo'
-    }));
-    
-    // 重做
-    menu.append(new MenuItem({
-      label: '重做',
-      accelerator: 'CmdOrCtrl+Shift+Z',
-      role: 'redo'
-    }));
-    
-    menu.append(new MenuItem({ type: 'separator' }));
-    
-    // 剪切
-    menu.append(new MenuItem({
-      label: '剪切',
-      accelerator: 'CmdOrCtrl+X',
-      role: 'cut'
-    }));
-    
-    // 复制
-    menu.append(new MenuItem({
-      label: '复制',
-      accelerator: 'CmdOrCtrl+C',
-      role: 'copy'
-    }));
-    
-    // 粘贴
-    menu.append(new MenuItem({
-      label: '粘贴',
-      accelerator: 'CmdOrCtrl+V',
-      role: 'paste'
-    }));
-    
-    // 全选
-    menu.append(new MenuItem({
-      label: '全选',
-      accelerator: 'CmdOrCtrl+A',
-      role: 'selectall'
-    }));
-    
-    menu.append(new MenuItem({ type: 'separator' }));
-    
-    // 查找
-    menu.append(new MenuItem({
-      label: '查找...',
-      accelerator: 'CmdOrCtrl+F',
-      role: 'find'
-    }));
-    
-    // 替换
-    menu.append(new MenuItem({
-      label: '替换...',
-      accelerator: 'CmdOrCtrl+H',
-      role: 'replace'
-    }));
-    
-    menu.append(new MenuItem({ type: 'separator' }));
-    
-    // 转到
-    menu.append(new MenuItem({
-      label: '转到...',
-      accelerator: 'CmdOrCtrl+L',
-      click: () => {
-        // 聚焦到地址栏或输入框
-        const mainWindow = this.getMainWindow();
-        if (mainWindow) {
-          mainWindow.webContents.executeJavaScript(`
-            const input = document.querySelector('input[type="text"], textarea');
-            if (input) {
-              input.focus();
-              input.select();
-            }
-          `);
-        }
-      }
-    }));
-    
-    return menu;
-  }
-
-  /**
-   * 为所有非主窗口设置右键菜单
-   */
-  setupContextMenu() {
-    console.log('右键菜单设置完成');
-    // 注意：导航窗口和浏览器窗口的右键菜单现在由windowManager.js中统一处理
-    // 这里不再设置重复的右键菜单，避免冲突
-    
-    // 如果需要为主窗口设置右键菜单，可以在这里添加
-    // 但目前主窗口使用自定义UI，不需要原生右键菜单
-  }
-
-  // navigationWindow变量已迁移到WindowManager类
-
-  // setupNavigationWindowSecurity方法已迁移到WindowManager类
-
-  // navigateInNavigationWindow方法已迁移到WindowManager类
 
   /**
    * 在新窗口中打开URL（新窗口使用原生右键菜单）
@@ -344,7 +216,7 @@ class ChatApp {
       menu.append(new MenuItem({
         label: `转到 ${displayUrl}`,
         click: () => {
-          this.windowManager.navigateInNavigationWindow(linkUrl);
+          this.windowManager.jumpurl(linkUrl);
         }
       }));
     }
@@ -358,7 +230,7 @@ class ChatApp {
         label: `搜索 ${displaySearchText}`,
         click: () => {
           const searchUrl = `https://www.bing.com/search?q=${encodeURIComponent(searchText)}`;
-          this.windowManager.navigateInNavigationWindow(searchUrl);
+          this.windowManager.jumpurl(searchUrl);
         }
       }));
     }
@@ -405,6 +277,14 @@ class ChatApp {
         window.minimize();
       }
     });
+    
+    // 处理切换原生主题的请求
+    ipcMain.on('toggle-native-theme', (event, isDarkMode) => {
+      if (this.mainWindow) {
+        // 设置原生主题
+        nativeTheme.themeSource = isDarkMode ? 'dark' : 'light';
+      }
+    });
 
     ipcMain.on('window-maximize', () => {
       const window = this.getMainWindow();
@@ -436,6 +316,34 @@ class ChatApp {
         return { success: true, message: '浏览器数据清理成功' };
       } catch (error) {
         console.error('清除浏览器数据失败:', error);
+        return { success: false, error: error.message };
+      }
+    });
+
+    // 设置主题事件
+    ipcMain.handle('set-theme', async (event, isDarkMode) => {
+      try {
+        const { nativeTheme } = require('electron');
+        
+        if (this.mainWindow && !this.mainWindow.isDestroyed()) {
+          // 设置原生主题
+          nativeTheme.themeSource = isDarkMode ? 'dark' : 'light';
+          
+          // 通知渲染进程主题已更改
+          this.mainWindow.webContents.send('theme-changed', {
+            isDarkMode: isDarkMode,
+            shouldUseDarkColors: nativeTheme.shouldUseDarkColors,
+            shouldUseHighContrastColors: nativeTheme.shouldUseHighContrastColors,
+            shouldInvertColorScheme: nativeTheme.shouldInvertColorScheme
+          });
+          
+          console.log('主题已设置为:', isDarkMode ? '深色' : '浅色');
+          return { success: true, message: '主题设置成功' };
+        } else {
+          return { success: false, error: '主窗口不存在' };
+        }
+      } catch (error) {
+        console.error('设置主题失败:', error);
         return { success: false, error: error.message };
       }
     });
@@ -618,7 +526,7 @@ class ChatApp {
 }
 
 // 创建应用实例
-const chatApp = new ChatApp();
+const detectApp = new DetectApp();
 
 // 导出应用类供外部使用
-module.exports = ChatApp;
+module.exports = DetectApp;

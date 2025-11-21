@@ -490,7 +490,6 @@ textarea:focus {
   background-color: var(--mdui-color-surface-variant);
 }
 
-
 .context-menu-item:hover {
   background-color: var(--mdui-color-secondary);
   color: var(--mdui-color-on-secondary);
