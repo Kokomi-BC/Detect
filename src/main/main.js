@@ -1,6 +1,6 @@
 const { app, BrowserWindow, ipcMain, session, Menu, MenuItem, shell } = require('electron');
 const path = require('path');
-const WindowManager = require('./windowManager');
+const { WindowManager, WindowType } = require('./windowManager');
 const ExtractionManager = require('./extractionManager');
 const { truncateText } = require('./utils');
 
@@ -56,20 +56,13 @@ class ChatApp {
   setupApp() {
     // 禁用安全警告（开发环境）
     process.env['ELECTRON_DISABLE_SECURITY_WARNINGS'] = 'true';
-    
-    // 设置应用单例实例锁
     this.setupSingleInstance();
-    
-    // 设置应用事件监听
     this.setupAppEvents();
-    
-    // 设置用户代理
     this.setupUserAgent();
+    this.disableWebRTCConnections();
   }
 
-  /**
-   * 设置单例实例锁
-   */
+
   setupSingleInstance() {
     const gotTheLock = app.requestSingleInstanceLock();
     
@@ -135,9 +128,18 @@ class ChatApp {
    * 设置用户代理
    */
   setupUserAgent() {
+    // 设置默认用户代理，确保主窗口能被正确识别
     const defaultUserAgent = app.userAgentFallback;
     const customUserAgent = `${defaultUserAgent} ChatApp/1.0`;
     app.userAgentFallback = customUserAgent;
+  }
+
+  /**
+   * 禁用WebRTC连接，避免STUN错误
+   */
+  disableWebRTCConnections() {
+    // 通过命令行开关禁用WebRTC
+    app.commandLine.appendSwitch('disable-webrtc');
   }
 
   /**
@@ -231,69 +233,43 @@ class ChatApp {
   }
 
   /**
-   * 设置右键菜单
-   * 注意：主窗口使用自定义右键菜单，新窗口使用Electron默认浏览器右键菜单
+   * 为所有非主窗口设置右键菜单
    */
   setupContextMenu() {
-    // 只为主窗口设置自定义右键菜单
-    app.on('web-contents-created', (event, contents) => {
-      // 检查是否是主窗口：只有使用preload脚本的才是主窗口
-      // 我们通过检查contents的userAgent来区分
-      const isMainWindow = contents.session && contents.session.getUserAgent().includes('ChatApp');
-      
-      if (isMainWindow) {
-        contents.on('context-menu', (event, params) => {
-          const menu = this.buildDynamicContextMenu(params);
-          menu.popup();
-        });
-      }
-      // 新窗口不设置自定义右键菜单，让它使用Electron默认的浏览器右键菜单
-    });
+    console.log('右键菜单设置完成');
+    // 注意：导航窗口和浏览器窗口的右键菜单现在由windowManager.js中统一处理
+    // 这里不再设置重复的右键菜单，避免冲突
+    
+    // 如果需要为主窗口设置右键菜单，可以在这里添加
+    // 但目前主窗口使用自定义UI，不需要原生右键菜单
   }
 
+  // navigationWindow变量已迁移到WindowManager类
+
+  // setupNavigationWindowSecurity方法已迁移到WindowManager类
+
+  // navigateInNavigationWindow方法已迁移到WindowManager类
+
   /**
-   * 在新窗口中打开URL
+   * 在新窗口中打开URL（新窗口使用原生右键菜单）
    * @param {string} url 要打开的URL
    */
   openUrlInNewWindow(url) {
     try {
-      console.log('在新窗口中打开URL:', url);
+      // 使用窗口管理器创建浏览器窗口
+      const browserWindow = this.windowManager.createBrowserWindow(url);
       
-      // 创建具有完整浏览器功能的新窗口，不设置自定义右键菜单
-      const newWindow = new BrowserWindow({
-        width: 1200,
-        height: 800,
-        show: true, // 立即显示窗口
-        webPreferences: {
-          nodeIntegration: false,
-          contextIsolation: true,
-          webSecurity: true, // 启用web安全
-          allowRunningInsecureContent: false,
-          plugins: true, // 启用插件支持
-          experimentalFeatures: false,
-          // 不使用preload脚本，让新窗口成为完全的浏览器窗口，使用Electron默认右键菜单
-        }
-      });
-
-      // 不设置context-menu事件监听，让新窗口使用Electron默认的完整浏览器右键菜单
-
-      // 加载URL
-      newWindow.loadURL(url).then(() => {
-        console.log('URL加载成功:', url);
-      }).catch((error) => {
-        console.error('加载URL失败:', error);
-        newWindow.close();
-      });
-
       // 窗口关闭时清理
-      newWindow.on('closed', () => {
-        console.log('新窗口已关闭');
+      browserWindow.on('closed', () => {
+        console.log('浏览器窗口已关闭');
       });
 
     } catch (error) {
       console.error('打开新窗口失败:', error);
     }
   }
+
+  // setupNavigationControls方法已迁移到WindowManager类
 
   /**
    * 检查是否为有效的URL
@@ -303,11 +279,20 @@ class ChatApp {
   isValidUrl(text) {
     if (!text || typeof text !== 'string') return false;
     
-    // 基本URL格式检查
-    const urlRegex = /^(https?:\/\/)?([\da-z\.-]+)\.([a-z\.]{2,6})([\/\w \.-]*)*\/?$/;
-    const fullUrlRegex = /^(https?:\/\/)?([\da-z\.-]+)\.([a-z\.]{2,6})(:[0-9]+)?([\/\w \.-]*)*\/?$/;
+    const trimmedText = text.trim();
     
-    return urlRegex.test(text) || fullUrlRegex.test(text) || text.startsWith('www.');
+    // 更宽松的URL格式检查
+    // 检查各种URL格式：完整的http/https URL、www开头的URL、域名格式
+    const urlPatterns = [
+      /^https?:\/\/.+/i,  // http:// 或 https:// 开头的完整URL
+      /^www\./i,         // www. 开头的URL
+      /^[\w-]+\.[\w.-]+(?:\.[\w.-]+)*(?:\/[^\s]*)?$/i, // 域名格式，包括子域名
+      /^[a-zA-Z0-9][a-zA-Z0-9-]*[a-zA-Z0-9]*\.[a-zA-Z]{2,}(?:\/[^\s]*)?$/i, // 标准域名
+      /^[\w-]+\.(com|net|org|edu|gov|co\.uk|co\.cn|com\.cn|net\.cn|org\.cn)(?:\/[^\s]*)?$/i // 常见顶级域名
+    ];
+    
+    const result = urlPatterns.some(pattern => pattern.test(trimmedText));
+    return result;
   }
 
   /**
@@ -352,19 +337,19 @@ class ChatApp {
       menu.append(new MenuItem({ label: '全选', role: 'selectall', accelerator: 'CmdOrCtrl+A' }));
     }
     
-    // 如果有链接，添加转到链接选项
+    // 如果有链接，添加转到链接选项（在专用跳转窗口中导航）
     if (linkUrl) {
       menu.append(new MenuItem({ type: 'separator' }));
       const displayUrl = this.truncateText(linkUrl, 50);
       menu.append(new MenuItem({
         label: `转到 ${displayUrl}`,
         click: () => {
-          this.openUrlInNewWindow(linkUrl);
+          this.windowManager.navigateInNavigationWindow(linkUrl);
         }
       }));
     }
     
-    // 搜索功能
+    // 搜索功能（在专用跳转窗口中导航）
     if (params.selectionText && params.selectionText.trim()) {
       const searchText = params.selectionText.trim();
       menu.append(new MenuItem({ type: 'separator' }));
@@ -373,7 +358,30 @@ class ChatApp {
         label: `搜索 ${displaySearchText}`,
         click: () => {
           const searchUrl = `https://www.bing.com/search?q=${encodeURIComponent(searchText)}`;
-          this.openUrlInNewWindow(searchUrl);
+          this.windowManager.navigateInNavigationWindow(searchUrl);
+        }
+      }));
+    }
+    
+    // 添加清除结果选项（仅在右侧界面有内容时显示）
+    // 判断是否有实际内容（检测结果、提取内容等）
+    const hasContent = (params.selectionText && params.selectionText.trim()) || 
+                      (params.linkURL) ||
+                      params.editFlags.canCopy ||
+                      params.editFlags.canCut ||
+                      params.editFlags.canSelectAll;
+    
+    if (hasContent) {
+      menu.append(new MenuItem({ type: 'separator' }));
+      menu.append(new MenuItem({
+        label: '清除结果',
+        click: () => {
+          console.log('执行清除结果操作，刷新浏览器内容');
+          // 获取主窗口并刷新浏览器内容
+          const mainWindow = this.getMainWindow();
+          if (mainWindow && !mainWindow.isDestroyed()) {
+            mainWindow.webContents.send('clear-results');
+          }
         }
       }));
     }
@@ -442,6 +450,28 @@ class ChatApp {
       const w = this.getMainWindow();
       return !!(w && w.isMaximized());
     });
+
+    // 返回右侧界面是否有内容
+    ipcMain.handle('has-right-content', () => {
+      const w = this.getMainWindow();
+      if (!w || w.isDestroyed()) {
+        return false;
+      }
+      
+      // 通过IPC同步查询渲染进程状态
+      return new Promise((resolve) => {
+        w.webContents.send('query-right-content-status');
+        // 设置超时，避免无限等待
+        const timeout = setTimeout(() => {
+          resolve(false);
+        }, 1000);
+        
+        w.webContents.once('right-content-status', (event, hasContent) => {
+          clearTimeout(timeout);
+          resolve(hasContent);
+        });
+      });
+    });
   }
 
   /**
@@ -506,6 +536,9 @@ class ChatApp {
   createMainWindow() {
     this.mainWindow = this.windowManager.createMainWindow();
     
+    // 直接为主窗口设置自定义右键菜单
+    this.setupMainWindowContextMenu(this.mainWindow);
+    
     // 窗口关闭时清理
     this.mainWindow.on('closed', () => {
       this.mainWindow = null;
@@ -523,6 +556,48 @@ class ChatApp {
         this.mainWindow.webContents.send('window-unmaximized');
       } catch (err) {}
     });
+  }
+
+  /**
+   * 为主窗口设置自定义右键菜单
+   * @param {BrowserWindow} window 主窗口实例
+   */
+  setupMainWindowContextMenu(window) {
+    if (!window || window.isDestroyed()) {
+      return;
+    }
+
+    // 等待webContents准备就绪
+    if (window.webContents) {
+      window.webContents.on('context-menu', async (event, params) => {
+        try {
+          const menu = await this.buildDynamicContextMenu(params);
+          menu.popup();
+        } catch (error) {
+          console.error('构建右键菜单失败:', error);
+          // 如果构建失败，使用一个简单的菜单
+          const simpleMenu = new Menu();
+          simpleMenu.append(new MenuItem({ label: '菜单构建失败', enabled: false }));
+          simpleMenu.popup();
+        }
+      });
+    } else {
+      // 如果webContents还没有准备，监听did-finish-load事件
+      window.webContents.once('did-finish-load', () => {
+        window.webContents.on('context-menu', async (event, params) => {
+          try {
+            const menu = await this.buildDynamicContextMenu(params);
+            menu.popup();
+          } catch (error) {
+            console.error('构建右键菜单失败:', error);
+            // 如果构建失败，使用一个简单的菜单
+            const simpleMenu = new Menu();
+            simpleMenu.append(new MenuItem({ label: '菜单构建失败', enabled: false }));
+            simpleMenu.popup();
+          }
+        });
+      });
+    }
   }
 
   /**

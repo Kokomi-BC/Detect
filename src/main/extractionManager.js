@@ -1,6 +1,6 @@
 const { Readability } = require('@mozilla/readability');
 const { JSDOM } = require('jsdom');
-const WindowManager = require('./windowManager');
+const { WindowManager } = require('./windowManager');
 const ImageExtractor = require('./imageExtractor');
 const URLProcessor = require('./urlProcessor');
 const { retry, truncateText } = require('./utils');

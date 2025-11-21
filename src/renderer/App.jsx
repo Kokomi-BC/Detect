@@ -136,12 +136,30 @@ const [toastType, setToastType] = useState('success');
       setExtractionError('提取已取消');
     };
 
+    const handleClearResults = () => {
+      // 清除结果功能：清空所有显示的内容
+      setDetectedResult([]);
+      setExtractedContent(null);
+      setExtractionError(null);
+      setExtracting(false);
+      setIsCancelling(false);
+      console.log('右侧界面内容已清除');
+      
+      // 显示清除提示
+      setToastMessage('结果已清除！');
+      setToastType('success');
+      setShowToast(true);
+      setTimeout(() => setShowToast(false), 2000);
+    };
+
     window.electronAPI.on('extract-content-result', handleExtractResult);
     window.electronAPI.on('extraction-cancelled', handleExtractionCancelled);
+    window.electronAPI.on('clear-results', handleClearResults);
 
     return () => {
       window.electronAPI.removeListener('extract-content-result', handleExtractResult);
       window.electronAPI.removeListener('extraction-cancelled', handleExtractionCancelled);
+      window.electronAPI.removeListener('clear-results', handleClearResults);
     };
   }, []);
 
