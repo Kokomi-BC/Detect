@@ -161,6 +161,22 @@ body {
   background-color: var(--mdui-color-surface-variant);
   transition: background-color 0.3s var(--mdui-motion-standard-curve), 
               border-color 0.3s var(--mdui-motion-standard-curve);
+  /* 增加输入区域的最小高度和自适应特性 */
+  min-height: 400px;
+  display: flex;
+  flex-direction: column;
+}
+
+/* 输入框容器，让其能够适应窗口变化 */
+.input-area > div {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.input-area mdui-text-field {
+  flex: 1;
+  min-height: 400px;
 }
 
 /* 右侧输出区域 */
@@ -177,7 +193,7 @@ body {
 /* 自定义滚动条样式 */
 .input-area::-webkit-scrollbar,
 .output-area::-webkit-scrollbar {
-  width: 8px;
+  width: 16px;
 }
 
 .input-area::-webkit-scrollbar-track,
@@ -453,13 +469,6 @@ textarea:focus {
   background-color: var(--mdui-color-surface-variant);
 }
 
-/* 右键菜单项 */
-.context-menu-item {
-  padding: 8px 16px;
-  cursor: pointer;
-  transition: background-color 0.2s var(--mdui-motion-standard-curve);
-  color: var(--mdui-color-on-surface);
-}
 
 .context-menu-item:hover {
   background-color: var(--mdui-color-secondary);

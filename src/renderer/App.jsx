@@ -324,7 +324,7 @@ const [toastType, setToastType] = useState('success');
               }}
               title={isDarkMode ? '切换到浅色模式' : '切换到深色模式'}
             >
-              {isDarkMode ? '☀️' : '🌙'}
+              {isDarkMode ? '🌙' : '☀️'}
             </button>
             <div 
               ref={clearMenuRef}
@@ -412,9 +412,11 @@ const [toastType, setToastType] = useState('success');
           style={{ 
             width: '100%',
             marginBottom: '12px',
-            '--md-text-field-container-height': '200px'
+            '--md-text-field-container-height': '500px',
+            fontSize: '14px',
+            lineHeight: '1.5'
           }}
-          rows="8"
+          rows="25"
           multiline
         ></mdui-text-field>
         <mdui-button
