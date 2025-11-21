@@ -78,10 +78,23 @@ body.dark {
   border-radius: var(--mdui-radius-medium) !important;
   box-shadow: var(--mdui-shadow-level1) !important;
   cursor: pointer;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  font-size: 18px !important;
+  line-height: 1 !important;
+  height: 32px !important;
+  vertical-align: middle !important;
+  transition: all 0.2s ease !important;
 }
 .control-btn:hover {
   box-shadow: var(--mdui-shadow-level2) !important;
-  transform: translateY(-1px);
+  transform: translateY(-1px) !important;
+  background-color: var(--mdui-color-secondary-container) !important;
+}
+.control-btn:active {
+  transform: translateY(0) !important;
+  box-shadow: var(--mdui-shadow-level1) !important;
 }
 
 /* 应用可拖拽标题栏样式与 no-drag 标记 */
@@ -89,11 +102,35 @@ body.dark {
   -webkit-app-region: drag;
   display: flex;
   align-items: center;
+  gap: 16px;
+  margin-bottom: 16px;
+  flex-wrap: nowrap;
+  justify-content: flex-start;
 }
 
 .no-drag {
   -webkit-app-region: no-drag;
 }
+
+/* 开始检测按钮样式 */
+.start-detect-btn {
+  --md-button-container-height: 48px !important;
+  --md-button-label-text-size: 16px !important;
+  --md-button-container-color: var(--mdui-color-primary) !important;
+  --md-button-label-text-color: var(--mdui-color-on-primary) !important;
+}
+
+/* mdui-button filled 变体的强制样式 */
+mdui-button[variant="filled"] {
+  --md-button-container-color: var(--mdui-color-primary) !important;
+  --md-button-label-text-color: var(--mdui-color-on-primary) !important;
+}
+
+mdui-button {
+  --md-button-container-color: var(--mdui-color-primary) !important;
+  --md-button-label-text-color: var(--mdui-color-on-primary) !important;
+}
+
 /* ==========================
    全局基础样式
    ========================== */
@@ -161,22 +198,6 @@ body {
   background-color: var(--mdui-color-surface-variant);
   transition: background-color 0.3s var(--mdui-motion-standard-curve), 
               border-color 0.3s var(--mdui-motion-standard-curve);
-  /* 增加输入区域的最小高度和自适应特性 */
-  min-height: 400px;
-  display: flex;
-  flex-direction: column;
-}
-
-/* 输入框容器，让其能够适应窗口变化 */
-.input-area > div {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-}
-
-.input-area mdui-text-field {
-  flex: 1;
-  min-height: 400px;
 }
 
 /* 右侧输出区域 */

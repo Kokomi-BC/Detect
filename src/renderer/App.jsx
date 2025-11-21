@@ -89,6 +89,20 @@ const [showToast, setShowToast] = useState(false);
 const [toastMessage, setToastMessage] = useState('');
 const [toastType, setToastType] = useState('success');
 
+  // 点击外部关闭菜单
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (clearMenuRef.current && !clearMenuRef.current.contains(event.target)) {
+        setShowClearMenu(false);
+      }
+    };
+
+    if (showClearMenu) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => document.removeEventListener('mousedown', handleClickOutside);
+    }
+  }, [showClearMenu]);
+
   // URL检测函数
   const isURL = (text) => {
     try {
@@ -269,7 +283,7 @@ const [toastType, setToastType] = useState('success');
       <div className="native-titlebar titlebar" style={{ height: '36px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '4px 12px', width: '100%' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           <div style={{ width: 18, height: 18, borderRadius: 4, background: 'var(--mdui-color-primary)', boxShadow: 'var(--mdui-shadow-level1)' }} />
-          <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--color-text)' }}>ChatUI Electron 应用</div>
+          <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--color-text)' }}>假新闻检测应用</div>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }} className="no-drag">
           <button className="window-btn" title="最小化" onClick={() => window.electronAPI.send('window-minimize')} style={{ WebkitAppRegion: 'no-drag' }}>
@@ -289,39 +303,21 @@ const [toastType, setToastType] = useState('success');
         style={{ 
           width: `${dividerPosition}%`,
           height: 'calc(100vh - 36px)',
+          display: 'flex',
+          flexDirection: 'column',
           padding: '20px',
-          overflowY: 'auto',
           boxSizing: 'border-box'
         }}
       >
-        <div className="titlebar" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', position: 'relative' }}>
-          <h2 className="mdui-typography-headline" style={{ fontSize: '18px', fontWeight: 600, color: 'var(--color-text)', margin: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px', flexShrink: 0 }}>
+          <span style={{ fontSize: '18px', fontWeight: 600, color: 'var(--color-text)' }}>
             新闻原文输入
-          </h2>
+          </span>
           <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
             {/* 深色模式切换按钮 */}
             <button
               className="control-btn no-drag"
               onClick={toggleDarkMode}
-              style={{
-                borderRadius: 'var(--radius-md)',
-                fontSize: '18px',
-                cursor: 'pointer',
-                padding: '6px 10px',
-                lineHeight: '1',
-                transition: 'all 0.2s ease',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center'
-              }}
-              onMouseEnter={(e) => {
-                e.target.style.backgroundColor = 'var(--color-accent-light)';
-                e.target.style.borderColor = 'var(--color-accent)';
-              }}
-              onMouseLeave={(e) => {
-                e.target.style.backgroundColor = 'transparent';
-                e.target.style.borderColor = 'var(--color-border)';
-              }}
               title={isDarkMode ? '切换到浅色模式' : '切换到深色模式'}
             >
               {isDarkMode ? '🌙' : '☀️'}
@@ -336,27 +332,7 @@ const [toastType, setToastType] = useState('success');
                   setShowClearMenu(!showClearMenu);
                 }}
                 className="control-btn no-drag"
-                style={{
-                  borderRadius: 'var(--radius-md)',
-                  fontSize: '24px',
-                  cursor: 'pointer',
-                  padding: '4px 8px',
-                  lineHeight: '1',
-                  transition: 'all 0.2s ease',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center'
-                }}
-                onMouseEnter={(e) => {
-                  e.target.style.backgroundColor = 'var(--color-accent-light)';
-                  e.target.style.borderColor = 'var(--color-accent)';
-                  e.target.style.color = 'var(--color-text)';
-                }}
-                onMouseLeave={(e) => {
-                  e.target.style.backgroundColor = 'transparent';
-                  e.target.style.borderColor = 'var(--color-border)';
-                  e.target.style.color = 'var(--color-text-secondary)';
-                }}
+                style={{ fontSize: '24px' }}
                 title="更多选项"
               >
               ⋮
@@ -370,10 +346,10 @@ const [toastType, setToastType] = useState('success');
                   top: '100%',
                   right: 0,
                   marginTop: '4px',
-                    backgroundColor: 'var(--mdui-color-primary-container)',
-                  border: '1px solid var(--color-border)',
+                  backgroundColor: 'var(--mdui-color-surface)',
+                  border: '1px solid var(--mdui-color-outline)',
                   borderRadius: '16px',
-                  boxShadow: 'var(--shadow-lg)',
+                  boxShadow: 'var(--mdui-shadow-level2)',
                   zIndex: 10000,
                   minWidth: '180px',
                   animation: 'menuSlideIn 0.2s ease-out',
@@ -392,11 +368,12 @@ const [toastType, setToastType] = useState('success');
                     textAlign: 'left',
                     cursor: 'pointer',
                     fontSize: '14px',
-                    color: 'var(--color-text)',
+                    color: 'var(--mdui-color-on-surface)',
+                    backgroundColor: 'var(--mdui-color-surface)',
                     transition: 'background-color 0.15s ease'
                   }}
-                  onMouseEnter={(e) => e.target.style.backgroundColor = 'var(--color-accent-light)'}
-                  onMouseLeave={(e) => e.target.style.backgroundColor = 'transparent'}
+                  onMouseEnter={(e) => e.target.style.backgroundColor = 'var(--mdui-color-primary-container)'}
+                  onMouseLeave={(e) => e.target.style.backgroundColor = 'var(--mdui-color-surface)'}
                 >
                   清理浏览器数据
                 </button>
@@ -411,8 +388,9 @@ const [toastType, setToastType] = useState('success');
           placeholder="请输入或粘贴待检测的新闻文本..."
           style={{ 
             width: '100%',
+            flex: 1,
             marginBottom: '12px',
-            '--md-text-field-container-height': '500px',
+            minHeight: '0',
             fontSize: '14px',
             lineHeight: '1.5'
           }}
@@ -421,10 +399,10 @@ const [toastType, setToastType] = useState('success');
         ></mdui-text-field>
         <mdui-button
           onClick={handleDetect}
+          className="start-detect-btn"
           style={{ 
             width: '100%',
-            '--md-button-container-height': '48px',
-            '--md-button-label-text-size': '16px'
+            flexShrink: 0
           }}
           variant="filled"
           fullwidth
@@ -452,23 +430,26 @@ const [toastType, setToastType] = useState('success');
         style={{ 
           width: `${100 - dividerPosition}%`,
           height: 'calc(100vh - 36px)',
-          overflowY: 'auto',
+          display: 'flex',
+          flexDirection: 'column',
           boxSizing: 'border-box'
         }}
       >
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-          <h2 className="mdui-typography-headline" style={{ fontSize: '18px', fontWeight: 600, margin: 0, color: 'var(--color-text)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px', flexShrink: 0 }}>
+          <span style={{ fontSize: '18px', fontWeight: 600, color: 'var(--color-text)' }}>
             检测结果输出
-          </h2>
-          {extracting && (
-            <mdui-button
-              onClick={cancelExtraction}
-              disabled={isCancelling}
-              variant="outlined"
-            >
-              {isCancelling ? '正在终止...' : '终止'}
-            </mdui-button>
-          )}
+          </span>
+          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+            {extracting && (
+              <mdui-button
+                onClick={cancelExtraction}
+                disabled={isCancelling}
+                variant="outlined"
+              >
+                {isCancelling ? '正在终止...' : '终止'}
+              </mdui-button>
+            )}
+          </div>
         </div>
         <div 
           style={{ 
@@ -478,8 +459,10 @@ const [toastType, setToastType] = useState('success');
             padding: extracting ? '0' : '8px',
             boxSizing: 'border-box',
             textAlign: 'left',
+            flex: 1,
+            overflowY: 'auto',
+            minHeight: 0,
             userSelect: (!extracting && !extractedContent && !detectedResult.length) ? 'none' : 'auto',
-            height: '100%',
             display: extracting ? 'flex' : 'block'
           }}
           onMouseDown={(e) => {
