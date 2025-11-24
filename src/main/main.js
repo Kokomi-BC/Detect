@@ -355,7 +355,8 @@ class DetectApp {
     // 打开系统图片选择对话框（renderer 调用）
     ipcMain.handle('open-image-dialog', async (event) => {
       try {
-        const { canceled, filePaths } = await dialog.showOpenDialog({
+        const mainWindow = this.getMainWindow();
+        const { canceled, filePaths } = await dialog.showOpenDialog(mainWindow, {
           properties: ['openFile', 'multiSelections'],
           filters: [
             { name: 'Images', extensions: ['png', 'jpg', 'jpeg', 'webp'] }

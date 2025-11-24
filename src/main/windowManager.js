@@ -167,6 +167,8 @@ class WindowManager {
     const mainWindow = new BrowserWindow({
       width: 800,
       height: 600,
+      minWidth: 800,
+      minHeight: 530,
       frame: false,
       backgroundColor: '#F5E6E6',
       webPreferences: {

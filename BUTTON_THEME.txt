@@ -1,0 +1,88 @@
+按钮主题配置指南（用于 Detect 应用）
+
+目的
+- 说明如何为按钮配置主题颜色与可访问的前景/背景色。
+- 提供在 MDUI 动态配色无法正确注入时的稳健回退方案。
+
+一、关键概念与变量
+- MDUI/主题系统通常通过 CSS 变量注入颜色，例如：
+  - `--mdui-color-primary`（主色）
+  - `--mdui-color-on-primary`（在主色上显示的文本/图标色）
+  - `--mdui-color-surface`（表面/卡片背景色）
+  - `--mdui-color-on-surface`（在表面上的文本颜色）
+  - `--mdui-color-secondary` / `--mdui-color-secondary-container`（二次强调色）
+
+二、为什么按钮会变透明
+- 当样式或运行时逻辑没有正确注入这些 CSS 变量时，`var(--mdui-color-surface)` 会解析为空，从而导致元素背景为透明。
+- 解决办法：在使用 `var()` 时提供回退值，例如 `var(--mdui-color-surface, #ffffff)`，保证在变量未定义时依然有可见颜色。
+
+三、如何在 CSS 中安全设置按钮颜色（示例）
+- 在全局 CSS（`style.css`）中为按钮添加回退值：
+  button, .control-btn, .mdui-btn, mdui-button {
+    background-color: var(--mdui-color-surface, #ffffff) !important;
+    color: var(--mdui-color-on-surface, #111827) !important;
+  }
+- 对主色按钮使用主色回退：
+  mdui-button[variant="filled"], .mdui-btn {
+    background-color: var(--mdui-color-primary, #D1A7A7) !important;
+    color: var(--mdui-color-on-primary, #ffffff) !important;
+  }
+
+四、在 JavaScript 中确保变量被注入
+- 如果你使用 MDUI 的 `setColorScheme`，它通常会注入变量。但你也可以显式注入以防万一：
+  ```js
+  // 在渲染进程（例如 App.jsx 的 useEffect）中：
+  document.documentElement.style.setProperty('--mdui-color-primary', '#D1A7A7');
+  document.documentElement.style.setProperty('--mdui-color-on-primary', '#ffffff');
+  document.documentElement.style.setProperty('--mdui-color-surface', '#ffffff');
+  document.documentElement.style.setProperty('--mdui-color-on-surface', '#111827');
+  ```
+- 示例：在应用启动或主题切换时运行（已在 `App.jsx` 中使用 `setColorScheme`）
+
+五、深色模式支持
+- 在深色模式下使用不同回退色：
+  body.dark {
+    --mdui-color-surface: #1F2937; /* 深色表面 */
+    --mdui-color-on-surface: #E5E7EB; /* 深色上文本 */
+    --mdui-color-primary: #8B4B4B;
+    --mdui-color-on-primary: #ffffff;
+  }
+- 同时在 CSS 回退中保持中性色以确保在没有变量时也可读。
+
+六、调试步骤（遇到透明或颜色不正确时）
+1. 在 DevTools 中检查按钮元素的 computed styles，确认 `--mdui-color-*` 是否存在。若不存在，是变量注入问题。
+2. 在控制台临时设置变量：
+   `document.documentElement.style.setProperty('--mdui-color-primary', '#D1A7A7')`，观察是否修复。
+3. 检查是否有 CSS 覆盖（`!important`）或规则优先级导致样式失效。
+4. 确认渲染进程在加载 MDUI 或主题设置前未先渲染按钮（可在主题设置前隐藏 UI 或使用回退颜色）。
+
+七、推荐默认配色（回退值）
+- `--mdui-color-primary` => `#D1A7A7`（浅粉/莫兰迪）
+- `--mdui-color-on-primary` => `#FFFFFF`
+- `--mdui-color-surface` => `#FFFFFF`
+- `--mdui-color-on-surface` => `#111827`
+- `--mdui-color-secondary` => `#F5E6E6`
+
+八、常见问题与注意事项
+- 如果你使用了 `mdui` 自带的组件，优先使用其 API 注入配色（例如 `setColorScheme`、`setTheme`），同时在 CSS 中保留回退。
+- 避免把所有按钮设置为 `background: transparent`（除非用于特定的“图标按钮”），否则会影响可访问性。
+
+九、示例：在 `App.jsx` 中的推荐做法（伪代码）
+  useEffect(() => {
+    const primary = '#D1A7A7';
+    const onPrimary = '#FFFFFF';
+    document.documentElement.style.setProperty('--mdui-color-primary', primary);
+    document.documentElement.style.setProperty('--mdui-color-on-primary', onPrimary);
+    document.documentElement.style.setProperty('--mdui-color-surface', '#ffffff');
+    document.documentElement.style.setProperty('--mdui-color-on-surface', '#111827');
+    setColorScheme(primary);
+  }, []);
+
+十、总结
+- 修复按钮透明问题的关键是：为 CSS 变量提供回退值，并确保在应用入口或主题切换时注入必要的变量。上述 `style.css` 已更新为包含回退值。
+
+如需我：
+- 我可以把 `App.jsx` 中的主题注入增强为显式注入这些 CSS 变量（并同时调用 `setColorScheme`），以最大程度避免闪烁或透明按钮问题；
+- 或者把回退色换成你公司/产品的设计系统色，统一风格。
+
+请告诉我你想继续哪种方式，我会立即实现并验证。

@@ -403,7 +403,7 @@ const [toastType, setToastType] = useState('success');
       <div className="native-titlebar titlebar" style={{ height: '36px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '4px 12px', width: '100%' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           <div style={{ width: 18, height: 18, borderRadius: 4, background: 'var(--mdui-color-primary)', boxShadow: 'var(--mdui-shadow-level1)' }} />
-          <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--color-text)' }}>假新闻检测应用</div>
+          <div className="no-select" style={{ fontSize: 13, fontWeight: 600, color: 'var(--color-text)' }}>假新闻检测应用</div>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }} className="no-drag">
           <button className="window-btn" title="最小化" onClick={() => window.electronAPI.send('window-minimize')} style={{ WebkitAppRegion: 'no-drag' }}>
@@ -433,13 +433,13 @@ const [toastType, setToastType] = useState('success');
         onDrop={handleDrop}
       >
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px', flexShrink: 0 }}>
-          <span style={{ fontSize: '18px', fontWeight: 600, color: 'var(--color-text)' }}>
+          <span className="no-select" style={{ fontSize: '18px', fontWeight: 600, color: 'var(--color-text)' }}>
             新闻原文输入
           </span>
           <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
             {/* 添加图片按钮 */}
             <button
-              className="control-btn no-drag"
+              className="control-btn primary no-drag"
               onClick={openImagePicker}
               title={`添加图片（最多 ${MAX_IMAGES} 张）`}
               style={{ fontSize: '18px' }}
@@ -448,7 +448,7 @@ const [toastType, setToastType] = useState('success');
             </button>
             {/* 深色模式切换按钮 */}
             <button
-              className="control-btn no-drag"
+              className="control-btn primary no-drag"
               onClick={toggleDarkMode}
               title={isDarkMode ? '切换到浅色模式' : '切换到深色模式'}
             >
@@ -463,49 +463,34 @@ const [toastType, setToastType] = useState('success');
                   e.stopPropagation();
                   setShowClearMenu(!showClearMenu);
                 }}
-                className="control-btn no-drag"
+                className="control-btn primary no-drag"
                 style={{ fontSize: '24px' }}
                 title="更多选项"
               >
               ⋮
             </button>
-            {/* 下拉菜单 */}
+            {/* 下拉菜单（已重写，使用语义化类与回退颜色，避免透明） */}
             {showClearMenu && (
               <div
-                className="dropdown-menu"
+                className="dropdown-menu no-drag"
+                role="menu"
+                aria-label="更多选项"
                 style={{
                   position: 'absolute',
                   top: '100%',
                   right: 0,
-                  marginTop: '4px',
-                  backgroundColor: 'var(--mdui-color-surface)',
-                  border: '1px solid var(--mdui-color-outline)',
-                  borderRadius: '16px',
-                  boxShadow: 'var(--mdui-shadow-level2)',
+                  marginTop: '6px',
                   zIndex: 10000,
-                  minWidth: '180px',
-                  animation: 'menuSlideIn 0.2s ease-out',
-                  overflow: 'hidden'
+                  minWidth: '180px'
                 }}
               >
                 <button
+                  className="dropdown-item"
+                  role="menuitem"
                   onClick={() => {
                     handleClearBrowserData();
+                    setShowClearMenu(false);
                   }}
-                  style={{
-                    display: 'block',
-                    width: '100%',
-                    padding: '12px 16px',
-                    border: 'none',
-                    textAlign: 'left',
-                    cursor: 'pointer',
-                    fontSize: '14px',
-                    color: 'var(--mdui-color-on-surface)',
-                    backgroundColor: 'var(--mdui-color-surface)',
-                    transition: 'background-color 0.15s ease'
-                  }}
-                  onMouseEnter={(e) => e.target.style.backgroundColor = 'var(--mdui-color-primary-container)'}
-                  onMouseLeave={(e) => e.target.style.backgroundColor = 'var(--mdui-color-surface)'}
                 >
                   清理浏览器数据
                 </button>
@@ -580,7 +565,7 @@ const [toastType, setToastType] = useState('success');
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px', flexShrink: 0 }}>
-          <span style={{ fontSize: '18px', fontWeight: 600, color: 'var(--color-text)' }}>
+          <span className="no-select" style={{ fontSize: '18px', fontWeight: 600, color: 'var(--color-text)' }}>
             检测结果输出
           </span>
           <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>

@@ -27,6 +27,9 @@
   --radius-md: var(--mdui-radius-medium);
   --color-accent: var(--mdui-color-primary);
   --color-accent-light: var(--mdui-color-primary-container);
+  /* Secondary accent (二次强调色) */
+  --color-accent-secondary: var(--mdui-color-secondary);
+  --color-accent-secondary-container: var(--mdui-color-secondary-container);
   --color-panel: var(--mdui-color-surface);
   --shadow-lg: var(--mdui-shadow-level3);
 }
@@ -39,8 +42,9 @@ body.dark {
 
 /* 强化交互控件样式（用于标题栏上的图标按钮与下拉项） */
 .control-btn {
-  background: var(--mdui-color-primary) !important;
-  color: var(--mdui-color-on-primary) !important;
+  /* 使用二次强调色作为控制按钮背景 */
+  background: var(--color-accent-secondary) !important;
+  color: var(--mdui-color-on-secondary) !important;
   border: none !important;
   padding: 6px 10px !important;
   border-radius: var(--mdui-radius-medium) !important;
@@ -58,7 +62,7 @@ body.dark {
 .control-btn:hover {
   box-shadow: var(--mdui-shadow-level2) !important;
   transform: translateY(-1px) !important;
-  background-color: var(--mdui-color-secondary-container) !important;
+  background-color: var(--color-accent-secondary-container) !important;
 }
 .control-btn:active {
   transform: translateY(0) !important;
@@ -393,17 +397,44 @@ mdui-list-item:hover,
   }
 }
 
+/* 下拉菜单主体：使用 MDUI 变量并提供可靠回退，保持不透明 */
 .dropdown-menu {
   animation: menuSlideIn 0.22s var(--mdui-motion-emphasized-curve) !important;
-  background-color: var(--mdui-color-primary-container);
-  border: 1px solid var(--mdui-color-outline);
+  background-color: var(--mdui-color-surface, #ffffff) !important;
+  border: 1px solid var(--mdui-color-outline, rgba(0,0,0,0.08));
   border-radius: 16px;
-  box-shadow: var(--mdui-shadow-level3);
+  box-shadow: var(--mdui-shadow-level3, 0 6px 18px rgba(0,0,0,0.12));
   overflow: hidden;
+  min-width: 180px;
 }
 
 .dropdown-menu.hide {
   animation: menuSlideOut 0.18s var(--mdui-motion-standard-curve) !important;
+}
+
+/* 下拉菜单项（更语义化的 .dropdown-item） */
+.dropdown-item,
+.dropdown-menu button {
+  display: block;
+  width: 100%;
+  padding: 12px 16px;
+  border: none;
+  text-align: left;
+  cursor: pointer;
+  font-size: 14px;
+  background: transparent;
+  color: var(--mdui-color-on-surface, #111827);
+  transition: background-color 0.12s var(--mdui-motion-standard-curve), color 0.12s var(--mdui-motion-standard-curve);
+}
+
+.dropdown-item:focus {
+  outline: none;
+  background-color: var(--mdui-color-primary-container, rgba(209,167,167,0.08));
+}
+
+.dropdown-item:hover {
+  background-color: var(--color-accent-secondary, #F5E6E6) !important;
+  color: var(--mdui-color-on-secondary, #111827) !important;
 }
 
 /* MDUI 菜单样式 - 大圆角 */
@@ -469,11 +500,16 @@ mdui-button[variant="filled"]::part(surface),
 
 /* 下拉菜单内的按钮可见性修复 */
 .dropdown-menu button {
-  color: var(--mdui-color-on-primary);
+  color: var(--mdui-color-on-secondary);
   background: transparent;
+  border: none;
+  padding: 10px 12px;
+  width: 100%;
+  text-align: left;
 }
 .dropdown-menu button:hover {
-  background-color: var(---mdui-color-primar) !important;
+  background-color: var(--color-accent-secondary) !important;
+  color: var(--mdui-color-on-secondary) !important;
 }
 
 /* 输入框样式 */
@@ -621,4 +657,71 @@ mdui-linear-progress,
   100% {
     transform: rotate(360deg);
   }
+}
+
+/* --- 按钮可见性与二次强调色应用（安全回退与覆盖） --- */
+/* 确保原生按钮与 MDUI 按钮在变量未正确注入时不透明 */
+button,
+.control-btn,
+.mdui-btn,
+mdui-button {
+  /* 使用 CSS 变量时加入回退值，防止变量未注入导致透明 */
+  background-color: var(--mdui-color-surface, #ffffff) !important;
+  color: var(--mdui-color-on-surface, #111827) !important;
+  border-radius: var(--mdui-radius-medium);
+  -webkit-font-smoothing: auto;
+}
+
+.control-btn {
+  /* 控制类按钮优先使用二次强调色，仍提供回退 */
+  background-color: var(--color-accent-secondary, #F5E6E6) !important;
+  color: var(--mdui-color-on-secondary, #111827) !important;
+}
+.control-btn:hover {
+  background-color: var(--color-accent-secondary-container, rgba(209,167,167,0.12)) !important;
+}
+
+/* 当需要将小型控制按钮显示为主色（与“开始检测”保持一致） */
+.control-btn.primary {
+  background-color: var(--mdui-color-primary, #D1A7A7) !important;
+  color: var(--mdui-color-on-primary, #ffffff) !important;
+  box-shadow: var(--mdui-shadow-level2) !important;
+}
+
+/* 禁止选择文本（用于标题栏、按钮等交互元素） */
+.no-select,
+.native-titlebar,
+.titlebar,
+.window-btn,
+.control-btn,
+.dropdown-item,
+.mdui-btn,
+.start-detect-btn {
+  -webkit-user-select: none !important;
+  -moz-user-select: none !important;
+  -ms-user-select: none !important;
+  user-select: none !important;
+}
+
+/* 更多菜单相关样式已在上方统一定义（含回退色和交互样式） */
+
+/* 保持“开始检测”按钮为主色（不受上面的回退影响） */
+.start-detect-btn {
+  --md-button-container-color: var(--mdui-color-primary, #D1A7A7) !important;
+  --md-button-label-text-color: var(--mdui-color-on-primary, #ffffff) !important;
+}
+
+/* 强制为 MDUI filled 变体和自定义 .mdui-btn 提供回退颜色，避免透明 */
+mdui-button[variant="filled"],
+mdui-button[variant="filled"] * ,
+mdui-button[variant="filled"]::part(surface),
+.mdui-btn,
+.mdui-btn * {
+  background-color: var(--mdui-color-primary, #D1A7A7) !important;
+  color: var(--mdui-color-on-primary, #ffffff) !important;
+}
+
+.mdui-btn {
+  box-shadow: var(--mdui-shadow-level2) !important;
+  font-weight: 600 !important;
 }
