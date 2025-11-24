@@ -1,6 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
 import './style.css';
 import { setColorScheme, setTheme } from 'mdui';
+import contentHelpers from './contentHelpers';
+const { getLeftInputContent, getUrlExtractedContent } = contentHelpers;
+
+const MAX_IMAGES = 3;
 
 function App() {
   // 深色模式状态
@@ -53,11 +57,13 @@ function App() {
   const applyTheme = (darkMode) => {
     if (darkMode) {
       setTheme('dark');
-      setColorScheme('#C89B9B'); // 深色模式下的莫兰迪粉
+      // 使用动态配色方案，基于深色调的莫兰迪色系
+      setColorScheme('#8B4B4B'); // 深色模式下的主色调
       document.body.classList.add('dark');
     } else {
       setTheme('light');
-      setColorScheme('#F5E6E6'); // 浅色模式下的莫兰迪粉
+      // 使用动态配色方案，基于浅色调的莫兰迪色系
+      setColorScheme('#D1A7A7'); // 浅色模式下的主色调
       document.body.classList.remove('dark');
     }
   };
@@ -83,6 +89,9 @@ function App() {
   const [showClearMenu, setShowClearMenu] = useState(false);
   // 菜单引用
   const clearMenuRef = useRef(null);
+  // 图片相关状态
+  const [images, setImages] = useState([]); // {id, src}
+  const [isDragging, setIsDragging] = useState(false);
 
 // 分隔线位置状态
 const [dividerPosition, setDividerPosition] = useState(50);
@@ -106,6 +115,41 @@ const [toastType, setToastType] = useState('success');
     }
   }, [showClearMenu]);
 
+  // 绑定粘贴事件，支持粘贴图片到应用
+  useEffect(() => {
+    const handlePaste = (e) => {
+      try {
+        const items = (e.clipboardData || window.clipboardData)?.items;
+        if (!items) return;
+
+        const imageItems = [];
+        for (let i = 0; i < items.length; i++) {
+          const item = items[i];
+          if (item.type && item.type.indexOf('image') !== -1) {
+            imageItems.push(item.getAsFile());
+          }
+        }
+
+        if (imageItems.length) {
+          // 阻止默认粘贴行为（以免粘贴图片被插入文本框）
+          e.preventDefault();
+          imageItems.forEach((file) => {
+            const reader = new FileReader();
+            reader.onload = (ev) => {
+              addImageSrc(ev.target.result);
+            };
+            reader.readAsDataURL(file);
+          });
+        }
+      } catch (err) {
+        console.warn('paste handler error', err);
+      }
+    };
+
+    window.addEventListener('paste', handlePaste);
+    return () => window.removeEventListener('paste', handlePaste);
+  }, [images]);
+
   // URL检测函数
   const isURL = (text) => {
     try {
@@ -114,6 +158,81 @@ const [toastType, setToastType] = useState('success');
     } catch {
       return false;
     }
+  };
+
+  // 将路径/数据URL添加到 images（限制数量）
+  const addImageSrc = (src) => {
+    setImages((prev) => {
+      if (prev.length >= MAX_IMAGES) {
+        setToastMessage(`最多只能选择 ${MAX_IMAGES} 张图片`);
+        setToastType('error');
+        setShowToast(true);
+        setTimeout(() => setShowToast(false), 2000);
+        return prev;
+      }
+      const next = [...prev, { id: Date.now() + Math.random(), src }];
+      return next;
+    });
+  };
+
+  const openImagePicker = async () => {
+    try {
+      const paths = await window.electronAPI.invoke('open-image-dialog');
+      if (!paths || !paths.length) return;
+
+      // 将文件路径转为 file:// URL（修正反斜杠）
+      const normalized = paths.map((p) => {
+        if (p.startsWith('data:')) return p;
+        // Windows 路径需要替换反斜杠
+        const fp = p.replace(/\\/g, '/');
+        return `file:///${fp}`;
+      });
+
+      // 添加，遵循限制
+      for (let i = 0; i < normalized.length; i++) {
+        addImageSrc(normalized[i]);
+      }
+    } catch (err) {
+      console.error('openImagePicker error', err);
+    }
+  };
+
+  // 处理拖放的文件或数据
+  const handleDropFiles = (filesList) => {
+    const files = Array.from(filesList || []);
+    files.forEach((file) => {
+      // Electron 提供 file.path；在普通浏览器环境为 File 对象
+      if (file.path) {
+        const fp = file.path.replace(/\\/g, '/');
+        addImageSrc(`file:///${fp}`);
+      } else {
+        const reader = new FileReader();
+        reader.onload = (e) => addImageSrc(e.target.result);
+        reader.readAsDataURL(file);
+      }
+    });
+  };
+
+  const handleDragOver = (e) => {
+    e.preventDefault();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e) => {
+    e.preventDefault();
+    setIsDragging(false);
+  };
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    setIsDragging(false);
+    if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length) {
+      handleDropFiles(e.dataTransfer.files);
+    }
+  };
+
+  const removeImage = (id) => {
+    setImages((prev) => prev.filter((it) => it.id !== id));
   };
 
   // 内容提取函数
@@ -300,7 +419,7 @@ const [toastType, setToastType] = useState('success');
       </div>
       {/* 左侧输入区域 */}
         <div 
-        className="input-area" 
+        className={`input-area${isDragging ? ' drag-over' : ''}`} 
         style={{ 
           width: `${dividerPosition}%`,
           height: 'calc(100vh - 36px)',
@@ -309,12 +428,24 @@ const [toastType, setToastType] = useState('success');
           padding: '20px',
           boxSizing: 'border-box'
         }}
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
       >
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px', flexShrink: 0 }}>
           <span style={{ fontSize: '18px', fontWeight: 600, color: 'var(--color-text)' }}>
             新闻原文输入
           </span>
           <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+            {/* 添加图片按钮 */}
+            <button
+              className="control-btn no-drag"
+              onClick={openImagePicker}
+              title={`添加图片（最多 ${MAX_IMAGES} 张）`}
+              style={{ fontSize: '18px' }}
+            >
+              +
+            </button>
             {/* 深色模式切换按钮 */}
             <button
               className="control-btn no-drag"
@@ -389,7 +520,7 @@ const [toastType, setToastType] = useState('success');
           placeholder="请输入或粘贴待检测的新闻文本..."
           style={{ 
             width: '100%',
-            flex: 1,
+            flex: images.length ? '0 1 60%' : 1,
             marginBottom: '12px',
             minHeight: '0',
             fontSize: '14px',
@@ -398,6 +529,18 @@ const [toastType, setToastType] = useState('success');
           rows="25"
           multiline
         ></mdui-text-field>
+
+        {/* 图片预览 */}
+        {images && images.length > 0 && (
+          <div className="image-list">
+            {images.map((it) => (
+              <div className="image-item" key={it.id}>
+                <img src={it.src} alt="preview" />
+                <div className="remove-btn" onClick={() => removeImage(it.id)}>✕</div>
+              </div>
+            ))}
+          </div>
+        )}
         <mdui-button
           onClick={handleDetect}
           className="start-detect-btn"
@@ -481,12 +624,6 @@ const [toastType, setToastType] = useState('success');
               return false;
             }
           }}
-          onSelectStart={(e) => {
-            if (!extracting && !extractedContent && !detectedResult.length) {
-              e.preventDefault();
-              return false;
-            }
-          }}
         >
           {/* 显示URL提取的内容 */}
           {extracting && (
@@ -498,8 +635,17 @@ const [toastType, setToastType] = useState('success');
               flex: 1,
               gap: '20px'
             }}>
-              <mdui-circular-progress indeterminate></mdui-circular-progress>
-              <p style={{ margin: 0, fontSize: '16px', color: '#666' }}>正在提取内容...</p>
+              <div className="spinner" role="status" aria-label="加载中">
+                <svg className="spinner-ring" viewBox="0 0 50 50" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                  <circle className="path" cx="25" cy="25" r="20"></circle>
+                </svg>
+              </div>
+              <p style={{ 
+                margin: 0, 
+                fontSize: '16px', 
+                color: 'var(--mdui-color-on-surface-variant)',
+                opacity: 0.8
+              }}>正在提取内容...</p>
             </div>
           )}
           {extractionError && <p style={{ color: 'red' }}>{extractionError}</p>}

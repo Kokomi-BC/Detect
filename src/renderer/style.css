@@ -1,33 +1,10 @@
 /* ==========================
-   MDUI v2 设计令牌 + 莫兰迪风格色彩
+   动态配色方案 + 深色模式支持
    ========================== */
 
-/* 扩展 MDUI v2 设计令牌 */
 :root {
-  /* 莫兰迪粉色系的语义化设计令牌 */
-  --mdui-color-primary: #D1A7A7; /* 莫兰迪粉色主色 */
-  --mdui-color-on-primary: #FFFFFF;
-  --mdui-color-primary-container: #F5E6E6;
-  --mdui-color-on-primary-container: #5C5C5C;
-  
-  --mdui-color-secondary: #E8D0D0; /* 次要颜色 */
-  --mdui-color-on-secondary: #5C5C5C;
-  --mdui-color-secondary-container: #B88888;
-  --mdui-color-on-secondary-container: #FFFFFF;
-  
-  --mdui-color-surface: #F5E6E6; /* 表面颜色 */
-  --mdui-color-on-surface: #5C5C5C;
-  --mdui-color-surface-variant: #d57f7f; /* 面板颜色 */
-  --mdui-color-on-surface-variant: #5C5C5C;
-  
-  --mdui-color-outline: #564747;
-  --mdui-color-outline-variant: #F0D9D9;
-  
-  /* 语义化颜色 */
-  --mdui-color-success: #6BA587;
-  --mdui-color-error: #D9534F;
-  --mdui-color-warning: #D49B3F;
-  --mdui-color-info: #B8A8D1;
+  /* 动态配色方案的颜色将由 setColorScheme 函数自动生成 */
+  /* 这里只保留必要的自定义变量和过渡效果 */
   
   /* 动画和过渡 */
   --mdui-motion-standard-curve: cubic-bezier(0.4, 0, 0.2, 1);
@@ -43,30 +20,21 @@
   --mdui-shadow-level2: 0 4px 12px rgba(0, 0, 0, 0.12);
   --mdui-shadow-level3: 0 8px 24px rgba(0, 0, 0, 0.15);
  
-  /* 兼容旧变量名（用于组件内内联样式） */
+  /* 自定义变量，引用MDUI的动态配色 */
   --color-text: var(--mdui-color-on-surface);
-  --color-text-secondary: #7a6f6f;
+  --color-text-secondary: var(--mdui-color-on-surface-variant);
   --color-border: var(--mdui-color-outline);
   --radius-md: var(--mdui-radius-medium);
   --color-accent: var(--mdui-color-primary);
-  --color-accent-light: rgba(209,167,167,0.10);
+  --color-accent-light: var(--mdui-color-primary-container);
   --color-panel: var(--mdui-color-surface);
   --shadow-lg: var(--mdui-shadow-level3);
 }
 
-/* 深色模式覆盖（通过 body.dark 切换） */
+/* 深色模式下的额外样式调整（通过 body.dark 切换） */
 body.dark {
-  --mdui-color-primary: #8B4B4B;
-  --mdui-color-on-primary: #FFFFFF;
-  --mdui-color-primary-container: #5C4545;
-  --mdui-color-on-primary-container: #EDE0E0;
-  --mdui-color-surface: #241E1E;
-  --mdui-color-on-surface: #EDE0E0;
-  --mdui-color-surface-variant: #332A2A;
-  --color-text: #EDE0E0;
-  --color-text-secondary: #C8B7B7;
-  --color-accent-light: rgba(139,75,75,0.12);
-  --color-panel: #2b2424;
+  /* 颜色将由 setColorScheme 函数自动生成，这里只添加必要的额外样式 */
+  --color-accent-light: rgba(var(--mdui-color-primary-rgb), 0.12);
 }
 
 /* 强化交互控件样式（用于标题栏上的图标按钮与下拉项） */
@@ -129,6 +97,48 @@ mdui-button[variant="filled"] {
 mdui-button {
   --md-button-container-color: var(--mdui-color-primary) !important;
   --md-button-label-text-color: var(--mdui-color-on-primary) !important;
+}
+
+/* 圆形进度指示器样式覆盖 */
+mdui-circular-progress {
+  --md-circular-progress-active-indicator-color: var(--mdui-color-primary);
+  --md-circular-progress-track-color: var(--mdui-color-outline-variant);
+  --md-circular-progress-size: 48px;
+  --md-circular-progress-track-thickness: 4px;
+  color: var(--mdui-color-primary);
+  stroke: var(--mdui-color-primary);
+}
+
+/* fallback 自定义 CSS spinner（用于当 mdui 组件不能渲染时） */
+.spinner {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.spinner-ring {
+  width: 48px;
+  height: 48px;
+  display: block;
+  color: var(--mdui-color-primary);
+  animation: mdui-rotate 1s linear infinite;
+}
+.spinner-ring .path {
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-width: 4;
+  stroke-dasharray: 90;
+  stroke-dashoffset: 60;
+  fill: none;
+  animation: mdui-dash 1.2s ease-in-out infinite;
+}
+
+@keyframes mdui-rotate {
+  100% { transform: rotate(360deg); }
+}
+@keyframes mdui-dash {
+  0% { stroke-dashoffset: 90; }
+  50% { stroke-dashoffset: 30; }
+  100% { stroke-dashoffset: 90; }
 }
 
 /* ==========================
@@ -443,8 +453,7 @@ mdui-menu-item:hover {
   background-color: var(--color-accent-light);
 }
 
-/* 强化主要按钮（开始检测） */
-/* 强制填充按钮使用主色（提高优先级，兼容 MDUI 内部结构） */
+/* 强化主要按钮（开始检测） */ 
 mdui-button[variant="filled"],
 mdui-button[variant="filled"] * ,
 mdui-button[variant="filled"]::part(surface),
@@ -464,7 +473,7 @@ mdui-button[variant="filled"]::part(surface),
   background: transparent;
 }
 .dropdown-menu button:hover {
-  background-color: var(--color-accent-light) !important;
+  background-color: var(---mdui-color-primar) !important;
 }
 
 /* 输入框样式 */
@@ -509,6 +518,53 @@ textarea:focus {
   animation: toastSlideIn 0.3s var(--mdui-motion-emphasized-curve) forwards;
   z-index: 9999;
   font-weight: 500;
+}
+
+/* 图片预览区 */
+.image-list {
+  display: flex;
+  gap: 12px;
+  margin: 8px 0 12px 0;
+  flex-wrap: wrap;
+}
+.image-item {
+  width: 120px;
+  height: 90px;
+  position: relative;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: var(--mdui-shadow-level1);
+  background-color: var(--mdui-color-surface);
+}
+.image-item img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.image-item .remove-btn {
+  position: absolute;
+  right: 6px;
+  top: 6px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: rgba(0,0,0,0.6);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.12s ease;
+}
+.image-item:hover .remove-btn { opacity: 1; }
+
+/* 拖放提示 */
+.input-area.drag-over {
+  outline: 2px dashed var(--mdui-color-primary);
+  outline-offset: 6px;
 }
 
 .toast.error {

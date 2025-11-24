@@ -174,10 +174,22 @@ class ExtractionManager {
       let loadTimeout;
       
       const cleanup = () => {
-        if (loadTimeout) clearTimeout(loadTimeout);
-        win.webContents.removeListener('did-finish-load', onLoadSuccess);
-        win.webContents.removeListener('did-fail-load', onLoadFail);
-        win.webContents.removeListener('did-stop-loading', onStopLoading);
+        try {
+          if (loadTimeout) {
+            clearTimeout(loadTimeout);
+            loadTimeout = null;
+          }
+
+          // 有时 window 可能已经被销毁，访问 webContents 会抛出错误
+          if (win && typeof win.isDestroyed === 'function' && !win.isDestroyed() && win.webContents) {
+            win.webContents.removeListener('did-finish-load', onLoadSuccess);
+            win.webContents.removeListener('did-fail-load', onLoadFail);
+            win.webContents.removeListener('did-stop-loading', onStopLoading);
+          }
+        } catch (cleanupErr) {
+          // 如果在清理时遇到窗口已被销毁的情况，记录并吞掉错误
+          console.warn('cleanup() encountered error (window may be destroyed):', cleanupErr && cleanupErr.message);
+        }
       };
 
       const onLoadSuccess = async () => {
@@ -185,7 +197,13 @@ class ExtractionManager {
           clearTimeout(loadTimeout);
           loadTimeout = null;
         }
-        
+
+        // 如果窗口在加载过程中被销毁，直接拒绝
+        if (!win || (typeof win.isDestroyed === 'function' && win.isDestroyed())) {
+          cleanup();
+          return reject(new Error('Extraction window was destroyed during load'));
+        }
+
         try {
           // 对于微信文章，需要等待更长时间确保内容完全加载
           if (isWechatArticle) {
@@ -210,25 +228,42 @@ class ExtractionManager {
 
       const onStopLoading = () => {
         const timeout = isWechatArticle ? 12000 : 6000;
-        if (loadTimeout) {
-          clearTimeout(loadTimeout);
-        }
-        loadTimeout = setTimeout(() => {
-          console.error(`页面加载超时: ${url}`);
+        try {
+          if (loadTimeout) {
+            clearTimeout(loadTimeout);
+          }
+
+          loadTimeout = setTimeout(() => {
+            console.error(`页面加载超时: ${url}`);
+            cleanup();
+            reject(new Error(`Page load timeout: ${url}`));
+          }, timeout);
+        } catch (stopErr) {
+          console.warn('onStopLoading encountered error:', stopErr && stopErr.message);
           cleanup();
-          reject(new Error(`Page load timeout: ${url}`));
-        }, timeout);
+          reject(new Error('Page stopped loading due to window state change'));
+        }
       };
 
-      win.webContents.once('did-finish-load', onLoadSuccess);
-      win.webContents.once('did-fail-load', onLoadFail);
-      win.webContents.once('did-stop-loading', onStopLoading);
+      try {
+        if (!win || (typeof win.isDestroyed === 'function' && win.isDestroyed())) {
+          return reject(new Error('Extraction window destroyed before loadURL'));
+        }
 
-      win.loadURL(url).catch((error) => {
-        console.error(`加载URL异常: ${error.message}`);
+        win.webContents.once('did-finish-load', onLoadSuccess);
+        win.webContents.once('did-fail-load', onLoadFail);
+        win.webContents.once('did-stop-loading', onStopLoading);
+
+        win.loadURL(url).catch((error) => {
+          console.error(`加载URL异常: ${error.message}`);
+          cleanup();
+          reject(error);
+        });
+      } catch (attachErr) {
+        console.warn('Error attaching listeners or loading URL:', attachErr && attachErr.message);
         cleanup();
-        reject(error);
-      });
+        reject(attachErr);
+      }
     });
   }
 

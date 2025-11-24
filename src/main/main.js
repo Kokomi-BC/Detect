@@ -1,8 +1,7 @@
-const { app, BrowserWindow, ipcMain, session, Menu, MenuItem, shell, nativeTheme } = require('electron');
+const { app, BrowserWindow, ipcMain, session, Menu, MenuItem, shell, nativeTheme, dialog } = require('electron');
 const path = require('path');
 const { WindowManager, WindowType } = require('./windowManager');
 const ExtractionManager = require('./extractionManager');
-const { truncateText } = require('./utils');
 
 /**
  * 主应用入口 - 使用模块化架构的Electron应用
@@ -260,7 +259,7 @@ class DetectApp {
     
     // 如果没有添加任何菜单项，添加一个默认菜单
     if (menu.items.length === 0) {
-      menu.append(new MenuItem({ label: 'Reload', role: 'reload' }));
+      menu.append(new MenuItem({ label: '刷新', role: 'reload' }));
     }
     
     return menu;
@@ -351,6 +350,26 @@ class DetectApp {
     // 提取内容事件
     ipcMain.on('extract-content', async (event, url) => {
       await this.handleExtractContent(event, url);
+    });
+
+    // 打开系统图片选择对话框（renderer 调用）
+    ipcMain.handle('open-image-dialog', async (event) => {
+      try {
+        const { canceled, filePaths } = await dialog.showOpenDialog({
+          properties: ['openFile', 'multiSelections'],
+          filters: [
+            { name: 'Images', extensions: ['png', 'jpg', 'jpeg', 'webp'] }
+          ]
+        });
+
+        if (canceled) return [];
+
+        // 限制返回最多3个文件路径（renderer 端也会再校验）
+        return filePaths.slice(0, 3);
+      } catch (err) {
+        console.error('open-image-dialog error:', err);
+        return [];
+      }
     });
 
     // 返回窗口是否处于最大化
