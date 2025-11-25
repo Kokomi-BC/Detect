@@ -1,7 +1,6 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App';
-import '@chatui/core/dist/index.css';
 import 'mdui/mdui.css';
 import { setColorScheme } from 'mdui';
 
