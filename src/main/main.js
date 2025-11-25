@@ -109,7 +109,7 @@ class DetectApp {
   setupUserAgent() {
     // 设置默认用户代理，确保主窗口能被正确识别
     const defaultUserAgent = app.userAgentFallback;
-    const customUserAgent = `${defaultUserAgent} ChatApp/1.0`;
+    const customUserAgent = `${defaultUserAgent} DetctApp/1.0`;
     app.userAgentFallback = customUserAgent;
   }
 

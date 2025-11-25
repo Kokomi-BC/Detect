@@ -11,7 +11,7 @@ process.on('unhandledRejection', (reason, promise) => {
 });
 
 // 启动应用
-async function startChatApp() {
+async function startDectectApp() {
   try {
     console.log('Starting application...');
     
@@ -34,7 +34,7 @@ async function startChatApp() {
 }
 
 // 启动应用
-startChatApp();
+startDectectApp();
 
 // 导出应用类供测试使用
 module.exports = { DetectApp };
