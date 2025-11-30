@@ -68,6 +68,44 @@
             min-width: 300px;
             max-width: 70%;
             transition: background-color 0.3s, border-color 0.3s; /* Optimized transition */
+            position: relative;
+                /* 拖拽遮罩层 */
+                .drag-overlay {
+                    position: absolute;
+                    top: 12px;
+                    left: 12px;
+                    right: 12px;
+                    bottom: 12px;
+                    background: rgba(67, 97, 238, 0.08);
+                    border: 2px dashed var(--accent-color);
+                    border-radius: 24px;
+                    z-index: 99;
+                    pointer-events: none;
+                    display: none;
+                    align-items: center;
+                    justify-content: center;
+                    font-size: 22px;
+                    color: var(--accent-color);
+                    transition: border-color 0.2s, background 0.2s, color 0.2s;
+                }
+                .drag-overlay.active {
+                    display: flex;
+                }
+                .drag-overlay.error {
+                    border-color: var(--danger-color);
+                    background: rgba(251, 86, 7, 0.08);
+                    color: var(--danger-color);
+                }
+                .drag-overlay.success {
+                    border-color: var(--success-color);
+                    background: rgba(6, 255, 165, 0.08);
+                    color: var(--success-color);
+                }
+                .drag-overlay.full {
+                    border-color: var(--warning-color);
+                    background: rgba(255, 190, 11, 0.08);
+                    color: var(--warning-color);
+                }
         }
 
         /* 工具栏 */
@@ -166,6 +204,15 @@
             gap: 16px;
         }
 
+        /* 底部操作区 */
+        .bottom-area {
+            padding: 16px;
+            background: var(--bg-primary);
+            border-top: 1px solid var(--border-color);
+            flex-shrink: 0;
+            z-index: 10;
+        }
+
         .text-input {
             flex: 1;
             min-height: 200px;
@@ -198,9 +245,18 @@
         /* 图片预览区域 */
         .image-preview-container {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+            grid-template-columns: repeat(4, 1fr);
             gap: 12px;
-            margin-top: 12px;
+            margin-top: 0;
+            max-height: 240px; /* 限制高度 */
+            overflow-y: auto; /* 超出滚动 */
+            padding: 4px; /* 防止阴影被切 */
+            align-items: start;
+        }
+        @media (max-width: 768px) {
+            .image-preview-container {
+                grid-template-columns: repeat(2, 1fr);
+            }
         }
 
         .image-preview-item {
@@ -743,6 +799,7 @@
     <div class="container">
         <!-- 左侧面板 -->
         <div class="left-panel" id="leftPanel">
+                        <div class="drag-overlay" id="dragOverlay">拖入图片以添加</div>
             <!-- 工具栏 -->
             <div class="toolbar">
                 <button class="toolbar-btn" id="editBtn" title="编辑选项">
@@ -818,7 +875,10 @@
 
                 <!-- 图片预览 -->
                 <div class="image-preview-container" id="imagePreview"></div>
+            </div>
 
+            <!-- 底部操作区 -->
+            <div class="bottom-area">
                 <!-- 检测按钮 -->
                 <button class="detect-btn" id="detectBtn">开始检测</button>
             </div>
@@ -958,11 +1018,19 @@
 
                 const containerRect = container.getBoundingClientRect();
                 const percentage = ((e.clientX - containerRect.left) / containerRect.width) * 100;
-                
-                if (percentage > 20 && percentage < 80) {
-                    leftPanel.style.flex = `0 0 ${percentage}%`;
-                    rightPanel.style.flex = `0 0 ${100 - percentage}%`;
-                }
+                    // 限制分割线拖动范围，左侧最小30%，最大65%
+                    const minPercent = 30;
+                    const maxPercent = 65;
+                    if (percentage > minPercent && percentage < maxPercent) {
+                        leftPanel.style.flex = `0 0 ${percentage}%`;
+                        rightPanel.style.flex = `0 0 ${100 - percentage}%`;
+                    } else if (percentage <= minPercent) {
+                        leftPanel.style.flex = `0 0 ${minPercent}%`;
+                        rightPanel.style.flex = `0 0 ${100 - minPercent}%`;
+                    } else if (percentage >= maxPercent) {
+                        leftPanel.style.flex = `0 0 ${maxPercent}%`;
+                        rightPanel.style.flex = `0 0 ${100 - maxPercent}%`;
+                    }
             });
 
             document.addEventListener('mouseup', function() {
@@ -1032,25 +1100,59 @@
             });
 
             // 拖拽上传 - 绑定到左侧面板
+            const dragOverlay = document.getElementById('dragOverlay');
             leftPanel.addEventListener('dragover', function(e) {
                 e.preventDefault();
-                this.style.borderColor = 'var(--accent-color)';
+                // 检查拖入的文件类型
+                let isAllImage = true;
+                if (e.dataTransfer && e.dataTransfer.items) {
+                    for (let i = 0; i < e.dataTransfer.items.length; i++) {
+                        if (!e.dataTransfer.items[i].type.startsWith('image/')) {
+                            isAllImage = false;
+                            break;
+                        }
+                    }
+                }
+                dragOverlay.classList.add('active');
+                dragOverlay.classList.remove('error', 'success', 'full');
+                if (uploadedImages.length >= maxImages) {
+                    dragOverlay.classList.add('full');
+                    dragOverlay.textContent = '最多只能上传4张图片';
+                } else if (isAllImage) {
+                    dragOverlay.classList.add('success');
+                    dragOverlay.textContent = '拖入图片以添加';
+                } else {
+                    dragOverlay.classList.add('error');
+                    dragOverlay.textContent = '仅支持图片文件';
+                }
             });
-
             leftPanel.addEventListener('dragleave', function(e) {
                 e.preventDefault();
-                this.style.borderColor = 'var(--border-color)';
+                dragOverlay.classList.remove('active', 'error', 'success', 'full');
+                dragOverlay.textContent = '拖入图片以添加';
             });
-
             leftPanel.addEventListener('drop', function(e) {
                 e.preventDefault();
-                this.style.borderColor = 'var(--border-color)';
-                
+                dragOverlay.classList.remove('active', 'error', 'success', 'full');
+                dragOverlay.textContent = '拖入图片以添加';
+                // 检查是否全部为图片
+                let isAllImage = true;
+                if (e.dataTransfer && e.dataTransfer.items) {
+                    for (let i = 0; i < e.dataTransfer.items.length; i++) {
+                        if (!e.dataTransfer.items[i].type.startsWith('image/')) {
+                            isAllImage = false;
+                            break;
+                        }
+                    }
+                }
+                if (!isAllImage) {
+                    showToast('仅支持图片文件', 'error');
+                    return;
+                }
                 if (uploadedImages.length >= maxImages) {
                     showToast(`最多只能上传${maxImages}张图片`, 'warning');
                     return;
                 }
-                
                 handleFiles(e.dataTransfer.files);
             });
 
@@ -1072,33 +1174,33 @@
 
             // 处理文件
             function handleFiles(files) {
+                // 新增：只允许添加剩余数量的图片
+                const remain = maxImages - uploadedImages.length;
+                if (remain <= 0) {
+                    showToast(`最多只能上传${maxImages}张图片`, 'warning');
+                    return;
+                }
                 let addedCount = 0;
-                Array.from(files).forEach(file => {
-                    if (file.type.startsWith('image/')) {
-                        if (uploadedImages.length < maxImages) {
-                            const reader = new FileReader();
-                            reader.onload = function(e) {
-                                const imageData = {
-                                    id: Date.now() + Math.random(),
-                                    url: e.target.result,
-                                    name: file.name
-                                };
-                                uploadedImages.push(imageData);
-                                renderImages();
-                                showToast('图片上传成功', 'success');
-                            };
-                            reader.readAsDataURL(file);
-                            addedCount++;
-                        } else {
-                             // Only show warning if we actually tried to add more than allowed
-                             // But since we check inside the loop, we might show it multiple times or once.
-                             // Better to show it once if we hit the limit.
-                        }
-                    }
+                let validFiles = Array.from(files).filter(file => file.type.startsWith('image/'));
+                // 只取剩余数量的图片
+                validFiles = validFiles.slice(0, remain);
+                validFiles.forEach(file => {
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        const imageData = {
+                            id: Date.now() + Math.random(),
+                            url: e.target.result,
+                            name: file.name
+                        };
+                        uploadedImages.push(imageData);
+                        renderImages();
+                        showToast('图片上传成功', 'success');
+                    };
+                    reader.readAsDataURL(file);
+                    addedCount++;
                 });
-                
-                if (files.length > 0 && uploadedImages.length >= maxImages && addedCount === 0) {
-                     showToast(`最多只能上传${maxImages}张图片`, 'warning');
+                if (files.length > 0 && addedCount === 0) {
+                    showToast(`最多只能上传${maxImages}张图片`, 'warning');
                 }
             }
 
