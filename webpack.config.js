@@ -4,40 +4,38 @@ const webpack = require('webpack');
 
 module.exports = {
   mode: process.env.NODE_ENV === 'production' ? 'production' : 'development',
-  entry: path.join(__dirname, 'src/renderer/index.jsx'),
+  // 由于我们使用纯HTML文件，不需要入口JavaScript文件
+  entry: {},
   output: {
     path: path.join(__dirname, 'dist'),
     filename: 'bundle.js',
   },
+  cache: false,
   resolve: {
-    extensions: ['.js', '.jsx', '.ts', '.tsx'],
+    extensions: ['.js'],
   },
   module: {
     rules: [
       {
-        test: /\.(js|jsx|ts|tsx)$/,
+        test: /\.js$/,
         exclude: /node_modules/,
         use: {
           loader: 'babel-loader',
           options: {
             presets: [
               '@babel/preset-env',
-              '@babel/preset-react',
-              '@babel/preset-typescript',
             ],
           },
         },
-      },
-      {
-        test: /\.css$/,
-        use: ['style-loader', 'css-loader'],
       },
     ],
   },
   plugins: [
     new HtmlWebpackPlugin({
-      template: path.join(__dirname, 'public/index.html'),
+      template: path.join(__dirname, 'public/code.html'),
+      filename: 'code.html',
       cache: false,
+      minify: false,
     }),
     new webpack.DefinePlugin({
       'global': 'global',
@@ -49,7 +47,9 @@ module.exports = {
     },
     port: 8080,
     hot: true,
-    historyApiFallback: true,
+    historyApiFallback: {
+      index: 'code.html',
+    },
   },
   target: 'electron-renderer',
   // 修复 global is not defined 错误

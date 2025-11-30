@@ -1,0 +1,1337 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>假新闻检测系统</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --bg-primary: #ffffff;
+            --bg-secondary: #f8f9fa;
+            --bg-tertiary: #e9ecef;
+            --text-primary: #212529;
+            --text-secondary: #6c757d;
+            --border-color: #dee2e6;
+            --accent-color: #4361ee;
+            --accent-hover: #3651d4;
+            --success-color: #06ffa5;
+            --warning-color: #ffbe0b;
+            --danger-color: #fb5607;
+            --shadow-sm: 0 2px 4px rgba(0,0,0,0.08);
+            --shadow-md: 0 4px 12px rgba(0,0,0,0.12);
+            --shadow-lg: 0 8px 24px rgba(0,0,0,0.16);
+            --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        [data-theme="dark"] {
+            --bg-primary: #1a1d23;
+            --bg-secondary: #22262e;
+            --bg-tertiary: #2a2f38;
+            --text-primary: #e4e6eb;
+            --text-secondary: #b0b3b8;
+            --border-color: #3a3f47;
+            --accent-color: #5a7fff;
+            --accent-hover: #4a6fe8;
+            --shadow-sm: 0 2px 4px rgba(0,0,0,0.3);
+            --shadow-md: 0 4px 12px rgba(0,0,0,0.4);
+            --shadow-lg: 0 8px 24px rgba(0,0,0,0.5);
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            height: 100vh;
+            overflow: hidden;
+            /* transition: var(--transition); Removed for performance */
+        }
+
+        .container {
+            display: flex;
+            height: 100vh;
+            position: relative;
+        }
+
+        /* 左侧面板 */
+        .left-panel {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background: var(--bg-secondary);
+            border-right: 1px solid var(--border-color);
+            min-width: 300px;
+            max-width: 70%;
+            transition: background-color 0.3s, border-color 0.3s; /* Optimized transition */
+        }
+
+        /* 工具栏 */
+        .toolbar {
+            display: flex;
+            align-items: center;
+            padding: 12px 16px;
+            background: var(--bg-primary);
+            border-bottom: 1px solid var(--border-color);
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .toolbar-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 36px;
+            height: 36px;
+            border: none;
+            background: transparent;
+            color: var(--text-primary);
+            border-radius: 8px;
+            cursor: pointer;
+            transition: var(--transition);
+            position: relative;
+        }
+
+        .toolbar-btn:hover {
+            background: var(--bg-tertiary);
+            transform: translateY(-1px);
+        }
+
+        .toolbar-btn.active {
+            background: var(--accent-color);
+            color: white;
+        }
+
+        .toolbar-separator {
+            width: 1px;
+            height: 24px;
+            background: var(--border-color);
+            margin: 0 4px;
+        }
+
+        /* 编辑选项面板 */
+        .edit-options {
+            display: none;
+            padding: 8px 16px;
+            background: var(--bg-tertiary);
+            border-bottom: 1px solid var(--border-color);
+            gap: 4px;
+            flex-wrap: wrap;
+            animation: slideDown 0.3s ease;
+        }
+
+        .edit-options.active {
+            display: flex;
+        }
+
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .edit-btn {
+            padding: 6px 12px;
+            border: none;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: var(--transition);
+        }
+
+        .edit-btn:hover {
+            background: var(--accent-color);
+            color: white;
+            transform: scale(1.05);
+        }
+
+        /* 内容区域 */
+        .content-area {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            padding: 16px;
+            overflow-y: auto;
+            gap: 16px;
+        }
+
+        .text-input {
+            flex: 1;
+            min-height: 200px;
+            padding: 12px;
+            border: 2px solid var(--border-color);
+            border-radius: 12px;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            font-size: 15px;
+            line-height: 1.6;
+            /* resize: none; Removed invalid property for div */
+            transition: border-color 0.3s, box-shadow 0.3s, background-color 0.3s;
+            font-family: inherit;
+            overflow-y: auto;
+            word-break: break-word;
+            white-space: pre-wrap;
+        }
+
+        .text-input:focus {
+            outline: none;
+            border-color: var(--accent-color);
+            box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.1);
+        }
+
+        /* 图片上传区域 - 已移除，样式保留以防万一，但不再使用 */
+        .image-upload-area {
+            display: none;
+        }
+
+        /* 图片预览区域 */
+        .image-preview-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+            gap: 12px;
+            margin-top: 12px;
+        }
+
+        .image-preview-item {
+            position: relative;
+            aspect-ratio: 1;
+            border-radius: 8px;
+            overflow: hidden;
+            background: var(--bg-tertiary);
+            cursor: pointer;
+            transition: var(--transition);
+            animation: fadeIn 0.3s ease;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: scale(0.8);
+            }
+            to {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+
+        .image-preview-item:hover {
+            transform: scale(1.05);
+            box-shadow: var(--shadow-md);
+        }
+
+        .image-preview-item img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .image-delete-btn {
+            position: absolute;
+            top: 4px;
+            right: 4px;
+            width: 24px;
+            height: 24px;
+            background: rgba(251, 86, 7, 0.9);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            cursor: pointer;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            transition: var(--transition);
+        }
+
+        .image-preview-item:hover .image-delete-btn {
+            display: flex;
+        }
+
+        .image-delete-btn:hover {
+            background: #d94606;
+            transform: scale(1.1);
+        }
+
+        /* 检测按钮 */
+        .detect-btn {
+            width: 100%;
+            padding: 14px 24px;
+            background: linear-gradient(135deg, var(--accent-color), var(--accent-hover));
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: var(--transition);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .detect-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-lg);
+        }
+
+        .detect-btn:active {
+            transform: translateY(0);
+        }
+
+        .detect-btn.loading {
+            pointer-events: none;
+            opacity: 0.8;
+        }
+
+        .detect-btn.loading::after {
+            content: '';
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            border: 3px solid white;
+            border-top-color: transparent;
+            border-radius: 50%;
+            left: 50%;
+            top: 50%;
+            margin-left: -10px;
+            margin-top: -10px;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* 分隔线 */
+        .resizer {
+            width: 6px;
+            background: var(--bg-tertiary);
+            cursor: col-resize;
+            position: relative;
+            transition: var(--transition);
+        }
+
+        .resizer:hover {
+            background: var(--accent-color);
+        }
+
+        .resizer::before {
+            content: '';
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+            width: 2px;
+            height: 30px;
+            background: var(--text-secondary);
+            border-radius: 2px;
+            opacity: 0.5;
+        }
+
+        /* 右侧面板 */
+        .right-panel {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background: var(--bg-secondary);
+            min-width: 300px;
+            transition: background-color 0.3s; /* Optimized transition */
+        }
+
+        .result-header {
+            padding: 16px;
+            background: var(--bg-primary);
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .result-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .result-content {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+        }
+
+        /* 初始状态 */
+        .initial-state {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            text-align: center;
+            color: var(--text-secondary);
+        }
+
+        .initial-icon {
+            font-size: 64px;
+            margin-bottom: 16px;
+            opacity: 0.5;
+        }
+
+        .initial-title {
+            font-size: 20px;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: var(--text-primary);
+        }
+
+        .initial-description {
+            font-size: 14px;
+            line-height: 1.6;
+            max-width: 400px;
+        }
+
+        /* 检测结果 */
+        .result-item {
+            display: none;
+            animation: slideIn 0.5s ease;
+        }
+
+        .result-item.active {
+            display: block;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateX(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        .result-score {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            padding: 20px;
+            background: var(--bg-primary);
+            border-radius: 12px;
+            margin-bottom: 20px;
+        }
+
+        .score-circle {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            font-weight: bold;
+            color: white;
+            position: relative;
+        }
+
+        .score-circle.real {
+            background: linear-gradient(135deg, #06ffa5, #00d084);
+        }
+
+        .score-circle.fake {
+            background: linear-gradient(135deg, #fb5607, #d94606);
+        }
+
+        .score-circle.uncertain {
+            background: linear-gradient(135deg, #ffbe0b, #f59e0b);
+        }
+
+        .score-details {
+            flex: 1;
+        }
+
+        .score-label {
+            font-size: 14px;
+            color: var(--text-secondary);
+            margin-bottom: 4px;
+        }
+
+        .score-value {
+            font-size: 28px;
+            font-weight: bold;
+            color: var(--text-primary);
+        }
+
+        .score-description {
+            font-size: 14px;
+            color: var(--text-secondary);
+            margin-top: 4px;
+        }
+
+        .result-analysis {
+            background: var(--bg-primary);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+
+        .analysis-title {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 12px;
+            color: var(--text-primary);
+        }
+
+        .analysis-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            margin-bottom: 12px;
+            padding: 12px;
+            background: var(--bg-secondary);
+            border-radius: 8px;
+            transition: var(--transition);
+        }
+
+        .analysis-item:hover {
+            transform: translateX(4px);
+            box-shadow: var(--shadow-sm);
+        }
+
+        .analysis-icon {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            font-size: 12px;
+            color: white;
+        }
+
+        .analysis-icon.positive {
+            background: var(--success-color);
+        }
+
+        .analysis-icon.negative {
+            background: var(--danger-color);
+        }
+
+        .analysis-icon.neutral {
+            background: var(--warning-color);
+        }
+
+        .analysis-text {
+            flex: 1;
+            font-size: 14px;
+            line-height: 1.6;
+            color: var(--text-primary);
+        }
+
+        /* 图片预览模态框 */
+        .image-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.9);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .image-modal.active {
+            display: flex;
+        }
+
+        .modal-image {
+            max-width: 90%;
+            max-height: 90%;
+            object-fit: contain;
+            border-radius: 8px;
+            animation: zoomIn 0.3s ease;
+        }
+
+        @keyframes zoomIn {
+            from {
+                transform: scale(0.8);
+                opacity: 0;
+            }
+            to {
+                transform: scale(1);
+                opacity: 1;
+            }
+        }
+
+        .modal-close {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            width: 40px;
+            height: 40px;
+            background: rgba(255, 255, 255, 0.1);
+            border: none;
+            border-radius: 50%;
+            color: white;
+            font-size: 24px;
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .modal-close:hover {
+            background: rgba(255, 255, 255, 0.2);
+            transform: rotate(90deg);
+        }
+
+        /* 响应式设计 */
+        @media (max-width: 768px) {
+            .container {
+                flex-direction: column;
+            }
+
+            .left-panel, .right-panel {
+                max-width: 100%;
+                min-width: 100%;
+            }
+
+            .resizer {
+                display: none;
+            }
+
+            .image-preview-container {
+                grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+            }
+        }
+
+        /* 加载动画 */
+        .loading-spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 1s ease-in-out infinite;
+        }
+
+        /* 链接样式 */
+        .text-input a {
+            color: var(--accent-color);
+            text-decoration: underline;
+            cursor: pointer;
+        }
+
+        .text-input a:hover {
+            color: var(--accent-hover);
+        }
+
+        /* 沉浸式窗口样式 */
+        .titlebar {
+            -webkit-app-region: drag;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            margin-bottom: 16px;
+            flex-wrap: nowrap;
+            justify-content: flex-start;
+        }
+
+        .no-drag {
+            -webkit-app-region: no-drag;
+        }
+
+        /* 自定义原生标题栏固定在顶部，不参与 flex 布局 - 已移除 */
+        /* .native-titlebar { ... } */
+
+        /* 给内容容器留出标题栏高度，防止被遮挡 */
+        .container {
+            /* padding-top: 36px; */
+            height: 100vh;
+        }
+
+        /* 窗口控制样式（用于无框窗口） - 已移除 */
+        /* .window-controls { ... } */
+        .window-controls .window-btn,
+        .window-btn {
+            background: transparent;
+            border: none;
+            color: var(--text-primary);
+            width: 34px;
+            height: 28px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 6px;
+            font-size: 13px;
+            cursor: pointer;
+            transition: var(--transition);
+        }
+        .window-controls .window-btn:hover,
+        .window-btn:hover {
+            background-color: var(--bg-tertiary);
+        }
+
+        /* 禁止选择文本（用于标题栏、按钮等交互元素） */
+        .no-select,
+        .native-titlebar,
+        .titlebar,
+        .window-btn,
+        .control-btn,
+        .dropdown-item,
+        .start-detect-btn {
+            -webkit-user-select: none !important;
+            -moz-user-select: none !important;
+            -ms-user-select: none !important;
+            user-select: none !important;
+        }
+
+        /* Toast 提示 */
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%) translateY(100px);
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+            padding: 12px 24px;
+            border-radius: 8px;
+            box-shadow: var(--shadow-lg);
+            z-index: 2000;
+            opacity: 0;
+            transition: var(--transition);
+            border: 1px solid var(--border-color);
+        }
+
+        .toast.show {
+            transform: translateX(-50%) translateY(0);
+            opacity: 1;
+        }
+
+        .toast.success {
+            color: var(--success-color);
+            border-color: var(--success-color);
+        }
+
+        .toast.error {
+            color: var(--danger-color);
+            border-color: var(--danger-color);
+        }
+
+        .toast.warning {
+            color: var(--warning-color);
+            border-color: var(--warning-color);
+        }
+
+        .toast.info {
+            color: var(--accent-color);
+            border-color: var(--accent-color);
+        }
+    </style>
+</head>
+<body>
+    <!-- 自定义标题栏 (已移除) -->
+
+    <div class="container">
+        <!-- 左侧面板 -->
+        <div class="left-panel" id="leftPanel">
+            <!-- 工具栏 -->
+            <div class="toolbar">
+                <button class="toolbar-btn" id="editBtn" title="编辑选项">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                    </svg>
+                </button>
+                <div class="toolbar-separator"></div>
+                <button class="toolbar-btn" id="imageBtn" title="添加图片">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                        <circle cx="8.5" cy="8.5" r="1.5"></circle>
+                        <polyline points="21 15 16 10 5 21"></polyline>
+                    </svg>
+                </button>
+                <button class="toolbar-btn" id="themeBtn" title="切换主题">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="5"></circle>
+                        <line x1="12" y1="1" x2="12" y2="3"></line>
+                        <line x1="12" y1="21" x2="12" y2="23"></line>
+                        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                        <line x1="1" y1="12" x2="3" y2="12"></line>
+                        <line x1="21" y1="12" x2="23" y2="12"></line>
+                        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                    </svg>
+                </button>
+                <button class="toolbar-btn" id="clearBtn" title="清空内容">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="3 6 5 6 21 6"></polyline>
+                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                    </svg>
+                </button>
+            </div>
+
+            <!-- 编辑选项 -->
+            <div class="edit-options" id="editOptions">
+                <button class="edit-btn" data-command="bold">
+                    <strong>B</strong>
+                </button>
+                <button class="edit-btn" data-command="italic">
+                    <em>I</em>
+                </button>
+                <button class="edit-btn" data-command="underline">
+                    <u>U</u>
+                </button>
+                <button class="edit-btn" data-command="insertUnorderedList">
+                    • 列表
+                </button>
+                <button class="edit-btn" data-command="insertOrderedList">
+                    1. 列表
+                </button>
+                <button class="edit-btn" data-command="justifyLeft">
+                    左对齐
+                </button>
+                <button class="edit-btn" data-command="justifyCenter">
+                    居中
+                </button>
+                <button class="edit-btn" data-command="justifyRight">
+                    右对齐
+                </button>
+            </div>
+
+            <!-- 内容区域 -->
+            <div class="content-area">
+                <!-- 文本输入 -->
+                <div contenteditable="true" class="text-input" id="textInput" placeholder="请输入要检测的新闻内容..."></div>
+
+                <!-- 图片上传区域 (已移除) -->
+                <input type="file" id="fileInput" accept="image/*" multiple style="display: none;">
+
+                <!-- 图片预览 -->
+                <div class="image-preview-container" id="imagePreview"></div>
+
+                <!-- 检测按钮 -->
+                <button class="detect-btn" id="detectBtn">开始检测</button>
+            </div>
+        </div>
+
+        <!-- 分隔线 -->
+        <div class="resizer" id="resizer"></div>
+
+        <!-- 右侧面板 -->
+        <div class="right-panel" id="rightPanel">
+            <div class="result-header">
+                <h2 class="result-title">检测结果</h2>
+            </div>
+            <div class="result-content">
+                <!-- 初始状态 -->
+                <div class="initial-state" id="initialState">
+                    <div class="initial-icon">🔍</div>
+                    <div class="initial-title">准备就绪</div>
+                    <div class="initial-description">
+                        在左侧输入新闻内容或上传相关图片，点击"开始检测"按钮即可进行假新闻分析。
+                        系统将综合评估内容的真实性，为您提供详细的检测报告。
+                    </div>
+                </div>
+
+                <!-- 检测结果 -->
+                <div class="result-item" id="resultItem">
+                    <div class="result-score">
+                        <div class="score-circle" id="scoreCircle">85%</div>
+                        <div class="score-details">
+                            <div class="score-label">真实性评分</div>
+                            <div class="score-value" id="scoreValue">85%</div>
+                            <div class="score-description" id="scoreDescription">该内容具有较高的可信度</div>
+                        </div>
+                    </div>
+
+                    <div class="result-analysis">
+                        <div class="analysis-title">详细分析</div>
+                        <div class="analysis-item">
+                            <div class="analysis-icon positive">✓</div>
+                            <div class="analysis-text">内容来源可靠，引用了权威媒体的数据</div>
+                        </div>
+                        <div class="analysis-item">
+                            <div class="analysis-icon positive">✓</div>
+                            <div class="analysis-text">语言表达客观，无明显情绪化倾向</div>
+                        </div>
+                        <div class="analysis-item">
+                            <div class="analysis-icon neutral">!</div>
+                            <div class="analysis-text">部分信息需要进一步核实</div>
+                        </div>
+                        <div class="analysis-item">
+                            <div class="analysis-icon positive">✓</div>
+                            <div class="analysis-text">图片内容与文字描述相符</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 图片预览模态框 -->
+    <div class="image-modal" id="imageModal">
+        <button class="modal-close" id="modalClose">×</button>
+        <img class="modal-image" id="modalImage" src="" alt="预览图片">
+    </div>
+
+    <!-- Toast 提示 -->
+    <div class="toast" id="toast"></div>
+
+    <script>
+        // 全局变量
+        let isResizing = false;
+        let uploadedImages = [];
+        const maxImages = 4;
+        let detectedUrls = [];
+
+        // 初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            initTheme();
+            initResizable();
+            initTextEditor();
+            initImageUpload();
+            initButtons();
+            initModal();
+            initIPC();
+        });
+
+        // 主题切换
+        function initTheme() {
+            const themeBtn = document.getElementById('themeBtn');
+            const savedTheme = localStorage.getItem('theme') || 'light';
+            
+            if (savedTheme === 'dark') {
+                document.documentElement.setAttribute('data-theme', 'dark');
+                // 同步给主进程
+                if (window.electronAPI) {
+                    window.electronAPI.invoke('set-theme', true);
+                }
+            }
+
+            themeBtn.addEventListener('click', function() {
+                const currentTheme = document.documentElement.getAttribute('data-theme');
+                const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+                const isDarkMode = newTheme === 'dark';
+                
+                document.documentElement.setAttribute('data-theme', newTheme);
+                localStorage.setItem('theme', newTheme);
+                
+                // 调用主进程设置原生主题
+                if (window.electronAPI) {
+                    window.electronAPI.invoke('set-theme', isDarkMode)
+                        .then(result => {
+                            if (!result.success) {
+                                console.error('主题设置失败:', result.error);
+                            }
+                        });
+                }
+                
+                showToast(`已切换到${isDarkMode ? '深色' : '浅色'}模式`, 'success');
+            });
+        }
+
+        // 可调整大小的分隔线
+        function initResizable() {
+            const resizer = document.getElementById('resizer');
+            const leftPanel = document.getElementById('leftPanel');
+            const rightPanel = document.getElementById('rightPanel');
+            const container = document.querySelector('.container');
+
+            resizer.addEventListener('mousedown', function(e) {
+                isResizing = true;
+                document.body.style.cursor = 'col-resize';
+                document.body.style.userSelect = 'none';
+            });
+
+            document.addEventListener('mousemove', function(e) {
+                if (!isResizing) return;
+
+                const containerRect = container.getBoundingClientRect();
+                const percentage = ((e.clientX - containerRect.left) / containerRect.width) * 100;
+                
+                if (percentage > 20 && percentage < 80) {
+                    leftPanel.style.flex = `0 0 ${percentage}%`;
+                    rightPanel.style.flex = `0 0 ${100 - percentage}%`;
+                }
+            });
+
+            document.addEventListener('mouseup', function() {
+                isResizing = false;
+                document.body.style.cursor = 'default';
+                document.body.style.userSelect = 'auto';
+            });
+        }
+
+        // 文本编辑器
+        function initTextEditor() {
+            const textInput = document.getElementById('textInput');
+            const editBtn = document.getElementById('editBtn');
+            const editOptions = document.getElementById('editOptions');
+
+            // 自动识别链接
+            textInput.addEventListener('input', function() {
+                const text = this.innerText;
+                const urlRegex = /(https?:\/\/|www\.)[^\s<]+/g;
+                const matches = text.match(urlRegex);
+                
+                if (matches && matches.length > 0) {
+                    // 检查是否有新的链接
+                    const newUrls = matches.filter(url => !detectedUrls.includes(url));
+                    if (newUrls.length > 0) {
+                        detectedUrls = [...detectedUrls, ...newUrls];
+                        showToast(`检测到 ${newUrls.length} 个网址链接`, 'info');
+                    }
+                }
+            });
+
+            // 编辑选项切换
+            editBtn.addEventListener('click', function() {
+                editOptions.classList.toggle('active');
+                this.classList.toggle('active');
+            });
+
+            // 编辑按钮功能
+            document.querySelectorAll('.edit-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const command = this.dataset.command;
+                    document.execCommand(command, false, null);
+                    textInput.focus();
+                });
+            });
+        }
+
+        // 图片上传
+        function initImageUpload() {
+            const leftPanel = document.getElementById('leftPanel');
+            const fileInput = document.getElementById('fileInput');
+            const imagePreview = document.getElementById('imagePreview');
+            const imageBtn = document.getElementById('imageBtn');
+
+            // 图片按钮点击
+            imageBtn.addEventListener('click', function() {
+                if (uploadedImages.length >= maxImages) {
+                    showToast(`最多只能上传${maxImages}张图片`, 'warning');
+                    return;
+                }
+                fileInput.click();
+            });
+
+            // 文件选择
+            fileInput.addEventListener('change', function(e) {
+                handleFiles(e.target.files);
+            });
+
+            // 拖拽上传 - 绑定到左侧面板
+            leftPanel.addEventListener('dragover', function(e) {
+                e.preventDefault();
+                this.style.borderColor = 'var(--accent-color)';
+            });
+
+            leftPanel.addEventListener('dragleave', function(e) {
+                e.preventDefault();
+                this.style.borderColor = 'var(--border-color)';
+            });
+
+            leftPanel.addEventListener('drop', function(e) {
+                e.preventDefault();
+                this.style.borderColor = 'var(--border-color)';
+                
+                if (uploadedImages.length >= maxImages) {
+                    showToast(`最多只能上传${maxImages}张图片`, 'warning');
+                    return;
+                }
+                
+                handleFiles(e.dataTransfer.files);
+            });
+
+            // 粘贴上传
+            document.addEventListener('paste', function(e) {
+                const items = e.clipboardData.items;
+                for (let item of items) {
+                    if (item.type.indexOf('image') !== -1) {
+                        e.preventDefault();
+                        const file = item.getAsFile();
+                        if (uploadedImages.length < maxImages) {
+                            handleFiles([file]);
+                        } else {
+                            showToast(`最多只能上传${maxImages}张图片`, 'warning');
+                        }
+                    }
+                }
+            });
+
+            // 处理文件
+            function handleFiles(files) {
+                let addedCount = 0;
+                Array.from(files).forEach(file => {
+                    if (file.type.startsWith('image/')) {
+                        if (uploadedImages.length < maxImages) {
+                            const reader = new FileReader();
+                            reader.onload = function(e) {
+                                const imageData = {
+                                    id: Date.now() + Math.random(),
+                                    url: e.target.result,
+                                    name: file.name
+                                };
+                                uploadedImages.push(imageData);
+                                renderImages();
+                                showToast('图片上传成功', 'success');
+                            };
+                            reader.readAsDataURL(file);
+                            addedCount++;
+                        } else {
+                             // Only show warning if we actually tried to add more than allowed
+                             // But since we check inside the loop, we might show it multiple times or once.
+                             // Better to show it once if we hit the limit.
+                        }
+                    }
+                });
+                
+                if (files.length > 0 && uploadedImages.length >= maxImages && addedCount === 0) {
+                     showToast(`最多只能上传${maxImages}张图片`, 'warning');
+                }
+            }
+
+            // 渲染图片
+            function renderImages() {
+                imagePreview.innerHTML = '';
+                uploadedImages.forEach(image => {
+                    const item = document.createElement('div');
+                    item.className = 'image-preview-item';
+                    item.innerHTML = `
+                        <img src="${image.url}" alt="${image.name}">
+                        <button class="image-delete-btn" data-id="${image.id}">×</button>
+                    `;
+                    
+                    item.querySelector('img').addEventListener('click', function() {
+                        showImageModal(image.url);
+                    });
+                    
+                    item.querySelector('.image-delete-btn').addEventListener('click', function(e) {
+                        e.stopPropagation();
+                        deleteImage(image.id);
+                    });
+                    
+                    imagePreview.appendChild(item);
+                });
+            }
+
+            // 删除图片
+            function deleteImage(id) {
+                uploadedImages = uploadedImages.filter(img => img.id !== id);
+                renderImages();
+                showToast('图片已删除', 'success');
+            }
+        }
+
+        // 按钮功能
+        function initButtons() {
+            // 清空按钮
+            document.getElementById('clearBtn').addEventListener('click', function() {
+                if (confirm('确定要清空所有内容吗？')) {
+                    document.getElementById('textInput').innerText = '';
+                    uploadedImages = [];
+                    detectedUrls = [];
+                    document.getElementById('imagePreview').innerHTML = '';
+                    document.getElementById('initialState').style.display = 'flex';
+                    document.getElementById('resultItem').classList.remove('active');
+                    showToast('内容已清空', 'success');
+                }
+            });
+
+            // 检测按钮
+            document.getElementById('detectBtn').addEventListener('click', function() {
+                const textContent = document.getElementById('textInput').innerText.trim();
+                
+                if (!textContent && uploadedImages.length === 0) {
+                    showToast('请输入内容或上传图片', 'warning');
+                    return;
+                }
+
+                // 检查是否为URL
+                if (isURL(textContent)) {
+                    // 调用内容提取功能
+                    extractContent(textContent);
+                } else {
+                    // 模拟检测过程
+                    this.classList.add('loading');
+                    this.innerHTML = '检测中...';
+
+                    setTimeout(() => {
+                        this.classList.remove('loading');
+                        this.innerHTML = '开始检测';
+                        
+                        // 显示结果
+                        showResult();
+                        showToast('检测完成', 'success');
+                    }, 2000);
+                }
+            });
+        }
+
+        // 检查是否为URL
+        function isURL(text) {
+            try {
+                new URL(text);
+                return true;
+            } catch {
+                return false;
+            }
+        }
+
+        // 内容提取功能
+        function extractContent(url) {
+            const detectBtn = document.getElementById('detectBtn');
+            detectBtn.classList.add('loading');
+            detectBtn.innerHTML = '提取中...';
+
+            // 调用主进程的内容提取功能
+            if (window.electronAPI) {
+                window.electronAPI.send('extract-content', url);
+            } else {
+                // 模拟提取结果
+                setTimeout(() => {
+                    detectBtn.classList.remove('loading');
+                    detectBtn.innerHTML = '开始检测';
+                    showResult();
+                    showToast('提取完成', 'success');
+                }, 2000);
+            }
+        }
+
+        // 初始化IPC通信
+        function initIPC() {
+            if (window.electronAPI) {
+                // 监听内容提取结果
+                window.electronAPI.on('extract-content-result', function(event, result) {
+                    const detectBtn = document.getElementById('detectBtn');
+                    detectBtn.classList.remove('loading');
+                    detectBtn.innerHTML = '开始检测';
+
+                    if (result.success) {
+                        // 显示提取结果
+                        showExtractedResult(result);
+                        showToast('提取完成', 'success');
+                    } else {
+                        showToast('提取失败: ' + result.error, 'error');
+                    }
+                });
+
+                // 监听清除结果事件
+                window.electronAPI.on('clear-results', function() {
+                    document.getElementById('initialState').style.display = 'flex';
+                    document.getElementById('resultItem').classList.remove('active');
+                });
+            }
+        }
+
+        // 显示检测结果
+        function showResult() {
+            const initialState = document.getElementById('initialState');
+            const resultItem = document.getElementById('resultItem');
+            
+            // 随机生成分数
+            const score = Math.floor(Math.random() * 40) + 60;
+            const scoreCircle = document.getElementById('scoreCircle');
+            const scoreValue = document.getElementById('scoreValue');
+            const scoreDescription = document.getElementById('scoreDescription');
+            
+            scoreCircle.textContent = score + '%';
+            scoreValue.textContent = score + '%';
+            
+            if (score >= 80) {
+                scoreCircle.className = 'score-circle real';
+                scoreDescription.textContent = '该内容具有较高的可信度';
+            } else if (score >= 60) {
+                scoreCircle.className = 'score-circle uncertain';
+                scoreDescription.textContent = '该内容存在一定的不确定性';
+            } else {
+                scoreCircle.className = 'score-circle fake';
+                scoreDescription.textContent = '该内容可能存在虚假信息';
+            }
+            
+            initialState.style.display = 'none';
+            resultItem.classList.add('active');
+        }
+
+        // 显示提取结果
+        function showExtractedResult(result) {
+            const initialState = document.getElementById('initialState');
+            const resultItem = document.getElementById('resultItem');
+            
+            // 更新结果显示
+            const scoreCircle = document.getElementById('scoreCircle');
+            const scoreValue = document.getElementById('scoreValue');
+            const scoreDescription = document.getElementById('scoreDescription');
+            
+            // 使用随机分数作为示例
+            const score = Math.floor(Math.random() * 40) + 60;
+            scoreCircle.textContent = score + '%';
+            scoreValue.textContent = score + '%';
+            
+            if (score >= 80) {
+                scoreCircle.className = 'score-circle real';
+                scoreDescription.textContent = '该内容具有较高的可信度';
+            } else if (score >= 60) {
+                scoreCircle.className = 'score-circle uncertain';
+                scoreDescription.textContent = '该内容存在一定的不确定性';
+            } else {
+                scoreCircle.className = 'score-circle fake';
+                scoreDescription.textContent = '该内容可能存在虚假信息';
+            }
+            
+            initialState.style.display = 'none';
+            resultItem.classList.add('active');
+        }
+
+        // 图片模态框
+        function initModal() {
+            const modal = document.getElementById('imageModal');
+            const modalClose = document.getElementById('modalClose');
+            const modalImage = document.getElementById('modalImage');
+
+            modalClose.addEventListener('click', function() {
+                modal.classList.remove('active');
+            });
+
+            modal.addEventListener('click', function(e) {
+                if (e.target === modal) {
+                    modal.classList.remove('active');
+                }
+            });
+        }
+
+        function showImageModal(url) {
+            const modal = document.getElementById('imageModal');
+            const modalImage = document.getElementById('modalImage');
+            modalImage.src = url;
+            modal.classList.add('active');
+        }
+
+        // Toast 提示
+        function showToast(message, type = 'info') {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.className = `toast ${type}`;
+            
+            setTimeout(() => {
+                toast.classList.add('show');
+            }, 10);
+            
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, 3000);
+        }
+    </script>
+</body>
+</html>

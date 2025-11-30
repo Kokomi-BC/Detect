@@ -169,7 +169,7 @@ class WindowManager {
       height: 600,
       minWidth: 800,
       minHeight: 530,
-      frame: false,
+      frame: true, // 恢复原生标题栏
       backgroundColor: '#F5E6E6',
       webPreferences: {
         preload: path.join(__dirname, 'preload.js'),
@@ -197,7 +197,7 @@ class WindowManager {
         .catch((error) => {
           console.error('加载开发服务器失败:', error);
           // 如果开发服务器失败，加载本地HTML文件
-          mainWindow.loadFile(path.join(__dirname, '../../public/index.html'))
+          mainWindow.loadFile(path.join(__dirname, '../../public/code.html'))
             .catch((localError) => {
               console.error('加载本地HTML文件也失败:', localError);
               throw localError;
@@ -205,7 +205,7 @@ class WindowManager {
         });
     } else {
       // 生产模式加载构建后的文件
-      mainWindow.loadFile(path.join(__dirname, '../../dist/index.html'))
+      mainWindow.loadFile(path.join(__dirname, '../../dist/code.html'))
         .catch((error) => {
           console.error('加载生产版本失败:', error);
           throw error;
