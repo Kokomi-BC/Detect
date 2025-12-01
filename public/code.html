@@ -1552,15 +1552,16 @@
             let lastImages = [];
             document.getElementById('detectBtn').addEventListener('click', function() {
                 const textContent = document.getElementById('textInput').innerText.trim();
+                // 优先判断内容是否为空
+                if (!textContent && uploadedImages.length === 0) {
+                    showToast('请输入内容或上传图片', 'warning');
+                    return;
+                }
                 // 判断内容和图片是否有变化
                 const imagesNow = uploadedImages.map(img => img.url).join(',');
                 const imagesLast = lastImages.join(',');
                 if (textContent === lastTextContent && imagesNow === imagesLast) {
                     showToast('内容未变化，无需重复检测', 'info');
-                    return;
-                }
-                if (!textContent && uploadedImages.length === 0) {
-                    showToast('请输入内容或上传图片', 'warning');
                     return;
                 }
                 // 检查是否为URL
