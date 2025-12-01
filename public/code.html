@@ -662,6 +662,60 @@
             transform: rotate(90deg);
         }
 
+        /* 自定义弹窗样式 */
+        .custom-modal {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.18);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+        }
+        .custom-modal.active {
+            display: flex;
+        }
+        .custom-modal-content {
+            background: var(--bg-primary);
+            border-radius: 16px;
+            box-shadow: var(--shadow-lg);
+            padding: 32px 28px 24px 28px;
+            min-width: 320px;
+            max-width: 90vw;
+            text-align: center;
+            animation: fadeInUp 0.4s;
+        }
+        .custom-modal-title {
+            font-size: 20px;
+            font-weight: 600;
+            margin-bottom: 12px;
+            color: var(--accent-color);
+        }
+        .custom-modal-message {
+            font-size: 16px;
+            color: var(--text-primary);
+            margin-bottom: 24px;
+        }
+        .custom-modal-actions {
+            display: flex;
+            gap: 18px;
+            justify-content: center;
+        }
+        .custom-modal-btn {
+            padding: 8px 28px;
+            border-radius: 8px;
+            border: none;
+            font-size: 16px;
+            font-weight: 500;
+            cursor: pointer;
+            background: var(--accent-color);
+            color: #fff;
+            transition: background 0.2s;
+        }
+        .custom-modal-btn:hover {
+            background: var(--accent-hover);
+        }
+
         /* 响应式设计 */
         @media (max-width: 768px) {
             .container {
@@ -976,8 +1030,6 @@
     </style>
 </head>
 <body>
-    <!-- 自定义标题栏 (已移除) -->
-
     <div class="container">
         <!-- 左侧面板 -->
         <div class="left-panel" id="leftPanel">
@@ -1148,6 +1200,18 @@
 
     <!-- Toast 提示 -->
     <div class="toast" id="toast"></div>
+
+    <!-- 自定义确认弹窗 -->
+    <div class="custom-modal" id="customModal">
+        <div class="custom-modal-content">
+            <div class="custom-modal-title">确认操作</div>
+            <div class="custom-modal-message">确定要清空所有内容吗？</div>
+            <div class="custom-modal-actions">
+                <button class="custom-modal-btn" id="modalConfirm">确定</button>
+                <button class="custom-modal-btn" id="modalCancel">取消</button>
+            </div>
+        </div>
+    </div>
 
     <script>
         // 全局变量
@@ -1438,11 +1502,28 @@
             }
         }
 
+        // 自定义弹窗逻辑
+        function showCustomModal(onConfirm, onCancel) {
+            const modal = document.getElementById('customModal');
+            const confirmBtn = document.getElementById('modalConfirm');
+            const cancelBtn = document.getElementById('modalCancel');
+            modal.classList.add('active');
+            // 解绑旧事件，防止多次绑定
+            confirmBtn.onclick = function() {
+                modal.classList.remove('active');
+                if (onConfirm) onConfirm();
+            };
+            cancelBtn.onclick = function() {
+                modal.classList.remove('active');
+                if (onCancel) onCancel();
+            };
+        }
+
         // 按钮功能
         function initButtons() {
             // 清空按钮
             document.getElementById('clearBtn').addEventListener('click', function() {
-                if (confirm('确定要清空所有内容吗？')) {
+                showCustomModal(() => {
                     document.getElementById('textInput').innerText = '';
                     uploadedImages = [];
                     detectedUrls = [];
@@ -1452,7 +1533,7 @@
                     document.getElementById('errorState').classList.remove('active');
                     document.getElementById('loadingState').classList.remove('active');
                     showToast('内容已清空', 'success');
-                }
+                });
             });
 
             // 检测按钮
@@ -1560,12 +1641,30 @@
                     }
                 });
 
-                // 监听清除内容事件
+                // 监听清除内容（直接清空）事件，保留以兼容旧逻辑
                 window.electronAPI.on('clear-results', function() {
                     document.getElementById('initialState').style.display = 'flex';
                     document.getElementById('resultItem').classList.remove('active');
                     document.getElementById('errorState').classList.remove('active');
                     document.getElementById('loadingState').classList.remove('active');
+                });
+
+                // 监听主进程请求显示清空确认弹窗（来自右键菜单）
+                window.electronAPI.on('request-clear', function() {
+                    showCustomModal(() => {
+                        // 确认后执行同样的清空逻辑
+                        document.getElementById('textInput').innerText = '';
+                        uploadedImages = [];
+                        detectedUrls = [];
+                        document.getElementById('imagePreview').innerHTML = '';
+                        document.getElementById('initialState').style.display = 'flex';
+                        document.getElementById('resultItem').classList.remove('active');
+                        document.getElementById('errorState').classList.remove('active');
+                        document.getElementById('loadingState').classList.remove('active');
+                        showToast('内容已清空', 'success');
+                    }, () => {
+                        // 取消时不作操作
+                    });
                 });
             }
         }

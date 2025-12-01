@@ -245,13 +245,13 @@ class DetectApp {
     if (hasContent) {
       menu.append(new MenuItem({ type: 'separator' }));
       menu.append(new MenuItem({
-        label: '清除内容',
+        label: '清空内容',
         click: () => {
-          console.log('执行清除内容操作，刷新浏览器内容');
-          // 获取主窗口并刷新浏览器内容
+          console.log('请求在渲染进程展示清空确认弹窗');
+          // 获取主窗口并发送请求，由渲染进程展示自定义确认弹窗并在确认后清空内容
           const mainWindow = this.getMainWindow();
           if (mainWindow && !mainWindow.isDestroyed()) {
-            mainWindow.webContents.send('clear-results');
+            mainWindow.webContents.send('request-clear');
           }
         }
       }));
