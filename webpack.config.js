@@ -52,7 +52,6 @@ module.exports = {
     },
   },
   target: 'electron-renderer',
-  // 修复 global is not defined 错误
   node: {
     global: true,
   },
