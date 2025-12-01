@@ -2,6 +2,7 @@ const { app, BrowserWindow, ipcMain, session, Menu, MenuItem, shell, nativeTheme
 const path = require('path');
 const { WindowManager, WindowType } = require('./windowManager');
 const ExtractionManager = require('./extractionManager');
+const LLMService = require('./llmService');
 
 /**
  * 主应用入口 - 使用模块化架构的Electron应用
@@ -15,6 +16,7 @@ class DetectApp {
     // 初始化各个管理器实例
     this.windowManager = new WindowManager();
     this.extractionManager = new ExtractionManager();
+    this.llmService = new LLMService();
   }
 
   /**
@@ -350,6 +352,18 @@ class DetectApp {
     // 提取内容事件
     ipcMain.on('extract-content', async (event, url) => {
       await this.handleExtractContent(event, url);
+    });
+
+    // 大模型分析事件
+    ipcMain.handle('analyze-content', async (event, { text, imageUrls, url }) => {
+      try {
+        console.log('收到大模型分析请求:', { textLength: text ? text.length : 0, imageCount: imageUrls ? imageUrls.length : 0, url });
+        const result = await this.llmService.analyzeContent(text, imageUrls, url);
+        return { success: true, data: result };
+      } catch (error) {
+        console.error('分析内容失败:', error);
+        return { success: false, error: error.message };
+      }
     });
 
     // 打开系统图片选择对话框（renderer 调用）

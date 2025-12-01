@@ -212,7 +212,7 @@
             width: 20px;
             display: block;
         }
-        }
+        
 
         .edit-btn:hover {
             background: var(--accent-color);
@@ -949,6 +949,95 @@
             margin-bottom: 16px;
         }
 
+        .progress-container {
+            width: 80%;
+            max-width: 300px;
+            height: 6px;
+            background-color: var(--bg-tertiary);
+            border-radius: 3px;
+            margin-top: 12px;
+            overflow: hidden;
+        }
+
+        .progress-bar {
+            height: 100%;
+            background-color: var(--accent-color);
+            width: 0%;
+            transition: width 0.5s ease;
+        }
+
+        /* 自定义 Tooltip (圆角胶囊) */
+        .custom-tooltip {
+            position: absolute;
+            background-color: var(--bg-secondary);
+            color: var(--text-primary);
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 13px;
+            box-shadow: var(--shadow-md);
+            border: 1px solid var(--border-color);
+            z-index: 1000;
+            max-width: 300px;
+            pointer-events: none;
+            opacity: 0;
+            transform: translateY(10px);
+            transition: opacity 0.2s, transform 0.2s;
+        }
+
+        .custom-tooltip.active {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        /* 详细分析列表项样式 */
+        .analysis-item {
+            display: flex;
+            align-items: flex-start;
+            margin-bottom: 12px;
+            padding: 12px;
+            background: var(--bg-tertiary);
+            border-radius: 8px;
+            transition: var(--transition);
+        }
+
+        .analysis-item:hover {
+            transform: translateX(4px);
+        }
+
+        .analysis-icon {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 12px;
+            flex-shrink: 0;
+            font-weight: bold;
+            font-size: 14px;
+        }
+
+        .analysis-icon.positive {
+            background: rgba(6, 255, 165, 0.15);
+            color: var(--success-color);
+        }
+
+        .analysis-icon.warning {
+            background: rgba(255, 190, 11, 0.15);
+            color: var(--warning-color);
+        }
+
+        .analysis-icon.negative {
+            background: rgba(251, 86, 7, 0.15);
+            color: var(--danger-color);
+        }
+
+        .analysis-text {
+            font-size: 14px;
+            line-height: 1.5;
+            color: var(--text-primary);
+        }
+
         /* 错误状态 */
         .error-state {
             display: none;
@@ -1053,12 +1142,18 @@
                         <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
                     </svg>
                 </button>
+                <button class="toolbar-btn" id="clipboardBtn" title="剪贴板获取">
+                    <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5">
+                        <rect x="5" y="4" width="10" height="13" rx="2"/>
+                        <rect x="7" y="2" width="6" height="3" rx="1"/>
+                        <path d="M7 7h6"/>
+                    </svg>
+                </button>
                 <div class="toolbar-separator"></div>
                 <button class="toolbar-btn" id="imageBtn" title="添加图片">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
-                        <circle cx="8.5" cy="8.5" r="1.5"></circle>
-                        <polyline points="21 15 16 10 5 21"></polyline>
+                        <line x1="12" y1="5" x2="12" y2="19" />
+                        <line x1="5" y1="12" x2="19" y2="12" />
                     </svg>
                 </button>
                 <button class="toolbar-btn" id="themeBtn" title="切换主题">
@@ -1085,28 +1180,28 @@
             <!-- 编辑选项 -->
             <div class="edit-options" id="editOptions">
                 <button class="edit-btn" data-command="bold" title="加粗">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M7 5h6a3 3 0 0 1 0 6H7zm0 6h7a2.5 2.5 0 0 1 0 5H7z"/></svg>
+                    <svg width="24" height="28" viewBox="0 0 24 28" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 8h6a3 3 0 0 1 0 6H7zm0 6h7a2.5 2.5 0 0 1 0 5H7z"/></svg>
                 </button>
                 <button class="edit-btn" data-command="italic" title="斜体">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2"><line x1="19" y1="5" x2="10" y2="5"/><line x1="14" y1="19" x2="5" y2="19"/><line x1="15" y1="5" x2="9" y2="19"/></svg>
+                    <svg width="24" height="28" viewBox="0 0 24 28" fill="none" stroke="currentColor" stroke-width="2"><line x1="17" y1="6" x2="9" y2="24"/></svg>
                 </button>
                 <button class="edit-btn" data-command="underline" title="下划线">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M6 4v6a6 6 0 0 0 12 0V4"/><line x1="4" y1="20" x2="20" y2="20"/></svg>
+                    <svg width="24" height="28" viewBox="0 0 24 28" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6v8a6 6 0 0 0 12 0V6"/><line x1="4" y1="26" x2="20" y2="26"/></svg>
                 </button>
                 <button class="edit-btn" data-command="insertUnorderedList" title="无序列表">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2"><circle cx="6" cy="7" r="1.2"/><circle cx="6" cy="12" r="1.2"/><circle cx="6" cy="17" r="1.2"/><line x1="10" y1="7" x2="18" y2="7"/><line x1="10" y1="12" x2="18" y2="12"/><line x1="10" y1="17" x2="18" y2="17"/></svg>
+                    <svg width="24" height="28" viewBox="0 0 24 28" fill="none" stroke="currentColor" stroke-width="2"><circle cx="6" cy="9" r="1.5"/><circle cx="6" cy="16" r="1.5"/><circle cx="6" cy="23" r="1.5"/><line x1="10" y1="9" x2="18" y2="9"/><line x1="10" y1="16" x2="18" y2="16"/><line x1="10" y1="23" x2="18" y2="23"/></svg>
                 </button>
                 <button class="edit-btn" data-command="insertOrderedList" title="有序列表">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2"><text x="3" y="9" font-size="8">1</text><line x1="10" y1="7" x2="18" y2="7"/><text x="3" y="14" font-size="8">2</text><line x1="10" y1="12" x2="18" y2="12"/><text x="3" y="19" font-size="8">3</text><line x1="10" y1="17" x2="18" y2="17"/></svg>
+                    <svg width="24" height="28" viewBox="0 0 24 28" fill="none" stroke="currentColor" stroke-width="2"><text x="3" y="11" font-size="8">1</text><line x1="10" y1="9" x2="18" y2="9"/><text x="3" y="18" font-size="8">2</text><line x1="10" y1="16" x2="18" y2="16"/><text x="3" y="25" font-size="8">3</text><line x1="10" y1="23" x2="18" y2="23"/></svg>
                 </button>
                 <button class="edit-btn" data-command="justifyLeft" title="左对齐">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2"><line x1="4" y1="7" x2="20" y2="7"/><line x1="4" y1="12" x2="14" y2="12"/><line x1="4" y1="17" x2="20" y2="17"/></svg>
+                    <svg width="24" height="28" viewBox="0 0 24 28" fill="none" stroke="currentColor" stroke-width="2"><line x1="4" y1="9" x2="20" y2="9"/><line x1="4" y1="16" x2="14" y2="16"/><line x1="4" y1="23" x2="20" y2="23"/></svg>
                 </button>
                 <button class="edit-btn" data-command="justifyCenter" title="居中">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2"><line x1="6" y1="7" x2="18" y2="7"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="4" y1="17" x2="20" y2="17"/></svg>
+                    <svg width="24" height="28" viewBox="0 0 24 28" fill="none" stroke="currentColor" stroke-width="2"><line x1="6" y1="9" x2="18" y2="9"/><line x1="8" y1="16" x2="16" y2="16"/><line x1="4" y1="23" x2="20" y2="23"/></svg>
                 </button>
                 <button class="edit-btn" data-command="justifyRight" title="右对齐">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2"><line x1="4" y1="7" x2="20" y2="7"/><line x1="10" y1="12" x2="20" y2="12"/><line x1="4" y1="17" x2="20" y2="17"/></svg>
+                    <svg width="24" height="28" viewBox="0 0 24 28" fill="none" stroke="currentColor" stroke-width="2"><line x1="4" y1="9" x2="20" y2="9"/><line x1="10" y1="16" x2="20" y2="16"/><line x1="4" y1="23" x2="20" y2="23"/></svg>
                 </button>
             </div>
 
@@ -1190,7 +1285,10 @@
                 <!-- 加载状态 -->
                 <div class="loading-state" id="loadingState">
                     <div class="loading-spinner-large"></div>
-                    <div class="loading-text">正在解析网页内容...</div>
+                    <div class="loading-text" id="loadingText">正在解析网页内容...</div>
+                    <div class="progress-container">
+                        <div class="progress-bar" id="progressBar"></div>
+                    </div>
                 </div>
 
                 <!-- 错误状态 -->
@@ -1240,6 +1338,7 @@
             initButtons();
             initModal();
             initIPC();
+            initClipboardBtn();
         });
 
         // 主题切换
@@ -1380,13 +1479,22 @@
             const dragOverlay = document.getElementById('dragOverlay');
             leftPanel.addEventListener('dragover', function(e) {
                 e.preventDefault();
-                // 检查拖入的文件类型
-                let isAllImage = true;
-                if (e.dataTransfer && e.dataTransfer.items) {
-                    for (let i = 0; i < e.dataTransfer.items.length; i++) {
-                        if (!e.dataTransfer.items[i].type.startsWith('image/')) {
-                            isAllImage = false;
-                            break;
+                // 检查拖入的文件类型或URL
+                let isAllImage = false;
+                if (e.dataTransfer) {
+                    // 优先检测文件列表
+                    if (e.dataTransfer.items) {
+                        for (let i = 0; i < e.dataTransfer.items.length; i++) {
+                            const t = e.dataTransfer.items[i].type || '';
+                            if (t.startsWith('image/')) {
+                                isAllImage = true;
+                                break;
+                            }
+                            // 支持拖动图片 URL（其他元素传递为 text/uri-list 或 text/plain）
+                            if (t === 'text/uri-list' || t === 'text/plain') {
+                                isAllImage = true;
+                                break;
+                            }
                         }
                     }
                 }
@@ -1413,24 +1521,51 @@
                 dragOverlay.classList.remove('active', 'error', 'success', 'full');
                 dragOverlay.textContent = '拖入图片以添加';
                 // 检查是否全部为图片
-                let isAllImage = true;
-                if (e.dataTransfer && e.dataTransfer.items) {
-                    for (let i = 0; i < e.dataTransfer.items.length; i++) {
-                        if (!e.dataTransfer.items[i].type.startsWith('image/')) {
-                            isAllImage = false;
-                            break;
-                        }
+                // 优先处理文件
+                if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+                    // 如果包含文件，按原逻辑处理
+                    if (uploadedImages.length >= maxImages) {
+                        showToast(`最多只能上传${maxImages}张图片`, 'warning');
+                        return;
                     }
-                }
-                if (!isAllImage) {
-                    showToast('仅支持图片文件', 'error');
+                    handleFiles(e.dataTransfer.files);
                     return;
                 }
-                if (uploadedImages.length >= maxImages) {
-                    showToast(`最多只能上传${maxImages}张图片`, 'warning');
+
+                // 如果没有文件，尝试读取 URL（text/uri-list 或 text/plain）
+                let url = '';
+                try {
+                    if (e.dataTransfer) {
+                        url = e.dataTransfer.getData('text/uri-list') || e.dataTransfer.getData('text/plain') || '';
+                    }
+                } catch (err) {
+                    url = '';
+                }
+
+                if (url) {
+                    if (uploadedImages.length >= maxImages) {
+                        showToast(`最多只能上传${maxImages}张图片`, 'warning');
+                        return;
+                    }
+                    // 简单判断是否为图片链接（扩展名或 data:）
+                    const lower = url.toLowerCase();
+                    const isLikelyImage = lower.startsWith('data:') || /(\.png|\.jpe?g|\.gif|\.webp|\.bmp|\.svg)(\?.*)?$/.test(lower) || /^https?:\/\/.+\.(png|jpe?g|gif|webp|bmp|svg)(\?.*)?$/i.test(url);
+                    const imagePreview = document.getElementById('imagePreview');
+                    const nameFromUrl = url.split('/').pop().split('?')[0];
+                    const imageData = {
+                        id: Date.now() + Math.random(),
+                        url: url,
+                        name: nameFromUrl || '远程图片'
+                    };
+                    // 如果不是显然为图片，也允许加入（浏览器会根据 src 显示或失败）
+                    uploadedImages.push(imageData);
+                    // 使用已有渲染函数更新 UI
+                    renderImages();
+                    showToast('图片已从右侧添加', 'success');
                     return;
                 }
-                handleFiles(e.dataTransfer.files);
+
+                showToast('无可用图片或不支持的拖放内容', 'error');
             });
 
             // 粘贴上传
@@ -1566,16 +1701,11 @@
                 }
                 // 检查是否为URL
                 if (isURL(textContent)) {
+                    window.lastExtractedUrl = textContent; // 保存URL供后续使用
                     extractContent(textContent);
                 } else {
-                    this.classList.add('loading');
-                    this.innerHTML = '检测中...';
-                    setTimeout(() => {
-                        this.classList.remove('loading');
-                        this.innerHTML = '开始检测';
-                        showResult();
-                        showToast('检测完成', 'success');
-                    }, 2000);
+                    window.lastExtractedUrl = null;
+                    analyzeContent(textContent, uploadedImages);
                 }
                 // 记录本次内容和图片
                 lastTextContent = textContent;
@@ -1600,6 +1730,8 @@
             const resultItem = document.getElementById('resultItem');
             const loadingState = document.getElementById('loadingState');
             const errorState = document.getElementById('errorState');
+            const progressBar = document.getElementById('progressBar');
+            const loadingText = document.getElementById('loadingText');
 
             // 重置状态
             initialState.style.display = 'none';
@@ -1607,18 +1739,73 @@
             errorState.classList.remove('active');
             loadingState.classList.add('active');
             
+            // 初始化进度条
+            progressBar.style.width = '10%';
+            loadingText.textContent = '正在解析网页内容...';
+
             detectBtn.classList.add('loading');
             detectBtn.innerHTML = '提取中...';
+
+            // 模拟进度增长
+            let progress = 10;
+            const progressInterval = setInterval(() => {
+                if (progress < 45) {
+                    progress += 1;
+                    progressBar.style.width = progress + '%';
+                }
+            }, 800);
+
+            let timeoutId;
+            let finished = false;
+            // 超时处理函数
+            function handleTimeout() {
+                if (finished) return;
+                finished = true;
+                clearInterval(progressInterval);
+                loadingState.classList.remove('active');
+                detectBtn.classList.remove('loading');
+                detectBtn.innerHTML = '开始检测';
+                showError('网页内容提取超时，请稍后重试');
+                showToast('提取失败：超时', 'error');
+            }
+            timeoutId = setTimeout(handleTimeout, 10000);
 
             // 调用主进程的内容提取功能
             if (window.electronAPI) {
                 window.electronAPI.send('extract-content', url);
+                // 监听一次性结果（防止多次触发）
+                const handler = function(event, result) {
+                    if (finished) return;
+                    finished = true;
+                    clearTimeout(timeoutId);
+                    clearInterval(progressInterval);
+                    
+                    if (result.success) {
+                        // 提取成功，进度设为50%
+                        progressBar.style.width = '50%';
+                        loadingText.textContent = '正在分析新闻中...';
+                        
+                        // showExtractedResult(result);
+                        showToast('提取完成，正在进行AI分析...', 'success');
+                        // 传递 true 表示从提取流程进入
+                        analyzeContent(result.content, result.images, true);
+                    } else {
+                        detectBtn.classList.remove('loading');
+                        detectBtn.innerHTML = '开始检测';
+                        showError(result.error);
+                        showToast('提取失败: ' + result.error, 'error');
+                    }
+                    window.electronAPI.off && window.electronAPI.off('extract-content-result', handler);
+                };
+                // 兼容性：如无off方法则不解绑
+                window.electronAPI.on('extract-content-result', handler);
             } else {
                 // 模拟提取结果
                 setTimeout(() => {
-                    loadingState.classList.remove('active');
-                    detectBtn.classList.remove('loading');
-                    detectBtn.innerHTML = '开始检测';
+                    if (finished) return;
+                    finished = true;
+                    clearTimeout(timeoutId);
+                    clearInterval(progressInterval);
                     
                     // 模拟数据
                     const mockResult = {
@@ -1628,8 +1815,12 @@
                         images: ['https://via.placeholder.com/300'],
                         url: url
                     };
-                    showExtractedResult(mockResult);
+                    
+                    progressBar.style.width = '50%';
+                    loadingText.textContent = '正在分析新闻中...';
+                    
                     showToast('提取完成', 'success');
+                    analyzeContent(mockResult.content, mockResult.images, true);
                 }, 2000);
             }
         }
@@ -1694,7 +1885,7 @@
             const textContent = document.getElementById('textInput').innerText.trim();
             
             // 随机生成分数
-            const score = Math.floor(Math.random() * 40) + 60;
+            const score = Math.floor(Math.random() * 40) + 20;
             const scoreCircle = document.getElementById('scoreCircle');
             const scoreValue = document.getElementById('scoreValue');
             const scoreDescription = document.getElementById('scoreDescription');
@@ -1725,6 +1916,15 @@
                     const item = document.createElement('div');
                     item.className = 'parsed-image-item';
                     item.innerHTML = `<img src="${img.url}" alt="${img.name}">`;
+                    // 允许从解析区域拖动到左侧（传递图片 URL）
+                    item.setAttribute('draggable', 'true');
+                    item.addEventListener('dragstart', (ev) => {
+                        try {
+                            ev.dataTransfer.setData('text/uri-list', img.url);
+                            ev.dataTransfer.setData('text/plain', img.url);
+                            ev.dataTransfer.effectAllowed = 'copy';
+                        } catch (e) {}
+                    });
                     item.addEventListener('click', () => showImageModal(img.url));
                     parsedImages.appendChild(item);
                 });
@@ -1779,6 +1979,15 @@
                     const item = document.createElement('div');
                     item.className = 'parsed-image-item';
                     item.innerHTML = `<img src="${imgUrl}" alt="解析图片">`;
+                    // 允许从解析区域拖动到左侧（传递图片 URL）
+                    item.setAttribute('draggable', 'true');
+                    item.addEventListener('dragstart', (ev) => {
+                        try {
+                            ev.dataTransfer.setData('text/uri-list', imgUrl);
+                            ev.dataTransfer.setData('text/plain', imgUrl);
+                            ev.dataTransfer.effectAllowed = 'copy';
+                        } catch (e) {}
+                    });
                     item.addEventListener('click', () => showImageModal(imgUrl));
                     parsedImages.appendChild(item);
                 });
@@ -1839,6 +2048,345 @@
                 toast.classList.remove('show');
             }, 3000);
         }
+
+        // 剪贴板按钮功能
+        function initClipboardBtn() {
+            const clipboardBtn = document.getElementById('clipboardBtn');
+            clipboardBtn.addEventListener('click', async function() {
+                // 优先尝试读取图片
+                if (navigator.clipboard && window.ClipboardItem) {
+                    try {
+                        const items = await navigator.clipboard.read();
+                        let foundImage = false;
+                        for (const item of items) {
+                            for (const type of item.types) {
+                                if (type.startsWith('image/')) {
+                                    foundImage = true;
+                                    const blob = await item.getType(type);
+                                    const reader = new FileReader();
+                                    reader.onload = function(e) {
+                                        if (uploadedImages.length < maxImages) {
+                                            const imageData = {
+                                                id: Date.now() + Math.random(),
+                                                url: e.target.result,
+                                                name: '剪贴板图片'
+                                            };
+                                            uploadedImages.push(imageData);
+                                            document.getElementById('imagePreview').innerHTML = '';
+                                            // 重新渲染图片
+                                            const imagePreview = document.getElementById('imagePreview');
+                                            uploadedImages.forEach(image => {
+                                                const item = document.createElement('div');
+                                                item.className = 'image-preview-item';
+                                                item.innerHTML = `<img src="${image.url}" alt="${image.name}"><button class="image-delete-btn" data-id="${image.id}">×</button>`;
+                                                item.querySelector('img').addEventListener('click', function() {
+                                                    showImageModal(image.url);
+                                                });
+                                                item.querySelector('.image-delete-btn').addEventListener('click', function(e) {
+                                                    e.stopPropagation();
+                                                    uploadedImages = uploadedImages.filter(img => img.id !== image.id);
+                                                    imagePreview.removeChild(item);
+                                                    showToast('图片已删除', 'success');
+                                                });
+                                                imagePreview.appendChild(item);
+                                            });
+                                            showToast('剪贴板图片已上传', 'success');
+                                        } else {
+                                            showToast(`最多只能上传${maxImages}张图片`, 'warning');
+                                        }
+                                    };
+                                    reader.readAsDataURL(blob);
+                                    return;
+                                }
+                            }
+                        }
+                        if (!foundImage) {
+                            // 没有图片则尝试读取文本
+                            const text = await navigator.clipboard.readText();
+                            if (text) {
+                                document.getElementById('textInput').innerText = text;
+                                showToast('剪贴板文本已粘贴', 'success');
+                            } else {
+                                showToast('剪贴板无可用内容', 'warning');
+                            }
+                        }
+                    } catch (err) {
+                        showToast('无法访问剪贴板内容', 'error');
+                    }
+                } else if (navigator.clipboard) {
+                    // 兼容只支持文本的浏览器
+                    try {
+                        const text = await navigator.clipboard.readText();
+                        if (text) {
+                            document.getElementById('textInput').innerText = text;
+                            showToast('剪贴板文本已粘贴', 'success');
+                        } else {
+                            showToast('剪贴板无可用内容', 'warning');
+                        }
+                    } catch (err) {
+                        showToast('无法访问剪贴板内容', 'error');
+                    }
+                } else {
+                    showToast('当前浏览器不支持剪贴板API', 'error');
+                }
+            });
+        }
+        // AI分析功能
+        async function analyzeContent(text, images, fromExtraction = false) {
+            const detectBtn = document.getElementById('detectBtn');
+            const loadingState = document.getElementById('loadingState');
+            const initialState = document.getElementById('initialState');
+            const resultItem = document.getElementById('resultItem');
+            const errorState = document.getElementById('errorState');
+            const progressBar = document.getElementById('progressBar');
+            const loadingText = document.getElementById('loadingText');
+
+            // UI Loading State
+            initialState.style.display = 'none';
+            resultItem.classList.remove('active');
+            errorState.classList.remove('active');
+            loadingState.classList.add('active');
+            detectBtn.classList.add('loading');
+            detectBtn.innerHTML = 'AI分析中...';
+            
+            // 设置进度条初始状态
+            if (fromExtraction) {
+                progressBar.style.width = '50%';
+            } else {
+                progressBar.style.width = '0%';
+                // 快速动画到 50%
+                setTimeout(() => {
+                    progressBar.style.width = '50%';
+                }, 100);
+            }
+            loadingText.textContent = '正在分析新闻中...';
+
+            // 模拟分析阶段的进度增长 (50% -> 90%)
+            let progress = 50;
+            const progressInterval = setInterval(() => {
+                if (progress < 90) {
+                    progress += 0.5; // 慢一点
+                    progressBar.style.width = progress + '%';
+                }
+            }, 600);
+
+            try {
+                let imageUrls = [];
+                if (images && images.length > 0) {
+                    // 限制最多4张图片
+                    const limitedImages = images.slice(0, 4);
+                    imageUrls = limitedImages.map(img => typeof img === 'string' ? img : img.url);
+                }
+
+                let result;
+                // 检查是否是URL提取的内容，如果是，尝试获取URL
+                let sourceUrl = '';
+                if (fromExtraction && window.lastExtractedUrl) {
+                    sourceUrl = window.lastExtractedUrl;
+                } else if (isURL(text)) {
+                    sourceUrl = text;
+                }
+
+                if (window.electronAPI) {
+                    const response = await window.electronAPI.invoke('analyze-content', { text, imageUrls, url: sourceUrl });
+                    if (response.success) {
+                        result = response.data;
+                    } else {
+                        throw new Error(response.error);
+                    }
+                } else {
+                    // Mock for dev
+                    await new Promise(r => setTimeout(r, 2000));
+                    result = {
+                        probability: 0.15,
+                        type: 3,
+                        explanation: "这是一个模拟的AI分析结果（假新闻）。",
+                        fake_parts: [{ text: text.substring(0, 10), reason: "模拟原因" }]
+                    };
+                }
+
+                clearInterval(progressInterval);
+                progressBar.style.width = '100%';
+                
+                // 稍微延迟一下让用户看到100%
+                setTimeout(() => {
+                    showAnalysisResult(result, text, images);
+                    showToast('分析完成', 'success');
+                    loadingState.classList.remove('active');
+                    detectBtn.classList.remove('loading');
+                    detectBtn.innerHTML = '开始检测';
+                }, 500);
+
+            } catch (error) {
+                clearInterval(progressInterval);
+                console.error(error);
+                showError('AI分析失败: ' + error.message);
+                showToast('分析失败', 'error');
+                loadingState.classList.remove('active');
+                detectBtn.classList.remove('loading');
+                detectBtn.innerHTML = '开始检测';
+            }
+        }
+
+        function showAnalysisResult(result, originalText, originalImages) {
+            const resultItem = document.getElementById('resultItem');
+            const parsedContent = document.getElementById('parsedContent');
+            const parsedTitle = document.getElementById('parsedTitle');
+            const parsedText = document.getElementById('parsedText');
+            const parsedImages = document.getElementById('parsedImages');
+            
+            const scoreCircle = document.getElementById('scoreCircle');
+            const scoreValue = document.getElementById('scoreValue');
+            const scoreDescription = document.getElementById('scoreDescription');
+            
+            // Probability to Percentage
+            const percentage = Math.round(result.probability * 100);
+            scoreCircle.textContent = percentage + '%';
+            scoreValue.textContent = percentage + '%';
+            
+            // Type handling
+            if (result.type === 1) { // True
+                scoreCircle.className = 'score-circle real';
+                scoreDescription.innerHTML = `<strong>可信度高</strong><br>${result.explanation}`;
+            } else if (result.type === 2) { // Partial
+                scoreCircle.className = 'score-circle uncertain';
+                scoreDescription.innerHTML = `<strong>部分存疑</strong><br>${result.explanation}`;
+            } else { // Fake
+                scoreCircle.className = 'score-circle fake';
+                scoreDescription.innerHTML = `<strong>疑似虚假</strong><br>${result.explanation}`;
+            }
+            
+            // Update Analysis Points
+            const analysisContainer = document.querySelector('.result-analysis');
+            // 清空旧的静态内容（保留标题）
+            const analysisTitle = analysisContainer.querySelector('.analysis-title');
+            analysisContainer.innerHTML = '';
+            analysisContainer.appendChild(analysisTitle);
+
+            if (result.analysis_points && Array.isArray(result.analysis_points)) {
+                result.analysis_points.forEach(point => {
+                    const item = document.createElement('div');
+                    item.className = 'analysis-item';
+                    
+                    let icon = '✓';
+                    let iconClass = 'positive';
+                    
+                    if (point.status === 'warning') {
+                        icon = '!';
+                        iconClass = 'warning';
+                    } else if (point.status === 'negative') {
+                        icon = '✕';
+                        iconClass = 'negative';
+                    }
+                    
+                    item.innerHTML = `
+                        <div class="analysis-icon ${iconClass}">${icon}</div>
+                        <div class="analysis-text">${point.description}</div>
+                    `;
+                    analysisContainer.appendChild(item);
+                });
+            } else {
+                // Fallback if no analysis points provided
+                analysisContainer.innerHTML += `<div class="analysis-item"><div class="analysis-text">暂无详细分析点</div></div>`;
+            }
+            
+            // Display Content
+            parsedContent.style.display = 'block';
+            parsedTitle.style.display = 'none'; 
+            
+            // Highlight fake parts
+            let displayText = originalText;
+            if ((result.type === 2 || result.type === 3) && result.fake_parts) {
+                let safeText = displayText.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+                
+                // Sort fake parts by length descending to avoid nested replacement issues
+                const sortedParts = [...result.fake_parts].sort((a, b) => b.text.length - a.text.length);
+
+                sortedParts.forEach(part => {
+                    if (part.text) {
+                        const safePart = part.text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+                        // 使用 data-reason 存储原因，移除 title，添加 onclick
+                        const highlight = `<span class="fake-highlight" style="background-color: #ffff00; color: #000; cursor: pointer; border-radius: 2px;" data-reason="${part.reason.replace(/"/g, '&quot;')}" onclick="showReasonTooltip(event, this)">${safePart}</span>`;
+                        // Replace only the first occurrence to avoid over-replacing
+                        safeText = safeText.replace(safePart, highlight);
+                    }
+                });
+                parsedText.innerHTML = safeText;
+            } else {
+                parsedText.textContent = originalText;
+            }
+            
+            // Render Images
+            parsedImages.innerHTML = '';
+            let imagesToRender = [];
+            if (originalImages && originalImages.length > 0) {
+                 // 限制最多显示4张图片
+                 const limitedImages = originalImages.slice(0, 4);
+                 imagesToRender = limitedImages.map(img => typeof img === 'string' ? {url: img, name: 'Image'} : img);
+            }
+            
+            imagesToRender.forEach(img => {
+                const item = document.createElement('div');
+                item.className = 'parsed-image-item';
+                item.innerHTML = `<img src="${img.url}" alt="${img.name}">`;
+                item.addEventListener('click', () => showImageModal(img.url));
+                parsedImages.appendChild(item);
+            });
+            
+            resultItem.classList.add('active');
+        }
+
+        // Tooltip Logic
+        let tooltipTimeout;
+        function showReasonTooltip(event, element) {
+            event.stopPropagation();
+            const reason = element.getAttribute('data-reason');
+            if (!reason) return;
+
+            let tooltip = document.getElementById('customTooltip');
+            if (!tooltip) {
+                tooltip = document.createElement('div');
+                tooltip.id = 'customTooltip';
+                tooltip.className = 'custom-tooltip';
+                document.body.appendChild(tooltip);
+            }
+
+            tooltip.textContent = reason;
+            tooltip.classList.add('active');
+
+            // Position tooltip
+            const rect = element.getBoundingClientRect();
+            const tooltipRect = tooltip.getBoundingClientRect();
+            
+            let top = rect.bottom + 8;
+            let left = rect.left + (rect.width / 2) - (tooltipRect.width / 2);
+
+            // Boundary checks
+            if (left < 10) left = 10;
+            if (left + tooltipRect.width > window.innerWidth - 10) {
+                left = window.innerWidth - tooltipRect.width - 10;
+            }
+            if (top + tooltipRect.height > window.innerHeight - 10) {
+                top = rect.top - tooltipRect.height - 8; // Flip to top if no space below
+            }
+
+            tooltip.style.top = `${top}px`;
+            tooltip.style.left = `${left}px`;
+
+            // Auto hide after 3 seconds or click elsewhere
+            clearTimeout(tooltipTimeout);
+            tooltipTimeout = setTimeout(() => {
+                tooltip.classList.remove('active');
+            }, 3000);
+        }
+
+        // Hide tooltip on click elsewhere
+        document.addEventListener('click', function(e) {
+            const tooltip = document.getElementById('customTooltip');
+            if (tooltip && tooltip.classList.contains('active') && !e.target.classList.contains('fake-highlight')) {
+                tooltip.classList.remove('active');
+            }
+        });
     </script>
 </body>
 </html>
