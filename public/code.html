@@ -1322,6 +1322,18 @@
         </div>
     </div>
 
+    <!-- 链接与图片处理弹窗 -->
+    <div class="custom-modal" id="linkImageModal">
+        <div class="custom-modal-content">
+            <div class="custom-modal-title">检测到链接和图片</div>
+            <div class="custom-modal-message">请选择处理方式</div>
+            <div class="custom-modal-actions" style="flex-direction: column; gap: 10px;">
+                <button class="custom-modal-btn" id="linkImageAsText">作为文本（含图片）分析</button>
+                <button class="custom-modal-btn" id="linkImageAsLink">提取链接内容（忽略图片）</button>
+            </div>
+        </div>
+    </div>
+
     <script>
         // 全局变量
         let isResizing = false;
@@ -1665,6 +1677,23 @@
             };
         }
 
+        // 链接与图片处理弹窗逻辑
+        function showLinkImageModal(onAsText, onAsLink) {
+            const modal = document.getElementById('linkImageModal');
+            const asTextBtn = document.getElementById('linkImageAsText');
+            const asLinkBtn = document.getElementById('linkImageAsLink');
+            modal.classList.add('active');
+            // 解绑旧事件，防止多次绑定
+            asTextBtn.onclick = function() {
+                modal.classList.remove('active');
+                if (onAsText) onAsText();
+            };
+            asLinkBtn.onclick = function() {
+                modal.classList.remove('active');
+                if (onAsLink) onAsLink();
+            };
+        }
+
         // 按钮功能
         function initButtons() {
             // 清空按钮
@@ -1699,7 +1728,33 @@
                     showToast('内容未变化，无需重复检测', 'info');
                     return;
                 }
-                // 检查是否为URL
+                
+                // 检查是否为URL且有图片上传
+                if (isURL(textContent) && uploadedImages.length > 0) {
+                    // 辅助函数：记录本次内容和图片
+                    const recordCurrentState = function() {
+                        lastTextContent = textContent;
+                        lastImages = uploadedImages.map(img => img.url);
+                    };
+                    // 显示链接与图片处理弹窗
+                    showLinkImageModal(
+                        // 作为文本和图片一起分析
+                        function() {
+                            window.lastExtractedUrl = null;
+                            analyzeContent(textContent, uploadedImages);
+                            recordCurrentState();
+                        },
+                        // 作为链接提取，忽略图片
+                        function() {
+                            window.lastExtractedUrl = textContent;
+                            extractContent(textContent);
+                            recordCurrentState();
+                        }
+                    );
+                    return;
+                }
+                
+                // 检查是否为URL（无图片）
                 if (isURL(textContent)) {
                     window.lastExtractedUrl = textContent; // 保存URL供后续使用
                     extractContent(textContent);
