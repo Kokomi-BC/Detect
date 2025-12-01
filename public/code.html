@@ -726,6 +726,15 @@
         .custom-modal-btn:hover {
             background: var(--accent-hover);
         }
+        
+        .custom-modal-btn.secondary {
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+        }
+        .custom-modal-btn.secondary:hover {
+            background: var(--border-color);
+        }
 
         /* 响应式设计 */
         @media (max-width: 768px) {
@@ -966,22 +975,43 @@
             transition: width 0.5s ease;
         }
 
+        .cancel-extract-btn {
+            margin-top: 24px;
+            padding: 8px 24px;
+            background: transparent;
+            border: 1px solid var(--border-color);
+            color: var(--text-secondary);
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.2s;
+            opacity: 0;
+            animation: fadeInUp 0.3s 0.5s forwards;
+        }
+        
+        .cancel-extract-btn:hover {
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+            border-color: var(--text-secondary);
+        }
+
         /* 自定义 Tooltip (圆角胶囊) */
         .custom-tooltip {
             position: absolute;
-            background-color: var(--bg-secondary);
-            color: var(--text-primary);
+            background-color: #ffff00;
+            color: #000000;
             padding: 8px 16px;
             border-radius: 20px;
             font-size: 13px;
             box-shadow: var(--shadow-md);
-            border: 1px solid var(--border-color);
+            border: none;
             z-index: 1000;
             max-width: 300px;
-            pointer-events: none;
+            pointer-events: auto;
             opacity: 0;
             transform: translateY(10px);
             transition: opacity 0.2s, transform 0.2s;
+            font-weight: 500;
         }
 
         .custom-tooltip.active {
@@ -1289,6 +1319,7 @@
                     <div class="progress-container">
                         <div class="progress-bar" id="progressBar"></div>
                     </div>
+                    <button class="cancel-extract-btn" id="cancelExtractBtn" style="display: none;">取消</button>
                 </div>
 
                 <!-- 错误状态 -->
@@ -1649,19 +1680,62 @@
         }
 
         // 自定义弹窗逻辑
-        function showCustomModal(onConfirm, onCancel) {
+        function showCustomModal(options) {
+            // 兼容旧用法: showCustomModal(onConfirm, onCancel)
+            if (typeof options === 'function') {
+                options = {
+                    onConfirm: options,
+                    onCancel: arguments[1],
+                    title: '确认操作',
+                    message: '确定要清空所有内容吗？',
+                    confirmText: '确定',
+                    cancelText: '取消'
+                };
+            }
+
             const modal = document.getElementById('customModal');
+            const titleEl = modal.querySelector('.custom-modal-title');
+            const messageEl = modal.querySelector('.custom-modal-message');
             const confirmBtn = document.getElementById('modalConfirm');
             const cancelBtn = document.getElementById('modalCancel');
+            
+            // 查找或创建第三个按钮
+            let optionBtn = document.getElementById('modalOption');
+            if (!optionBtn) {
+                optionBtn = document.createElement('button');
+                optionBtn.id = 'modalOption';
+                optionBtn.className = 'custom-modal-btn secondary';
+                optionBtn.style.display = 'none';
+                // 插入到 confirmBtn 之前
+                confirmBtn.parentNode.insertBefore(optionBtn, confirmBtn);
+            }
+
+            titleEl.textContent = options.title || '确认操作';
+            messageEl.textContent = options.message || '确定要清空所有内容吗？';
+            confirmBtn.textContent = options.confirmText || '确定';
+            cancelBtn.textContent = options.cancelText || '取消';
+
+            if (options.optionText) {
+                optionBtn.textContent = options.optionText;
+                optionBtn.style.display = 'inline-block';
+                optionBtn.onclick = function() {
+                    modal.classList.remove('active');
+                    if (options.onOption) options.onOption();
+                };
+            } else {
+                optionBtn.style.display = 'none';
+            }
+
             modal.classList.add('active');
-            // 解绑旧事件，防止多次绑定
+            
+            // 解绑旧事件
             confirmBtn.onclick = function() {
                 modal.classList.remove('active');
-                if (onConfirm) onConfirm();
+                if (options.onConfirm) options.onConfirm();
             };
             cancelBtn.onclick = function() {
                 modal.classList.remove('active');
-                if (onCancel) onCancel();
+                if (options.onCancel) options.onCancel();
             };
         }
 
@@ -1688,20 +1762,50 @@
             document.getElementById('detectBtn').addEventListener('click', function() {
                 const textContent = document.getElementById('textInput').innerText.trim();
                 // 优先判断内容是否为空
-                if (!textContent && uploadedImages.length === 0) {
-                    showToast('请输入内容或上传图片', 'warning');
+                if (!textContent) {
+                    if (uploadedImages.length > 0) {
+                        showToast('请添加相关的文本内容以进行检测', 'warning');
+                    } else {
+                        showToast('请输入需要检测的新闻内容', 'warning');
+                    }
                     return;
                 }
                 // 判断内容和图片是否有变化
                 const imagesNow = uploadedImages.map(img => img.url).join(',');
                 const imagesLast = lastImages.join(',');
-                if (textContent === lastTextContent && imagesNow === imagesLast) {
+                // 检查右侧是否为空（初始状态是否显示）
+                const isResultEmpty = document.getElementById('initialState').style.display !== 'none';
+                
+                if (textContent === lastTextContent && imagesNow === imagesLast && !isResultEmpty) {
                     showToast('内容未变化，无需重复检测', 'info');
                     return;
                 }
                 // 检查是否为URL
                 if (isURL(textContent)) {
-                    window.lastExtractedUrl = textContent; // 保存URL供后续使用
+                    if (uploadedImages.length > 0) {
+                        // 弹出询问对话框
+                        showCustomModal({
+                            title: '检测到链接和图片',
+                            message: '您输入了链接同时也上传了图片，请选择处理方式：',
+                            confirmText: '仅提取链接内容', // 对应 extractContent
+                            optionText: '图文混合分析', // 对应 analyzeContent
+                            cancelText: '取消',
+                            onConfirm: () => {
+                                window.lastExtractedUrl = textContent;
+                                extractContent(textContent);
+                            },
+                            onOption: () => {
+                                window.lastExtractedUrl = null;
+                                analyzeContent(textContent, uploadedImages);
+                            },
+                            onCancel: () => {
+                                // 取消，不做任何事
+                            }
+                        });
+                        return;
+                    }
+                    
+                    window.lastExtractedUrl = textContent;
                     extractContent(textContent);
                 } else {
                     window.lastExtractedUrl = null;
@@ -1732,6 +1836,7 @@
             const errorState = document.getElementById('errorState');
             const progressBar = document.getElementById('progressBar');
             const loadingText = document.getElementById('loadingText');
+            const cancelBtn = document.getElementById('cancelExtractBtn');
 
             // 重置状态
             initialState.style.display = 'none';
@@ -1739,8 +1844,11 @@
             errorState.classList.remove('active');
             loadingState.classList.add('active');
             
+            // 显示取消按钮
+            if (cancelBtn) cancelBtn.style.display = 'block';
+            
             // 初始化进度条
-            progressBar.style.width = '10%';
+            progressBar.style.width = '0%';
             loadingText.textContent = '正在解析网页内容...';
 
             detectBtn.classList.add('loading');
@@ -1753,10 +1861,41 @@
                     progress += 1;
                     progressBar.style.width = progress + '%';
                 }
-            }, 800);
+            }, 200);
 
             let timeoutId;
             let finished = false;
+            
+            // 取消处理逻辑
+            function handleCancel() {
+                if (finished) return;
+                finished = true;
+                clearTimeout(timeoutId);
+                clearInterval(progressInterval);
+                
+                loadingState.classList.remove('active');
+                detectBtn.classList.remove('loading');
+                detectBtn.innerHTML = '开始检测';
+                if (cancelBtn) cancelBtn.style.display = 'none';
+                
+                // 恢复初始状态
+                initialState.style.display = 'flex';
+                
+                showToast('用户已取消', 'info');
+            }
+
+            // 绑定取消按钮事件
+            if (cancelBtn) {
+                cancelBtn.onclick = function() {
+                    if (finished) return;
+                    if (window.electronAPI) {
+                        window.electronAPI.send('cancel-extraction');
+                    } else {
+                        handleCancel();
+                    }
+                };
+            }
+
             // 超时处理函数
             function handleTimeout() {
                 if (finished) return;
@@ -1765,6 +1904,7 @@
                 loadingState.classList.remove('active');
                 detectBtn.classList.remove('loading');
                 detectBtn.innerHTML = '开始检测';
+                if (cancelBtn) cancelBtn.style.display = 'none';
                 showError('网页内容提取超时，请稍后重试');
                 showToast('提取失败：超时', 'error');
             }
@@ -1773,12 +1913,14 @@
             // 调用主进程的内容提取功能
             if (window.electronAPI) {
                 window.electronAPI.send('extract-content', url);
+                
                 // 监听一次性结果（防止多次触发）
                 const handler = function(event, result) {
                     if (finished) return;
                     finished = true;
                     clearTimeout(timeoutId);
                     clearInterval(progressInterval);
+                    if (cancelBtn) cancelBtn.style.display = 'none';
                     
                     if (result.success) {
                         // 提取成功，进度设为50%
@@ -1790,15 +1932,26 @@
                         // 传递 true 表示从提取流程进入
                         analyzeContent(result.content, result.images, true);
                     } else {
+                        if (result.error === '提取已取消') return; // 由 cancelled 事件处理
+                        
                         detectBtn.classList.remove('loading');
                         detectBtn.innerHTML = '开始检测';
                         showError(result.error);
                         showToast('提取失败: ' + result.error, 'error');
                     }
                     window.electronAPI.off && window.electronAPI.off('extract-content-result', handler);
+                    window.electronAPI.off && window.electronAPI.off('extraction-cancelled', cancelListener);
                 };
+                
+                const cancelListener = function() {
+                    handleCancel();
+                    window.electronAPI.off && window.electronAPI.off('extract-content-result', handler);
+                    window.electronAPI.off && window.electronAPI.off('extraction-cancelled', cancelListener);
+                };
+
                 // 兼容性：如无off方法则不解绑
                 window.electronAPI.on('extract-content-result', handler);
+                window.electronAPI.once('extraction-cancelled', cancelListener);
             } else {
                 // 模拟提取结果
                 setTimeout(() => {
@@ -1806,6 +1959,7 @@
                     finished = true;
                     clearTimeout(timeoutId);
                     clearInterval(progressInterval);
+                    if (cancelBtn) cancelBtn.style.display = 'none';
                     
                     // 模拟数据
                     const mockResult = {
@@ -1828,7 +1982,8 @@
         // 初始化IPC通信
         function initIPC() {
             if (window.electronAPI) {
-                // 监听内容提取结果
+                // 监听内容提取结果 - 已移至 extractContent 函数中单独处理，避免冲突
+                /*
                 window.electronAPI.on('extract-content-result', function(event, result) {
                     const detectBtn = document.getElementById('detectBtn');
                     detectBtn.classList.remove('loading');
@@ -1843,6 +1998,7 @@
                         showToast('提取失败: ' + result.error, 'error');
                     }
                 });
+                */
 
                 // 监听清除内容（直接清空）事件，保留以兼容旧逻辑
                 window.electronAPI.on('clear-results', function() {
@@ -2168,7 +2324,7 @@
                     progress += 0.5; // 慢一点
                     progressBar.style.width = progress + '%';
                 }
-            }, 600);
+            }, 100);
 
             try {
                 let imageUrls = [];
@@ -2244,15 +2400,24 @@
             scoreCircle.textContent = percentage + '%';
             scoreValue.textContent = percentage + '%';
             
-            // Type handling
+            // Reset classes
+            scoreCircle.className = 'score-circle';
+            
+            // Color logic based on percentage
+            if (percentage >= 75) {
+                scoreCircle.classList.add('real');
+            } else if (percentage >= 50) {
+                scoreCircle.classList.add('uncertain');
+            } else {
+                scoreCircle.classList.add('fake');
+            }
+            
+            // Type handling for description
             if (result.type === 1) { // True
-                scoreCircle.className = 'score-circle real';
                 scoreDescription.innerHTML = `<strong>可信度高</strong><br>${result.explanation}`;
             } else if (result.type === 2) { // Partial
-                scoreCircle.className = 'score-circle uncertain';
                 scoreDescription.innerHTML = `<strong>部分存疑</strong><br>${result.explanation}`;
             } else { // Fake
-                scoreCircle.className = 'score-circle fake';
                 scoreDescription.innerHTML = `<strong>疑似虚假</strong><br>${result.explanation}`;
             }
             
@@ -2337,7 +2502,6 @@
         }
 
         // Tooltip Logic
-        let tooltipTimeout;
         function showReasonTooltip(event, element) {
             event.stopPropagation();
             const reason = element.getAttribute('data-reason');
@@ -2372,17 +2536,16 @@
 
             tooltip.style.top = `${top}px`;
             tooltip.style.left = `${left}px`;
-
-            // Auto hide after 3 seconds or click elsewhere
-            clearTimeout(tooltipTimeout);
-            tooltipTimeout = setTimeout(() => {
-                tooltip.classList.remove('active');
-            }, 3000);
         }
 
         // Hide tooltip on click elsewhere
         document.addEventListener('click', function(e) {
             const tooltip = document.getElementById('customTooltip');
+            // 如果点击的是 tooltip 内部，不关闭
+            if (tooltip && tooltip.contains(e.target)) {
+                return;
+            }
+            
             if (tooltip && tooltip.classList.contains('active') && !e.target.classList.contains('fake-highlight')) {
                 tooltip.classList.remove('active');
             }

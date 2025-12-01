@@ -66,6 +66,13 @@ class ExtractionManager {
       return result;
       
     } catch (error) {
+      // 如果是取消操作，不记录错误，返回特定状态
+      if (this.isExtractionCancelled || error.message === '提取已取消') {
+        console.log('内容提取已取消');
+        this.cleanupExtraction();
+        return { success: false, error: '提取已取消' };
+      }
+
       console.error('内容提取失败:', error);
       
       // 清理资源
@@ -138,11 +145,21 @@ class ExtractionManager {
     let lastError = null;
 
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      // 检查是否已取消
+      if (this.isExtractionCancelled) {
+        throw new Error('提取已取消');
+      }
+
       try {
         await this.loadPage(url, isWechatArticle);
         break; // 成功则跳出重试循环
         
       } catch (error) {
+        // 检查是否已取消
+        if (this.isExtractionCancelled) {
+          throw new Error('提取已取消');
+        }
+
         lastError = error;
         console.error(`第${attempt}次加载失败:`, error.message);
         
@@ -150,6 +167,11 @@ class ExtractionManager {
           const waitTime = isWechatArticle ? 3000 : 2000;
           await new Promise(resolve => setTimeout(resolve, waitTime));
           
+          // 等待期间再次检查取消状态
+          if (this.isExtractionCancelled) {
+            throw new Error('提取已取消');
+          }
+
           // 重新创建窗口以清理状态
           this.recreateExtractionWindow(url);
         }
