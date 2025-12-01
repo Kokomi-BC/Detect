@@ -234,7 +234,7 @@ class DetectApp {
       }));
     }
     
-    // 添加清除结果选项（仅在右侧界面有内容时显示）
+    // 添加清除内容选项（仅在右侧界面有内容时显示）
     // 判断是否有实际内容（检测结果、提取内容等）
     const hasContent = (params.selectionText && params.selectionText.trim()) || 
                       (params.linkURL) ||
@@ -245,9 +245,9 @@ class DetectApp {
     if (hasContent) {
       menu.append(new MenuItem({ type: 'separator' }));
       menu.append(new MenuItem({
-        label: '清除结果',
+        label: '清除内容',
         click: () => {
-          console.log('执行清除结果操作，刷新浏览器内容');
+          console.log('执行清除内容操作，刷新浏览器内容');
           // 获取主窗口并刷新浏览器内容
           const mainWindow = this.getMainWindow();
           if (mainWindow && !mainWindow.isDestroyed()) {
