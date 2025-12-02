@@ -1775,8 +1775,10 @@
                 const imagesLast = lastImages.join(',');
                 // 检查右侧是否为空（初始状态是否显示）
                 const isResultEmpty = document.getElementById('initialState').style.display !== 'none';
+                // 检查是否处于错误状态
+                const isErrorState = document.getElementById('errorState').classList.contains('active');
                 
-                if (textContent === lastTextContent && imagesNow === imagesLast && !isResultEmpty) {
+                if (textContent === lastTextContent && imagesNow === imagesLast && !isResultEmpty && !isErrorState) {
                     showToast('内容未变化，无需重复检测', 'info');
                     return;
                 }
