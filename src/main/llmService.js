@@ -6,7 +6,7 @@ class LLMService {
       apiKey: '914b3c31-1b7b-4053-81e2-ea7546afae5a',
       baseURL: 'https://ark.cn-beijing.volces.com/api/v3',
     });
-    this.model = 'doubao-seed-1-6-251015';
+    this.model = 'doubao-seed-1-6-flash-250828';
   }
 
   /**
