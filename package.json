@@ -11,7 +11,9 @@
     "build:electron": "electron-builder",
     "start": "electron .",
     "prepublishOnly": "npm run build",
-    "prepare": "npm run build"
+    "prepare": "npm run build",
+    "setup:python": "bash scripts/setup-python.sh",
+    "setup:python:win": "scripts\\setup-python.bat"
   },
   "keywords": [
     "electron",
