@@ -4,7 +4,7 @@
   "description": "假新闻检测应用",
   "main": "src/main/index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "node test-integration.js",
     "dev": "cross-env NODE_ENV=development concurrently \"webpack serve --mode development\" \"wait-on http://localhost:8080 && electron .\"",
     "build:renderer": "webpack --mode production",
     "build": "npm run build:renderer",
