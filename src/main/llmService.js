@@ -1,12 +1,17 @@
-const OpenAI = require('openai');
+const PythonBridge = require('./pythonBridge');
 
 class LLMService {
   constructor() {
-    this.client = new OpenAI({
-      apiKey: '914b3c31-1b7b-4053-81e2-ea7546afae5a',
-      baseURL: 'https://ark.cn-beijing.volces.com/api/v3',
+    // Initialize Python bridge with configuration
+    this.pythonBridge = new PythonBridge({
+      pythonPath: 'python3',
+      timeout: 120000, // 2 minutes
+      maxRetries: 3,
+      poolSize: 2
     });
-    this.model = 'doubao-seed-1-6-flash-250828';
+    
+    // Keep legacy client for backward compatibility if needed
+    this.usePythonBridge = true;
   }
 
   /**
@@ -14,67 +19,61 @@ class LLMService {
    * @param {string} text 文本内容
    * @param {string[]} imageUrls 图片URL数组
    * @param {string} sourceUrl 来源URL（可选）
+   * @param {boolean} useWebSearch 是否使用网络搜索（默认true）
+   * @param {boolean} stream 是否使用流式响应（默认false）
    * @returns {Promise<Object>} 分析结果
    */
-  async analyzeContent(text, imageUrls = [], sourceUrl = '') {
-    const currentDate = new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' });
-    const systemPrompt = `你是一个专业的新闻真伪检测助手。当前时间是：${currentDate}。
-请分析用户提供的文本和图片${sourceUrl ? `（来源链接：${sourceUrl}）` : ''}。
-请判断该新闻的真假，并返回严格的JSON格式响应（不要包含markdown代码块标记），包含以下字段：
-
-1. probability: (0-1之间的浮点数) 新闻为真的概率。
-2. type: (整数) 
-   - 1: 大概率为真 (Probability >= 0.8)
-   - 2: 部分为假 (0.2 < Probability < 0.8)
-   - 3: 大概率为假 (Probability <= 0.2)
-3. explanation: (字符串) 简短的判断理由（为什么是真新闻，或者为什么是假新闻）。
-4. analysis_points: (数组) 包含3个关键维度的详细分析点，每个对象包含：
-   - "description": "分析描述"
-   - "status": "positive" (正面/可靠) | "warning" (存疑/需核实) | "negative" (负面/虚假)
-   请从以下维度进行分析：内容来源可靠性、语言表达客观性、图文一致性/信息核实情况。
-5. fake_parts: (数组) 仅在type为2或3时提供，用于标出虚假内容。每个元素为对象：
-   - "text": "原文中被认为是虚假的具体片段（必须与原文完全一致以便定位）"
-   - "reason": "该片段为假的原因"
-
-请确保返回的是合法的JSON字符串。`;
-
-    const userContent = [];
-    
-    if (sourceUrl) {
-        userContent.push({ type: 'text', text: `[来源链接]: ${sourceUrl}\n` });
-    }
-
-    if (text) {
-      userContent.push({ type: 'text', text: text });
-    }
-
-    if (imageUrls && imageUrls.length > 0) {
-      for (const url of imageUrls) {
-        userContent.push({
-          type: 'image_url',
-          image_url: { url: url }
-        });
-      }
-    }
-
-    if (userContent.length === 0) {
+  async analyzeContent(text, imageUrls = [], sourceUrl = '', useWebSearch = true, stream = false) {
+    if (!text && (!imageUrls || imageUrls.length === 0)) {
       throw new Error('没有提供文本或图片进行分析');
     }
 
     try {
-      const response = await this.client.chat.completions.create({
-        model: this.model,
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: userContent }
-        ],
-      });
+      if (this.usePythonBridge) {
+        // Use Python bridge for analysis with web search support
+        const result = await this.pythonBridge.call({
+          text: text || '',
+          imageUrls: imageUrls || [],
+          sourceUrl: sourceUrl || '',
+          useWebSearch: useWebSearch,
+          stream: stream
+        });
 
-      const content = response.choices[0].message.content;
-      return this.parseResponse(content);
+        // Check if result is successful
+        if (result.success === false) {
+          throw new Error(result.error || 'Python 服务返回错误');
+        }
+
+        return result;
+      } else {
+        // Legacy path (kept for backward compatibility)
+        throw new Error('Legacy OpenAI client mode is not implemented');
+      }
     } catch (error) {
       console.error('LLM API调用失败:', error);
       throw error;
+    }
+  }
+
+  /**
+   * Subscribe to streaming events
+   * @param {string} event Event name
+   * @param {Function} callback Event callback
+   */
+  on(event, callback) {
+    if (this.pythonBridge) {
+      this.pythonBridge.on(event, callback);
+    }
+  }
+
+  /**
+   * Unsubscribe from streaming events
+   * @param {string} event Event name
+   * @param {Function} callback Event callback
+   */
+  off(event, callback) {
+    if (this.pythonBridge) {
+      this.pythonBridge.off(event, callback);
     }
   }
 
@@ -101,6 +100,15 @@ class LLMService {
         }
       }
       return { error: '解析响应失败', raw: content };
+    }
+  }
+
+  /**
+   * Clean up resources
+   */
+  destroy() {
+    if (this.pythonBridge) {
+      this.pythonBridge.destroy();
     }
   }
 }
