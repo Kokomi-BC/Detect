@@ -8,10 +8,11 @@
 export ARK_API_KEY="your-api-key-here"
 ```
 
-或者在 `.env` 文件中设置：
+或者创建 `.env` 文件（可以复制 `.env.example`）：
 
-```
-ARK_API_KEY=your-api-key-here
+```bash
+cp .env.example .env
+# 编辑 .env 文件，填入你的 API 密钥
 ```
 
 ## Python 依赖安装

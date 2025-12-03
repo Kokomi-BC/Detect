@@ -124,6 +124,8 @@ class PythonBridge extends EventEmitter {
    */
   _spawnProcess(params, slotIndex) {
     return new Promise((resolve, reject) => {
+      let pythonProcess = null;
+      
       const timeoutId = setTimeout(() => {
         if (pythonProcess && !pythonProcess.killed) {
           pythonProcess.kill();
@@ -136,7 +138,7 @@ class PythonBridge extends EventEmitter {
       let eventBuffer = '';
 
       // Spawn Python process
-      const pythonProcess = spawn(this.pythonPath, [this.scriptPath], {
+      pythonProcess = spawn(this.pythonPath, [this.scriptPath], {
         stdio: ['pipe', 'pipe', 'pipe'],
         env: { ...process.env, PYTHONIOENCODING: 'utf-8' }
       });
@@ -230,7 +232,7 @@ class PythonBridge extends EventEmitter {
           text: params.text || '',
           imageUrls: params.imageUrls || [],
           sourceUrl: params.sourceUrl || '',
-          useWebSearch: params.useWebSearch !== false,
+          useWebSearch: params.useWebSearch ?? true,
           stream: params.stream || false
         });
         

@@ -27,14 +27,18 @@ class LLMService:
             api_key: API key for the service (defaults to env var ARK_API_KEY)
             base_url: Base URL for the API (defaults to Volcengine ARK)
         """
-        self.api_key = api_key or os.getenv("ARK_API_KEY", "914b3c31-1b7b-4053-81e2-ea7546afae5a")
+        self.api_key = api_key or os.getenv("ARK_API_KEY")
         self.base_url = base_url or "https://ark.cn-beijing.volces.com/api/v3"
         self.model = "doubao-seed-1-6-251015"
         
-        self.client = OpenAI(
-            api_key=self.api_key,
-            base_url=self.base_url
-        )
+        # Only initialize client if API key is provided
+        if self.api_key:
+            self.client = OpenAI(
+                api_key=self.api_key,
+                base_url=self.base_url
+            )
+        else:
+            self.client = None
     
     def analyze_content(
         self,
@@ -58,6 +62,13 @@ class LLMService:
             Dictionary containing analysis results
         """
         try:
+            # Check if client is initialized
+            if not self.client:
+                return {
+                    "success": False,
+                    "error": "API key not provided. Set ARK_API_KEY environment variable."
+                }
+            
             # Build system prompt
             current_date = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             system_prompt = self._build_system_prompt(current_date, source_url, use_web_search)
@@ -188,10 +199,16 @@ class LLMService:
                         "image_url": {"url": url}
                     })
                 else:
-                    # Assume it's a file path or base64 without prefix
+                    # Validate file path to prevent path traversal
                     if os.path.isfile(url):
+                        # Ensure it's an absolute path and has allowed extension
+                        abs_path = os.path.abspath(url)
+                        allowed_extensions = ('.jpg', '.jpeg', '.png', '.webp', '.gif')
+                        if not abs_path.lower().endswith(allowed_extensions):
+                            continue
+                        
                         # Read file and convert to base64
-                        with open(url, 'rb') as f:
+                        with open(abs_path, 'rb') as f:
                             image_data = base64.b64encode(f.read()).decode('utf-8')
                             user_content.append({
                                 "type": "image_url",
@@ -245,8 +262,16 @@ class LLMService:
             }
     
     def _handle_stream_response(self, api_params: Dict[str, Any]) -> Dict[str, Any]:
-        """Handle streaming API response"""
+        """
+        Handle streaming API response
+        
+        Note: Uses client.responses.create() for Volcengine ARK API which supports
+        the 'thinking' and 'web_search' features. This is specific to Volcengine's
+        extended OpenAI-compatible API.
+        """
         try:
+            # Use responses.create for Volcengine extended features
+            # Standard OpenAI would use: client.chat.completions.create(stream=True)
             response = self.client.responses.create(**api_params)
             
             thinking_text = ""
