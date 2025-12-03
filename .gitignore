@@ -50,7 +50,12 @@ temp/
 Thumbs.db
 
 # Environment files
-.env*
+.env
+.env.local
+.env.*.local
+
+# But keep the example
+!.env.example
 
 # Package files
 *.zip
