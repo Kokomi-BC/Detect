@@ -133,6 +133,8 @@
             border-bottom: 1px solid var(--border-color);
             gap: 8px;
             flex-wrap: wrap;
+            position: relative;
+            z-index: 20;
         }
 
         .toolbar-btn {
@@ -148,6 +150,38 @@
             cursor: pointer;
             transition: var(--transition);
             position: relative;
+        }
+
+        .more-menu {
+            position: relative;
+        }
+
+        .more-menu .dropdown-menu {
+            position: absolute;
+            top: calc(100% + 8px);
+            right: 0;
+            min-width: 160px;
+            display: none;
+            background: var(--bg-primary);
+            box-shadow: var(--shadow-md);
+            border-radius: 8px;
+            padding: 6px 0;
+            z-index: 999;
+        }
+
+        .more-menu .dropdown-menu.show {
+            display: block;
+        }
+
+        .more-menu .dropdown-item {
+            padding: 8px 18px;
+            cursor: pointer;
+            white-space: nowrap;
+            color: var(--text-primary);
+        }
+
+        .more-menu .dropdown-item:hover {
+            background: var(--bg-tertiary);
         }
 
         .toolbar-btn:hover {
@@ -228,6 +262,8 @@
             padding: 16px;
             overflow-y: auto;
             gap: 16px;
+            position: relative;
+            z-index: 1;
         }
 
         /* 底部操作区 */
@@ -357,6 +393,10 @@
             transition: var(--transition);
             position: relative;
             overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
         }
 
         .detect-btn:hover {
@@ -373,18 +413,13 @@
             opacity: 0.8;
         }
 
-        .detect-btn.loading::after {
+        .detect-btn.loading::before {
             content: '';
-            position: absolute;
             width: 20px;
             height: 20px;
             border: 3px solid white;
             border-top-color: transparent;
             border-radius: 50%;
-            left: 50%;
-            top: 50%;
-            margin-left: -10px;
-            margin-top: -10px;
             animation: spin 0.8s linear infinite;
         }
 
@@ -1166,45 +1201,80 @@
                         <div class="drag-overlay" id="dragOverlay">拖入图片以添加</div>
             <!-- 工具栏 -->
             <div class="toolbar">
-                <button class="toolbar-btn" id="editBtn" title="编辑选项">
+                <button class="toolbar-btn" id="imageBtn" title="添加图片">
+                    <!-- Material Icons: add_photo_alternate -->
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
-                        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                        <rect x="3" y="3" width="18" height="14" rx="2" fill="none"/>
+                        <path d="M21 19V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h11" stroke="currentColor" fill="none"/>
+                        <circle cx="8.5" cy="8.5" r="1.5" fill="none"/>
+                        <path d="M21 15l-5-6-4 5-3-4-4 6" stroke="currentColor" fill="none"/>
+                        <path d="M22 19h-6m3 3v-6" stroke="currentColor" fill="none"/>
                     </svg>
                 </button>
                 <button class="toolbar-btn" id="clipboardBtn" title="剪贴板获取">
-                    <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5">
-                        <rect x="5" y="4" width="10" height="13" rx="2"/>
-                        <rect x="7" y="2" width="6" height="3" rx="1"/>
-                        <path d="M7 7h6"/>
+                    <!-- Material Icons: content_paste -->
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="5" y="5" width="14" height="16" rx="2" fill="none"/>
+                        <rect x="9" y="2" width="6" height="4" rx="1" fill="none"/>
+                        <path d="M19 7v12a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V7" stroke="currentColor" fill="none"/>
+                        <path d="M9 4V2h6v2" stroke="currentColor" fill="none"/>
                     </svg>
                 </button>
                 <div class="toolbar-separator"></div>
-                <button class="toolbar-btn" id="imageBtn" title="添加图片">
+                <button class="toolbar-btn" id="editBtn" title="编辑选项">
+                    <!-- Material Icons: edit -->
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <line x1="12" y1="5" x2="12" y2="19" />
-                        <line x1="5" y1="12" x2="19" y2="12" />
+                        <path d="M3 17.25V21h3.75l11.06-11.06a1.003 1.003 0 0 0 0-1.42l-2.34-2.34a1.003 1.003 0 0 0-1.42 0L3 17.25z" fill="none"/>
+                        <path d="M14.06 6.19l3.75 3.75" stroke="currentColor" fill="none"/>
+                    </svg>
+                </button>
+                 <button class="toolbar-btn" id="previewBtn" title="页面预览">
+                    <!-- Material Icons: visibility -->
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M1 12c2.73-5 7.27-8 11-8s8.27 3 11 8c-2.73 5-7.27 8-11 8S3.73 17 1 12z" fill="none"/>
+                        <circle cx="12" cy="12" r="3" fill="none"/>
                     </svg>
                 </button>
                 <button class="toolbar-btn" id="themeBtn" title="切换主题">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <circle cx="12" cy="12" r="5"></circle>
-                        <line x1="12" y1="1" x2="12" y2="3"></line>
-                        <line x1="12" y1="21" x2="12" y2="23"></line>
-                        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
-                        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
-                        <line x1="1" y1="12" x2="3" y2="12"></line>
-                        <line x1="21" y1="12" x2="23" y2="12"></line>
-                        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
-                        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
-                    </svg>
+                    <!-- Material Icons: light_mode / dark_mode，动态切换 -->
+                    <span id="themeIconWrapper">
+                        <svg id="themeIconLight" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display: none;">
+                            <circle cx="12" cy="12" r="5"/>
+                            <path d="M12 1v2"/>
+                            <path d="M12 21v2"/>
+                            <path d="M4.22 4.22l1.42 1.42"/>
+                            <path d="M18.36 18.36l1.42 1.42"/>
+                            <path d="M1 12h2"/>
+                            <path d="M21 12h2"/>
+                            <path d="M4.22 19.78l1.42-1.42"/>
+                            <path d="M18.36 5.64l1.42-1.42"/>
+                        </svg>
+                        <svg id="themeIconDark" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display: none;">
+                            <path d="M9.37 5.51A7 7 0 1 0 18.49 14.63 9 9 0 0 1 9.37 5.51z"/>
+                        </svg>
+                    </span>
                 </button>
                 <button class="toolbar-btn" id="clearBtn" title="清空内容">
+                    <!-- Material Icons: delete -->
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <polyline points="3 6 5 6 21 6"></polyline>
-                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                        <path d="M6 19a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V7H6v12z" fill="none"/>
+                        <path d="M19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z" fill="none"/>
+                        <path d="M10 11v6"/>
+                        <path d="M14 11v6"/>
                     </svg>
                 </button>
+                <div class="toolbar-separator"></div>
+                <div class="toolbar-btn more-menu" id="moreBtn" title="更多操作" tabindex="0">
+                    <!-- Material Icons: more_vert -->
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="6" r="1.5"/>
+                        <circle cx="12" cy="12" r="1.5"/>
+                        <circle cx="12" cy="18" r="1.5"/>
+                    </svg>
+                    <div class="dropdown-menu" id="moreDropdown">
+                        <div class="dropdown-item" id="clearBrowserDataBtn">清除浏览器数据</div>
+                    </div>
+                </div>
             </div>
 
             <!-- 编辑选项 -->
@@ -1354,6 +1424,54 @@
     </div>
 
     <script>
+                // 更多按钮下拉菜单逻辑
+                (function initMoreMenu() {
+                    const moreBtn = document.getElementById('moreBtn');
+                    const dropdown = document.getElementById('moreDropdown');
+
+                    function toggleDropdown(forceState) {
+                        const shouldShow = typeof forceState === 'boolean' ? forceState : !dropdown.classList.contains('show');
+                        dropdown.classList.toggle('show', shouldShow);
+                    }
+
+                    moreBtn.addEventListener('click', function(e) {
+                        e.stopPropagation();
+                        toggleDropdown();
+                    });
+
+                    moreBtn.addEventListener('keydown', function(e) {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault();
+                            toggleDropdown();
+                        } else if (e.key === 'Escape') {
+                            toggleDropdown(false);
+                        }
+                    });
+
+                    document.addEventListener('pointerdown', function(e) {
+                        if (!moreBtn.contains(e.target)) {
+                            toggleDropdown(false);
+                        }
+                    });
+
+                    // 暴露关闭方法供其他逻辑复用
+                    window.__hideMoreDropdown = () => toggleDropdown(false);
+                })();
+
+                // 清除浏览器数据功能
+                document.getElementById('clearBrowserDataBtn').addEventListener('click', async function() {
+                    if (window.electronAPI) {
+                        const res = await window.electronAPI.invoke('clear-browser-data');
+                        if (res && res.success) {
+                            showToast('浏览器数据已清除', 'success');
+                        } else {
+                            showToast('清除失败: ' + (res && res.error ? res.error : '未知错误'), 'error');
+                        }
+                    } else {
+                        showToast('当前环境不支持清除浏览器数据', 'warning');
+                    }
+                    window.__hideMoreDropdown && window.__hideMoreDropdown();
+                });
         // 全局变量
         let isResizing = false;
         let uploadedImages = [];
@@ -1375,25 +1493,39 @@
         // 主题切换
         function initTheme() {
             const themeBtn = document.getElementById('themeBtn');
+            const themeIconLight = document.getElementById('themeIconLight');
+            const themeIconDark = document.getElementById('themeIconDark');
             const savedTheme = localStorage.getItem('theme') || 'light';
-            
+
+            function updateThemeIcon(isDark) {
+                if (isDark) {
+                    themeIconLight.style.display = 'none';
+                    themeIconDark.style.display = 'inline';
+                } else {
+                    themeIconLight.style.display = 'inline';
+                    themeIconDark.style.display = 'none';
+                }
+            }
+
             if (savedTheme === 'dark') {
                 document.documentElement.setAttribute('data-theme', 'dark');
-                // 同步给主进程
+                updateThemeIcon(true);
                 if (window.electronAPI) {
                     window.electronAPI.invoke('set-theme', true);
                 }
+            } else {
+                updateThemeIcon(false);
             }
 
             themeBtn.addEventListener('click', function() {
                 const currentTheme = document.documentElement.getAttribute('data-theme');
                 const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
                 const isDarkMode = newTheme === 'dark';
-                
+
                 document.documentElement.setAttribute('data-theme', newTheme);
                 localStorage.setItem('theme', newTheme);
-                
-                // 调用主进程设置原生主题
+                updateThemeIcon(isDarkMode);
+
                 if (window.electronAPI) {
                     window.electronAPI.invoke('set-theme', isDarkMode)
                         .then(result => {
@@ -1402,7 +1534,7 @@
                             }
                         });
                 }
-                
+
                 showToast(`已切换到${isDarkMode ? '深色' : '浅色'}模式`, 'success');
             });
         }
@@ -1741,6 +1873,25 @@
 
         // 按钮功能
         function initButtons() {
+            // 页面预览功能
+            document.getElementById('previewBtn').addEventListener('click', function() {
+                const text = document.getElementById('textInput').innerText.trim();
+                
+                if (!text && uploadedImages.length === 0) {
+                    showToast('没有可预览的内容', 'warning');
+                    return;
+                }
+
+                if (isURL(text)) {
+                    // URL Preview
+                    extractContent(text, true);
+                } else {
+                    // Local Preview
+                    renderPreview(text, uploadedImages);
+                    showToast('已生成本地预览', 'success');
+                }
+            });
+
             // 清空按钮
             document.getElementById('clearBtn').addEventListener('click', function() {
                 showCustomModal(() => {
@@ -1830,7 +1981,7 @@
         }
 
         // 内容提取功能
-        function extractContent(url) {
+        function extractContent(url, isPreview = false) {
             const detectBtn = document.getElementById('detectBtn');
             const initialState = document.getElementById('initialState');
             const resultItem = document.getElementById('resultItem');
@@ -1851,10 +2002,10 @@
             
             // 初始化进度条
             progressBar.style.width = '0%';
-            loadingText.textContent = '正在解析网页内容...';
+            loadingText.textContent = isPreview ? '正在解析网页以预览...' : '正在解析网页内容...';
 
             detectBtn.classList.add('loading');
-            detectBtn.innerHTML = '提取中...';
+            detectBtn.innerHTML = isPreview ? '预览中...' : '提取中...';
 
             // 模拟进度增长
             let progress = 10;
@@ -1925,14 +2076,23 @@
                     if (cancelBtn) cancelBtn.style.display = 'none';
                     
                     if (result.success) {
-                        // 提取成功，进度设为50%
-                        progressBar.style.width = '50%';
-                        loadingText.textContent = '正在分析新闻中...';
-                        
-                        // showExtractedResult(result);
-                        showToast('提取完成，正在进行AI分析...', 'success');
-                        // 传递 true 表示从提取流程进入
-                        analyzeContent(result.content, result.images, true);
+                        if (isPreview) {
+                            progressBar.style.width = '100%';
+                            loadingState.classList.remove('active');
+                            detectBtn.classList.remove('loading');
+                            detectBtn.innerHTML = '开始检测';
+                            renderPreview(result.content, result.images, result.title);
+                            showToast('网页预览已生成', 'success');
+                        } else {
+                            // 提取成功，进度设为50%
+                            progressBar.style.width = '50%';
+                            loadingText.textContent = '正在分析新闻中...';
+                            
+                            // showExtractedResult(result);
+                            showToast('提取完成，正在进行AI分析...', 'success');
+                            // 传递 true 表示从提取流程进入
+                            analyzeContent(result.content, result.images, true);
+                        }
                     } else {
                         if (result.error === '提取已取消') return; // 由 cancelled 事件处理
                         
@@ -1972,13 +2132,63 @@
                         url: url
                     };
                     
-                    progressBar.style.width = '50%';
-                    loadingText.textContent = '正在分析新闻中...';
-                    
-                    showToast('提取完成', 'success');
-                    analyzeContent(mockResult.content, mockResult.images, true);
+                    if (isPreview) {
+                        progressBar.style.width = '100%';
+                        loadingState.classList.remove('active');
+                        detectBtn.classList.remove('loading');
+                        detectBtn.innerHTML = '开始检测';
+                        renderPreview(mockResult.content, mockResult.images, mockResult.title);
+                        showToast('网页预览已生成', 'success');
+                    } else {
+                        progressBar.style.width = '50%';
+                        loadingText.textContent = '正在分析新闻中...';
+                        
+                        showToast('提取完成', 'success');
+                        analyzeContent(mockResult.content, mockResult.images, true);
+                    }
                 }, 2000);
             }
+        }
+
+        // 渲染预览内容（隐藏评分和观点）
+        function renderPreview(text, images, title = null) {
+            const initialState = document.getElementById('initialState');
+            const resultItem = document.getElementById('resultItem');
+            const parsedContent = document.getElementById('parsedContent');
+            const parsedTitle = document.getElementById('parsedTitle');
+            const parsedText = document.getElementById('parsedText');
+            const parsedImages = document.getElementById('parsedImages');
+            
+            // Hide Score and Analysis
+            const scoreSection = resultItem.querySelector('.result-score');
+            const analysisSection = resultItem.querySelector('.result-analysis');
+            if(scoreSection) scoreSection.style.display = 'none';
+            if(analysisSection) analysisSection.style.display = 'none';
+
+            // Show Content
+            parsedContent.style.display = 'block';
+            parsedTitle.textContent = title || '';
+            parsedTitle.style.display = title ? 'block' : 'none';
+            parsedText.textContent = text || '';
+            
+            // Render Images
+            parsedImages.innerHTML = '';
+            let imagesToRender = [];
+            if (images && images.length > 0) {
+                 const limitedImages = images.slice(0, 4);
+                 imagesToRender = limitedImages.map(img => typeof img === 'string' ? {url: img, name: 'Image'} : img);
+            }
+            
+            imagesToRender.forEach(img => {
+                const item = document.createElement('div');
+                item.className = 'parsed-image-item';
+                item.innerHTML = `<img src="${img.url}" alt="${img.name}">`;
+                item.addEventListener('click', () => showImageModal(img.url));
+                parsedImages.appendChild(item);
+            });
+            
+            initialState.style.display = 'none';
+            resultItem.classList.add('active');
         }
 
         // 初始化IPC通信
@@ -2393,6 +2603,12 @@
             const parsedText = document.getElementById('parsedText');
             const parsedImages = document.getElementById('parsedImages');
             
+            // Ensure Score and Analysis are visible (in case they were hidden by preview)
+            const scoreSection = resultItem.querySelector('.result-score');
+            const analysisSection = resultItem.querySelector('.result-analysis');
+            if(scoreSection) scoreSection.style.display = 'flex';
+            if(analysisSection) analysisSection.style.display = 'block';
+
             const scoreCircle = document.getElementById('scoreCircle');
             const scoreValue = document.getElementById('scoreValue');
             const scoreDescription = document.getElementById('scoreDescription');

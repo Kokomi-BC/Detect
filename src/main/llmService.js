@@ -36,7 +36,7 @@ class LLMService {
    - "text": "原文中被认为是虚假的具体片段（必须与原文完全一致以便定位）"
    - "reason": "该片段为假的原因"
 
-请确保返回的是合法的JSON字符串。`;
+请务必确保返回的是合法的JSON字符串。`;
 
     const userContent = [];
     
