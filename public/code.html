@@ -334,6 +334,26 @@
             box-shadow: var(--shadow-md);
         }
 
+        .image-preview-item.selected {
+            border: 2px solid var(--accent-color);
+            transform: translateY(-4px) scale(1.02);
+            box-shadow: var(--shadow-md);
+        }
+        
+        .image-preview-item.dragging {
+            opacity: 0.5;
+            border: 2px dashed var(--accent-color);
+        }
+
+        .image-placeholder {
+            border: 2px dashed var(--accent-color);
+            background: rgba(67, 97, 238, 0.1);
+            border-radius: var(--radius-md);
+            aspect-ratio: 1;
+            transition: all 0.1s;
+            box-sizing: border-box;
+        }
+
         .image-delete-btn {
             position: absolute;
             top: 6px;
@@ -995,63 +1015,7 @@
             color: var(--text-secondary);
             max-width: 300px;
         }
-        /* 入场动画优化 */
-        @keyframes slideInLeft {
-            from { opacity: 0; transform: translateX(-20px); filter: blur(5px); }
-            to { opacity: 1; transform: translateX(0); filter: blur(0); }
-        }
 
-        @keyframes slideInRight {
-            from { opacity: 0; transform: translateX(20px); filter: blur(5px); }
-            to { opacity: 1; transform: translateX(0); filter: blur(0); }
-        }
-
-        @keyframes fadeInUp {
-            from { opacity: 0; transform: translateY(15px); filter: blur(5px); }
-            to { opacity: 1; transform: translateY(0); filter: blur(0); }
-        }
-
-        @keyframes scaleIn {
-            from { opacity: 0; transform: scale(0.95); }
-            to { opacity: 1; transform: scale(1); }
-        }
-
-        .left-panel {
-            animation: slideInLeft 0.6s cubic-bezier(0.2, 0.8, 0.2, 1);
-        }
-
-        .right-panel {
-            animation: slideInRight 0.6s cubic-bezier(0.2, 0.8, 0.2, 1);
-        }
-
-        .toolbar {
-            opacity: 0;
-            animation: fadeInUp 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) 0.1s forwards;
-        }
-
-        .content-area {
-            opacity: 0;
-            animation: fadeInUp 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) 0.2s forwards;
-        }
-
-        .bottom-area {
-            opacity: 0;
-            animation: fadeInUp 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) 0.3s forwards;
-        }
-
-        .result-header {
-            opacity: 0;
-            animation: fadeInUp 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) 0.2s forwards;
-        }
-
-        .initial-state {
-            opacity: 0;
-            animation: scaleIn 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) 0.4s forwards;
-        }
-
-        /* --- 修复与优化样式 --- */
-
-        /* 1. 修复更多菜单被遮挡的问题 */
         .toolbar-btn.more-menu {
             overflow: visible; /* 允许下拉菜单超出按钮范围 */
         }
@@ -1389,7 +1353,17 @@
             <div class="result-content">
                 <!-- 初始状态 -->
                 <div class="initial-state" id="initialState">
-                    <div class="initial-icon">🔍</div>
+                    <div class="initial-icon">
+                        <!-- 彩色放大镜SVG -->
+                                                <!-- 在线彩色放大镜图标，线性风格，主色蓝辅色黄 -->
+                                                <svg width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                                    <circle cx="28" cy="28" r="16" stroke="#2196f3" stroke-width="3" fill="#e3f6fd"/>
+                                                    <circle cx="28" cy="28" r="8" stroke="#2196f3" stroke-width="2" fill="#fff"/>
+                                                    <circle cx="28" cy="28" r="3" fill="#4fc3f7"/>
+                                                    <rect x="38" y="38" width="12" height="5" rx="2.5" transform="rotate(45 38 38)" fill="#fffde7" stroke="#ffc107" stroke-width="2"/>
+                                                    <line x1="36" y1="36" x2="48" y2="48" stroke="#2196f3" stroke-width="2.5" stroke-linecap="round"/>
+                                                </svg>
+                    </div>
                     <div class="initial-title">准备就绪</div>
                     <div class="initial-description">
                         在左侧输入新闻内容或上传相关图片，点击"开始检测"按钮即可进行假新闻分析。
@@ -1535,6 +1509,8 @@
         // 全局变量
         let isResizing = false;
         let uploadedImages = [];
+        let selectedImages = new Set();
+        let draggedItem = null;
         const maxImages = 4;
         let detectedUrls = [];
 
@@ -1548,6 +1524,19 @@
             initModal();
             initIPC();
             initClipboardBtn();
+
+            // Global context menu for images
+            document.addEventListener('contextmenu', function(e) {
+                if (e.target.tagName === 'IMG') {
+                    // Check if it's in left panel (already handled)
+                    if (e.target.closest('.image-preview-item')) return;
+                    
+                    e.preventDefault();
+                    if (window.electronAPI) {
+                        window.electronAPI.send('show-image-context-menu', { src: e.target.src, type: 'normal' });
+                    }
+                }
+            });
         });
 
         // 主题切换
@@ -1729,12 +1718,236 @@
             });
         }
 
+        // 渲染图片
+        function renderImages() {
+            const imagePreview = document.getElementById('imagePreview');
+            
+            // If we are dragging, we don't want to full re-render as it kills the drag state
+            // But we need to update selection styles
+            if (draggedItem) {
+                const items = imagePreview.querySelectorAll('.image-preview-item');
+                items.forEach(item => {
+                    const id = parseFloat(item.dataset.id);
+                    if (selectedImages.has(id)) item.classList.add('selected');
+                    else item.classList.remove('selected');
+                });
+                return;
+            }
+
+            imagePreview.innerHTML = '';
+            uploadedImages.forEach((image, index) => {
+                const item = document.createElement('div');
+                item.className = 'image-preview-item';
+                if (selectedImages.has(image.id)) {
+                    item.classList.add('selected');
+                }
+                item.draggable = true;
+                item.dataset.id = image.id;
+                item.dataset.index = index;
+
+                item.innerHTML = `
+                    <img src="${image.url}" alt="${image.name}">
+                    <button class="image-delete-btn" data-id="${image.id}">×</button>
+                `;
+                
+                // Click to select
+                item.addEventListener('click', function(e) {
+                    if (e.target.classList.contains('image-delete-btn')) return;
+                    if (e.ctrlKey || e.metaKey) {
+                        if (selectedImages.has(image.id)) selectedImages.delete(image.id);
+                        else selectedImages.add(image.id);
+                    } else {
+                        selectedImages.clear();
+                        selectedImages.add(image.id);
+                    }
+                    renderImages();
+                });
+
+                item.addEventListener('dblclick', () => showImageModal(image.url));
+                
+                item.querySelector('.image-delete-btn').addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    deleteImage(image.id);
+                });
+
+                // Drag events
+                item.addEventListener('dragstart', function(e) {
+                    draggedItem = image;
+                    item.classList.add('dragging');
+                    e.dataTransfer.effectAllowed = 'move';
+                    e.dataTransfer.setData('text/plain', image.id);
+                    
+                    // Select if not selected
+                    if (!selectedImages.has(image.id)) {
+                        selectedImages.clear();
+                        selectedImages.add(image.id);
+                        // Update styles manually to avoid re-render
+                        document.querySelectorAll('.image-preview-item').forEach(el => el.classList.remove('selected'));
+                        item.classList.add('selected');
+                    }
+
+                    // Create placeholder immediately
+                    setTimeout(() => {
+                        item.style.display = 'none';
+                        createPlaceholder(index);
+                    }, 0);
+                });
+
+                item.addEventListener('dragend', function() {
+                    draggedItem = null;
+                    item.classList.remove('dragging');
+                    item.style.display = '';
+                    removePlaceholder();
+                    renderImages(); // Re-render to ensure clean state
+                });
+
+                imagePreview.appendChild(item);
+            });
+        }
+
+        // Placeholder helpers
+        function createPlaceholder(index) {
+            const imagePreview = document.getElementById('imagePreview');
+            let placeholder = document.getElementById('dragPlaceholder');
+            if (!placeholder) {
+                placeholder = document.createElement('div');
+                placeholder.id = 'dragPlaceholder';
+                placeholder.className = 'image-placeholder';
+            }
+            
+            const items = Array.from(imagePreview.children).filter(el => el.style.display !== 'none');
+            if (index < items.length) {
+                imagePreview.insertBefore(placeholder, items[index]);
+            } else {
+                imagePreview.appendChild(placeholder);
+            }
+        }
+
+        function removePlaceholder() {
+            const placeholder = document.getElementById('dragPlaceholder');
+            if (placeholder) placeholder.remove();
+        }
+
+        // 粘贴处理逻辑
+        async function handlePaste() {
+            if (uploadedImages.length >= maxImages) {
+                showToast(`最多只能上传${maxImages}张图片`, 'warning');
+                return;
+            }
+
+            if (navigator.clipboard && window.ClipboardItem) {
+                try {
+                    const items = await navigator.clipboard.read();
+                    let foundImage = false;
+                    for (const item of items) {
+                        for (const type of item.types) {
+                            if (type.startsWith('image/')) {
+                                foundImage = true;
+                                const blob = await item.getType(type);
+                                const reader = new FileReader();
+                                reader.onload = function(e) {
+                                    const imageData = {
+                                        id: Date.now() + Math.random(),
+                                        url: e.target.result,
+                                        name: '剪贴板图片'
+                                    };
+                                    uploadedImages.push(imageData);
+                                    renderImages();
+                                    showToast('剪贴板图片已上传', 'success');
+                                };
+                                reader.readAsDataURL(blob);
+                                return;
+                            }
+                        }
+                    }
+                    if (!foundImage) {
+                        showToast('剪贴板中没有图片', 'warning');
+                    }
+                } catch (err) {
+                    console.error(err);
+                    showToast('无法访问剪贴板内容', 'error');
+                }
+            } else {
+                showToast('当前浏览器不支持剪贴板API', 'error');
+            }
+        }
+
+        // 删除图片
+        function deleteImage(id) {
+            uploadedImages = uploadedImages.filter(img => img.id !== id);
+            selectedImages.delete(id);
+            renderImages();
+            showToast('图片已删除', 'success');
+        }
+
         // 图片上传
         function initImageUpload() {
             const leftPanel = document.getElementById('leftPanel');
             const fileInput = document.getElementById('fileInput');
             const imagePreview = document.getElementById('imagePreview');
             const imageBtn = document.getElementById('imageBtn');
+
+            // Container Drag Events for Reordering
+            imagePreview.addEventListener('dragover', function(e) {
+                e.preventDefault();
+                if (!draggedItem) return;
+
+                const placeholder = document.getElementById('dragPlaceholder');
+                if (!placeholder) return;
+
+                // Get all items except placeholder and hidden dragged item
+                const items = Array.from(imagePreview.children).filter(el => 
+                    el !== placeholder && el.style.display !== 'none' && el.classList.contains('image-preview-item')
+                );
+                
+                // Find the element under cursor
+                const target = e.target.closest('.image-preview-item');
+                
+                if (target && target !== placeholder && target.style.display !== 'none') {
+                    const box = target.getBoundingClientRect();
+                    const next = (e.clientX - box.left) > (box.width / 2);
+                    
+                    if (next) {
+                        imagePreview.insertBefore(placeholder, target.nextSibling);
+                    } else {
+                        imagePreview.insertBefore(placeholder, target);
+                    }
+                } else if (items.length === 0) {
+                    imagePreview.appendChild(placeholder);
+                } else {
+                    // If not over any item, check if we are at the end
+                    const lastItem = items[items.length - 1];
+                    const lastBox = lastItem.getBoundingClientRect();
+                    if (e.clientY > lastBox.bottom || (e.clientY > lastBox.top && e.clientX > lastBox.right)) {
+                        imagePreview.appendChild(placeholder);
+                    }
+                }
+            });
+
+            imagePreview.addEventListener('drop', function(e) {
+                e.preventDefault();
+                if (!draggedItem) return;
+                
+                const placeholder = document.getElementById('dragPlaceholder');
+                if (placeholder) {
+                    // Reconstruct uploadedImages based on DOM order
+                    const newOrder = [];
+                    const allChildren = Array.from(imagePreview.children);
+                    
+                    allChildren.forEach(child => {
+                        if (child === placeholder) {
+                            newOrder.push(draggedItem);
+                        } else if (child.classList.contains('image-preview-item') && child.style.display !== 'none') {
+                            const id = parseFloat(child.dataset.id);
+                            const img = uploadedImages.find(i => i.id === id);
+                            if (img) newOrder.push(img);
+                        }
+                    });
+                    
+                    uploadedImages = newOrder;
+                }
+                // dragend will handle cleanup
+            });
 
             // 图片按钮点击
             imageBtn.addEventListener('click', function() {
@@ -1754,36 +1967,50 @@
             const dragOverlay = document.getElementById('dragOverlay');
             leftPanel.addEventListener('dragover', function(e) {
                 e.preventDefault();
-                // 检查拖入的文件类型或URL
-                let isAllImage = false;
-                if (e.dataTransfer) {
-                    // 优先检测文件列表
-                    if (e.dataTransfer.items) {
-                        for (let i = 0; i < e.dataTransfer.items.length; i++) {
-                            const t = e.dataTransfer.items[i].type || '';
-                            if (t.startsWith('image/')) {
-                                isAllImage = true;
-                                break;
-                            }
-                            // 支持拖动图片 URL（其他元素传递为 text/uri-list 或 text/plain）
-                            if (t === 'text/uri-list' || t === 'text/plain') {
-                                isAllImage = true;
-                                break;
-                            }
+                // If dragging an internal item, don't show overlay
+                if (draggedItem) return;
+
+                // 检查是否为文件或图片链接
+                let isFile = false;
+                let isImage = false;
+                
+                if (e.dataTransfer.types) {
+                    const types = Array.from(e.dataTransfer.types);
+                    if (types.includes('Files')) isFile = true;
+                    if (types.includes('text/uri-list')) isImage = true;
+                }
+
+                // 进一步检查文件类型
+                if (e.dataTransfer.items) {
+                    for (let i = 0; i < e.dataTransfer.items.length; i++) {
+                        const t = e.dataTransfer.items[i].type || '';
+                        if (t.startsWith('image/')) {
+                            isImage = true;
                         }
                     }
                 }
+
+                // 如果既不是文件也不是图片链接（例如纯文本），则不显示遮罩
+                if (!isFile && !isImage) {
+                    dragOverlay.classList.remove('active');
+                    return;
+                }
+
                 dragOverlay.classList.add('active');
                 dragOverlay.classList.remove('error', 'success', 'full');
+                
                 if (uploadedImages.length >= maxImages) {
                     dragOverlay.classList.add('full');
                     dragOverlay.textContent = '最多只能上传4张图片';
-                } else if (isAllImage) {
+                } else if (isImage || (isFile && isImage)) {
+                    dragOverlay.classList.add('success');
+                    dragOverlay.textContent = '拖入图片以添加';
+                } else if (isFile) {
                     dragOverlay.classList.add('success');
                     dragOverlay.textContent = '拖入图片以添加';
                 } else {
                     dragOverlay.classList.add('error');
-                    dragOverlay.textContent = '仅支持图片文件';
+                    dragOverlay.textContent = '不支持的内容';
                 }
             });
             leftPanel.addEventListener('dragleave', function(e) {
@@ -1793,12 +2020,15 @@
             });
             leftPanel.addEventListener('drop', function(e) {
                 e.preventDefault();
+                // If dragging internal item, handle reorder
+                if (draggedItem) {
+                    return;
+                }
+
                 dragOverlay.classList.remove('active', 'error', 'success', 'full');
-                dragOverlay.textContent = '拖入图片以添加';
-                // 检查是否全部为图片
+                
                 // 优先处理文件
                 if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-                    // 如果包含文件，按原逻辑处理
                     if (uploadedImages.length >= maxImages) {
                         showToast(`最多只能上传${maxImages}张图片`, 'warning');
                         return;
@@ -1807,11 +2037,21 @@
                     return;
                 }
 
-                // 如果没有文件，尝试读取 URL（text/uri-list 或 text/plain）
+                // 处理 URL
                 let url = '';
                 try {
                     if (e.dataTransfer) {
-                        url = e.dataTransfer.getData('text/uri-list') || e.dataTransfer.getData('text/plain') || '';
+                        // 优先使用 uri-list
+                        url = e.dataTransfer.getData('text/uri-list');
+                        
+                        // 如果没有 uri-list，检查 text/plain 是否像 URL
+                        if (!url) {
+                            const text = e.dataTransfer.getData('text/plain');
+                            // 简单的 URL 校验，避免普通文本被误认
+                            if (text && (text.startsWith('http://') || text.startsWith('https://') || text.startsWith('data:image'))) {
+                                url = text;
+                            }
+                        }
                     }
                 } catch (err) {
                     url = '';
@@ -1822,9 +2062,10 @@
                         showToast(`最多只能上传${maxImages}张图片`, 'warning');
                         return;
                     }
-                    // 简单判断是否为图片链接（扩展名或 data:）
+                    // 简单判断是否为图片链接
                     const lower = url.toLowerCase();
                     const isLikelyImage = lower.startsWith('data:') || /(\.png|\.jpe?g|\.gif|\.webp|\.bmp|\.svg)(\?.*)?$/.test(lower) || /^https?:\/\/.+\.(png|jpe?g|gif|webp|bmp|svg)(\?.*)?$/i.test(url);
+                    
                     const imagePreview = document.getElementById('imagePreview');
                     const nameFromUrl = url.split('/').pop().split('?')[0];
                     const imageData = {
@@ -1891,35 +2132,40 @@
                 }
             }
 
-            // 渲染图片
-            function renderImages() {
-                imagePreview.innerHTML = '';
-                uploadedImages.forEach(image => {
-                    const item = document.createElement('div');
-                    item.className = 'image-preview-item';
-                    item.innerHTML = `
-                        <img src="${image.url}" alt="${image.name}">
-                        <button class="image-delete-btn" data-id="${image.id}">×</button>
-                    `;
+            // Context Menu
+            imagePreview.addEventListener('contextmenu', function(e) {
+                e.preventDefault();
+                const item = e.target.closest('.image-preview-item');
+                if (item) {
+                    const id = parseFloat(item.dataset.id);
+                    // If right clicking an item not in selection, select it (and deselect others)
+                    if (!selectedImages.has(id)) {
+                        selectedImages.clear();
+                        selectedImages.add(id);
+                        renderImages();
+                    }
                     
-                    item.querySelector('img').addEventListener('click', function() {
-                        showImageModal(image.url);
-                    });
-                    
-                    item.querySelector('.image-delete-btn').addEventListener('click', function(e) {
-                        e.stopPropagation();
-                        deleteImage(image.id);
-                    });
-                    
-                    imagePreview.appendChild(item);
-                });
-            }
+                    const image = uploadedImages.find(img => img.id === id);
+                    if (image && window.electronAPI) {
+                        window.electronAPI.send('show-image-context-menu', { src: image.url, type: 'left-side' });
+                    }
+                }
+            });
 
-            // 删除图片
-            function deleteImage(id) {
-                uploadedImages = uploadedImages.filter(img => img.id !== id);
-                renderImages();
-                showToast('图片已删除', 'success');
+            // IPC Listener for delete
+            if (window.electronAPI) {
+                window.electronAPI.on('menu-action-delete-selected', () => {
+                    if (selectedImages.size > 0) {
+                        uploadedImages = uploadedImages.filter(img => !selectedImages.has(img.id));
+                        selectedImages.clear();
+                        renderImages();
+                        showToast('已删除选中图片', 'success');
+                    }
+                });
+                
+                window.electronAPI.on('menu-action-paste', () => {
+                    handlePaste();
+                });
             }
         }
 
@@ -2598,24 +2844,7 @@
                                                 name: '剪贴板图片'
                                             };
                                             uploadedImages.push(imageData);
-                                            document.getElementById('imagePreview').innerHTML = '';
-                                            // 重新渲染图片
-                                            const imagePreview = document.getElementById('imagePreview');
-                                            uploadedImages.forEach(image => {
-                                                const item = document.createElement('div');
-                                                item.className = 'image-preview-item';
-                                                item.innerHTML = `<img src="${image.url}" alt="${image.name}"><button class="image-delete-btn" data-id="${image.id}">×</button>`;
-                                                item.querySelector('img').addEventListener('click', function() {
-                                                    showImageModal(image.url);
-                                                });
-                                                item.querySelector('.image-delete-btn').addEventListener('click', function(e) {
-                                                    e.stopPropagation();
-                                                    uploadedImages = uploadedImages.filter(img => img.id !== image.id);
-                                                    imagePreview.removeChild(item);
-                                                    showToast('图片已删除', 'success');
-                                                });
-                                                imagePreview.appendChild(item);
-                                            });
+                                            renderImages();
                                             showToast('剪贴板图片已上传', 'success');
                                         } else {
                                             showToast(`最多只能上传${maxImages}张图片`, 'warning');
