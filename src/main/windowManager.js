@@ -642,7 +642,63 @@ class WindowManager {
     // 为窗口添加类型标记
     this.markWindowType(extractionWindow, WindowType.EXTRACTION);
     
+    // 配置会话：拦截请求和隐藏特征
+    this.configureExtractionSession(extractionWindow);
+
     return extractionWindow;
+  }
+
+  /**
+   * 配置提取窗口的会话和行为
+   * @param {BrowserWindow} window 
+   */
+  configureExtractionSession(window) {
+    if (!window || window.isDestroyed()) return;
+
+    const session = window.webContents.session;
+
+    // 1. 拦截不必要的请求，特别是导致超时的 STUN 请求
+    // 只有在 session 有效时才设置
+    if (session && session.webRequest) {
+      session.webRequest.onBeforeRequest({
+        urls: [
+          '*://stun.l.google.com/*',
+          '*://*.google-analytics.com/*',
+          '*://*.doubleclick.net/*',
+          '*://*.googlesyndication.com/*'
+        ]
+      }, (details, callback) => {
+        callback({ cancel: true });
+      });
+    }
+
+    // 2. 注入脚本隐藏 webdriver 特征，防止反爬虫检测
+    window.webContents.on('did-start-loading', () => {
+      if (!window.isDestroyed()) {
+        window.webContents.executeJavaScript(`
+          try {
+            // 覆盖 navigator.webdriver
+            Object.defineProperty(navigator, 'webdriver', {
+              get: () => undefined
+            });
+            
+            // 覆盖 chrome.runtime
+            if (!window.chrome) {
+              window.chrome = {};
+            }
+            
+            // 模拟插件列表
+            Object.defineProperty(navigator, 'plugins', {
+              get: () => [1, 2, 3, 4, 5]
+            });
+            
+            Object.defineProperty(navigator, 'languages', {
+              get: () => ['zh-CN', 'zh', 'en']
+            });
+          } catch (e) {}
+        `).catch(() => {});
+      }
+    });
   }
 
   /**
@@ -659,7 +715,7 @@ class WindowManager {
    */
   createStandardExtractionWindow() {
     return this.createExtractionWindow({
-      userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36 Edg/142.0.0.0'
+      userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36 Edg/120.0.0.0'
     });
   }
 

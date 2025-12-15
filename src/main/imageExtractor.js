@@ -13,6 +13,8 @@ class ImageExtractor {
       tooSmall: 0,
       blockedFormat: 0,
       blockedDomain: 0,
+      loadFailed: 0,
+      transparent: 0,
       added: 0
     };
   }
@@ -87,9 +89,12 @@ class ImageExtractor {
               '0', 10
             );
             
-            console.log(`提取到图片URL: ${normalizedUrl}, 尺寸: ${width}x${height}`);
+            const loadFailed = $(element).attr('data-load-failed') === 'true';
+            const hasTransparency = $(element).attr('data-has-transparency') === 'true';
+
+            console.log(`提取到图片URL: ${normalizedUrl}, 尺寸: ${width}x${height}, 失败: ${loadFailed}, 透明: ${hasTransparency}`);
             
-            elementUrls.push({ url: normalizedUrl, width: width, height: height });
+            elementUrls.push({ url: normalizedUrl, width: width, height: height, loadFailed, hasTransparency });
           } catch (error) {
             // 跳过无效URL
             console.error(`跳过无效URL: ${src}, 错误: ${error.message}`);
@@ -101,6 +106,10 @@ class ImageExtractor {
         const srcset = getElementAttribute('srcset');
         if (srcset) {
           const srcsetUrls = this.urlProcessor.parseSrcset(srcset, baseUrl);
+          
+          const loadFailed = $(element).attr('data-load-failed') === 'true';
+          const hasTransparency = $(element).attr('data-has-transparency') === 'true';
+
           for (const srcsetUrl of srcsetUrls) {
             // 优先获取真实尺寸
             const width = parseInt(
@@ -124,7 +133,9 @@ class ImageExtractor {
               url: srcsetUrl.url, 
               width: width, 
               height: height,
-              descriptors: srcsetUrl.descriptors
+              descriptors: srcsetUrl.descriptors,
+              loadFailed,
+              hasTransparency
             });
           }
         }
@@ -133,8 +144,22 @@ class ImageExtractor {
       // 对每个提取到的 URL 应用过滤逻辑
       for (const imgInfo of elementUrls) {
         this.filteredImagesCount.total++;
-        const { url: imgUrl, width: finalWidth, height: finalHeight } = imgInfo;
+        const { url: imgUrl, width: finalWidth, height: finalHeight, loadFailed, hasTransparency } = imgInfo;
         
+        // 检查加载失败
+        if (loadFailed) {
+          this.incrementFilterCount('加载失败');
+          console.log(`过滤加载失败图片: ${imgUrl}`);
+          continue;
+        }
+
+        // 检查透明度
+        if (hasTransparency) {
+          this.incrementFilterCount('透明图片');
+          console.log(`过滤透明图片: ${imgUrl}`);
+          continue;
+        }
+
         // 检查是否应该过滤这个图片
         const filterResult = this.shouldFilterImage(imgUrl, finalWidth, finalHeight, isWechatArticle);
         
@@ -217,6 +242,12 @@ class ImageExtractor {
       case '域名被屏蔽':
         this.filteredImagesCount.blockedDomain++;
         break;
+      case '加载失败':
+        this.filteredImagesCount.loadFailed++;
+        break;
+      case '透明图片':
+        this.filteredImagesCount.transparent++;
+        break;
       case '尺寸未知':
       case '尺寸过小':
         this.filteredImagesCount.tooSmall++;
@@ -233,6 +264,8 @@ class ImageExtractor {
       tooSmall: 0,
       blockedFormat: 0,
       blockedDomain: 0,
+      loadFailed: 0,
+      transparent: 0,
       added: 0
     };
   }
@@ -245,6 +278,8 @@ class ImageExtractor {
     console.log(`- 总图片数: ${this.filteredImagesCount.total}`);
     console.log(`- 格式被屏蔽: ${this.filteredImagesCount.blockedFormat}`);
     console.log(`- 域名被屏蔽: ${this.filteredImagesCount.blockedDomain}`);
+    console.log(`- 加载失败: ${this.filteredImagesCount.loadFailed}`);
+    console.log(`- 透明图片: ${this.filteredImagesCount.transparent}`);
     console.log(`- 尺寸过小过滤: ${this.filteredImagesCount.tooSmall}`);
     console.log(`- 最终添加: ${this.filteredImagesCount.added}`);
   }
@@ -261,38 +296,91 @@ class ImageExtractor {
       
       await window.webContents.executeJavaScript(`
         (async function() {
+          // 检查图片是否含有透明部分
+          function hasTransparency(img) {
+            try {
+              const canvas = document.createElement('canvas');
+              canvas.width = img.naturalWidth;
+              canvas.height = img.naturalHeight;
+              const ctx = canvas.getContext('2d');
+              ctx.drawImage(img, 0, 0);
+              
+              const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+              const data = imageData.data;
+              
+              // 检查Alpha通道，步长为4（RGBA）
+              // 为了性能，对于大图可以增加采样步长，但这里为了准确性检查所有像素
+              // 只要发现一个透明度小于250的像素，就认为是透明图片
+              const len = data.length;
+              // 简单的性能优化：如果图片很大，可以跳过一些像素检查
+              const step = (len > 1000000) ? 40 : 4; 
+              
+              for (let i = 3; i < len; i += step) {
+                if (data[i] < 250) {
+                  return true;
+                }
+              }
+              return false;
+            } catch (e) {
+              return false;
+            }
+          }
+
           // 等待所有图片加载完成
           const images = Array.from(document.querySelectorAll('img'));
           const imagePromises = images.map(img => {
             return new Promise((resolve) => {
-              if (img.complete) {
-                // 图片已加载，直接获取尺寸
+              const processImage = () => {
                 const width = img.naturalWidth || img.width || 0;
                 const height = img.naturalHeight || img.height || 0;
                 img.setAttribute('data-real-width', width);
                 img.setAttribute('data-real-height', height);
+                
+                // 检查透明度
+                if (width > 0 && height > 0 && hasTransparency(img)) {
+                  img.setAttribute('data-has-transparency', 'true');
+                }
                 resolve();
+              };
+
+              if (img.complete) {
+                // 图片已加载
+                if (img.naturalWidth === 0) {
+                   img.setAttribute('data-load-failed', 'true');
+                   img.setAttribute('data-real-width', '0');
+                   img.setAttribute('data-real-height', '0');
+                   resolve();
+                } else {
+                   processImage();
+                }
               } else {
                 // 等待图片加载完成
                 img.onload = () => {
-                  const width = img.naturalWidth || img.width || 0;
-                  const height = img.naturalHeight || img.height || 0;
-                  img.setAttribute('data-real-width', width);
-                  img.setAttribute('data-real-height', height);
-                  resolve();
+                  processImage();
                 };
                 img.onerror = () => {
-                  // 加载失败，设置为0
+                  // 加载失败
+                  img.setAttribute('data-load-failed', 'true');
                   img.setAttribute('data-real-width', '0');
                   img.setAttribute('data-real-height', '0');
                   resolve();
                 };
                 // 设置超时，避免无限等待
                 setTimeout(() => {
-                  const width = img.naturalWidth || img.width || 0;
-                  const height = img.naturalHeight || img.height || 0;
-                  img.setAttribute('data-real-width', width);
-                  img.setAttribute('data-real-height', height);
+                  if (!img.complete || img.naturalWidth === 0) {
+                     if (!img.complete) img.setAttribute('data-load-failed', 'true');
+                     const width = img.naturalWidth || img.width || 0;
+                     const height = img.naturalHeight || img.height || 0;
+                     img.setAttribute('data-real-width', width);
+                     img.setAttribute('data-real-height', height);
+                  } else {
+                     // 超时时如果已经有尺寸了，尝试检查透明度
+                     if (img.naturalWidth > 0) {
+                        if (hasTransparency(img)) {
+                           img.setAttribute('data-has-transparency', 'true');
+                        }
+                     }
+                  }
                   resolve();
                 }, 2000);
               }

@@ -194,12 +194,17 @@ class ExtractionManager {
     
     await new Promise((resolve, reject) => {
       let loadTimeout;
+      let globalTimeout;
       
       const cleanup = () => {
         try {
           if (loadTimeout) {
             clearTimeout(loadTimeout);
             loadTimeout = null;
+          }
+          if (globalTimeout) {
+            clearTimeout(globalTimeout);
+            globalTimeout = null;
           }
 
           // 有时 window 可能已经被销毁，访问 webContents 会抛出错误
@@ -249,28 +254,32 @@ class ExtractionManager {
       };
 
       const onStopLoading = () => {
-        const timeout = isWechatArticle ? 12000 : 6000;
-        try {
-          if (loadTimeout) {
-            clearTimeout(loadTimeout);
-          }
-
-          loadTimeout = setTimeout(() => {
-            console.error(`页面加载超时: ${url}`);
-            cleanup();
-            reject(new Error(`Page load timeout: ${url}`));
-          }, timeout);
-        } catch (stopErr) {
-          console.warn('onStopLoading encountered error:', stopErr && stopErr.message);
-          cleanup();
-          reject(new Error('Page stopped loading due to window state change'));
+        // 页面停止加载（spinner停止），这通常意味着主要内容已加载
+        // 如果 did-finish-load 还没触发，我们给它一点时间，然后强制视为成功
+        // 很多现代网页（如知乎）可能因为后台长连接或统计脚本导致 did-finish-load 迟迟不触发
+        
+        if (loadTimeout) {
+          clearTimeout(loadTimeout);
         }
+
+        // 等待2秒后如果没有其他事件，就认为加载完成了
+        loadTimeout = setTimeout(() => {
+          console.log(`页面停止加载，强制触发完成: ${url}`);
+          onLoadSuccess(); 
+        }, 2000);
       };
 
       try {
         if (!win || (typeof win.isDestroyed === 'function' && win.isDestroyed())) {
           return reject(new Error('Extraction window destroyed before loadURL'));
         }
+
+        // 设置全局超时 (45秒)
+        globalTimeout = setTimeout(() => {
+          console.error(`页面加载全局超时: ${url}`);
+          cleanup();
+          reject(new Error(`Page load global timeout: ${url}`));
+        }, 45000);
 
         win.webContents.once('did-finish-load', onLoadSuccess);
         win.webContents.once('did-fail-load', onLoadFail);

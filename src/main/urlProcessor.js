@@ -13,7 +13,8 @@ class URLProcessor {
       't10.baidu.com',
       'i-operation.csdnimg.cn',
       'g.csdnimg.cn',
-      'res.wx.qq.com'
+      'res.wx.qq.com',
+      'a.sinaimg.cn'
     ];
   }
 
