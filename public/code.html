@@ -361,6 +361,67 @@
             transform: scale(1.1);
         }
 
+        /* Drag and Drop States */
+        .image-preview-item.dragging {
+            opacity: 0.5;
+            transform: scale(0.95);
+        }
+
+        .image-preview-item.drag-over {
+            border: 2px solid var(--accent-color);
+            background: var(--accent-light);
+        }
+
+        .image-preview-item {
+            transition: all 0.2s ease;
+        }
+
+        /* Context Menu */
+        .context-menu {
+            position: fixed;
+            background: var(--bg-primary);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-sm);
+            box-shadow: var(--shadow-lg);
+            padding: 8px 0;
+            z-index: 10000;
+            min-width: 180px;
+            display: none;
+        }
+
+        .context-menu.active {
+            display: block;
+        }
+
+        .context-menu-item {
+            padding: 10px 16px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            color: var(--text-primary);
+            font-size: 14px;
+            transition: var(--transition-fast);
+            user-select: none;
+        }
+
+        .context-menu-item:hover {
+            background: var(--bg-tertiary);
+            color: var(--accent-color);
+        }
+
+        .context-menu-item:active {
+            background: var(--accent-light);
+        }
+
+        .context-menu-icon {
+            width: 16px;
+            height: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
         /* Bottom Area */
         .bottom-area {
             padding: 20px 24px;
@@ -1471,6 +1532,18 @@
     <!-- Toast 提示 -->
     <div class="toast" id="toast"></div>
 
+    <!-- 图片右键菜单 -->
+    <div class="context-menu" id="imageContextMenu">
+        <div class="context-menu-item" id="contextCopyImage">
+            <span class="context-menu-icon">📋</span>
+            <span>复制图片</span>
+        </div>
+        <div class="context-menu-item" id="contextSaveImage">
+            <span class="context-menu-icon">💾</span>
+            <span>另存为</span>
+        </div>
+    </div>
+
     <!-- 自定义确认弹窗 -->
     <div class="custom-modal" id="customModal">
         <div class="custom-modal-content">
@@ -1894,22 +1967,47 @@
             // 渲染图片
             function renderImages() {
                 imagePreview.innerHTML = '';
-                uploadedImages.forEach(image => {
+                uploadedImages.forEach((image, index) => {
                     const item = document.createElement('div');
                     item.className = 'image-preview-item';
+                    item.setAttribute('draggable', 'true');
+                    item.setAttribute('data-id', image.id);
+                    item.setAttribute('data-index', index);
                     item.innerHTML = `
                         <img src="${image.url}" alt="${image.name}">
                         <button class="image-delete-btn" data-id="${image.id}">×</button>
                     `;
                     
-                    item.querySelector('img').addEventListener('click', function() {
-                        showImageModal(image.url);
+                    const imgElement = item.querySelector('img');
+                    
+                    // Click to view
+                    imgElement.addEventListener('click', function(e) {
+                        if (!item.classList.contains('dragging')) {
+                            showImageModal(image.url);
+                        }
                     });
                     
+                    // Delete button
                     item.querySelector('.image-delete-btn').addEventListener('click', function(e) {
                         e.stopPropagation();
                         deleteImage(image.id);
                     });
+                    
+                    // Drag and drop for reordering
+                    item.addEventListener('dragstart', handleDragStart);
+                    item.addEventListener('dragend', handleDragEnd);
+                    item.addEventListener('dragover', handleDragOver);
+                    item.addEventListener('drop', handleDrop);
+                    item.addEventListener('dragleave', handleDragLeave);
+                    
+                    // Context menu (right-click)
+                    item.addEventListener('contextmenu', function(e) {
+                        e.preventDefault();
+                        showImageContextMenu(e, image);
+                    });
+                    
+                    // Touch events
+                    setupTouchEvents(item, image);
                     
                     imagePreview.appendChild(item);
                 });
@@ -1921,6 +2019,290 @@
                 renderImages();
                 showToast('图片已删除', 'success');
             }
+
+            // Drag and drop handlers for reordering
+            let draggedItem = null;
+            let draggedIndex = null;
+
+            function handleDragStart(e) {
+                draggedItem = this;
+                draggedIndex = parseInt(this.getAttribute('data-index'));
+                this.classList.add('dragging');
+                e.dataTransfer.effectAllowed = 'move';
+                e.dataTransfer.setData('text/html', this.innerHTML);
+            }
+
+            function handleDragEnd(e) {
+                this.classList.remove('dragging');
+                // Remove all drag-over classes
+                document.querySelectorAll('.image-preview-item').forEach(item => {
+                    item.classList.remove('drag-over');
+                });
+                draggedItem = null;
+                draggedIndex = null;
+            }
+
+            function handleDragOver(e) {
+                if (e.preventDefault) {
+                    e.preventDefault();
+                }
+                e.dataTransfer.dropEffect = 'move';
+                
+                const targetItem = this;
+                if (targetItem !== draggedItem && targetItem.classList.contains('image-preview-item')) {
+                    targetItem.classList.add('drag-over');
+                }
+                
+                return false;
+            }
+
+            function handleDragLeave(e) {
+                this.classList.remove('drag-over');
+            }
+
+            function handleDrop(e) {
+                if (e.stopPropagation) {
+                    e.stopPropagation();
+                }
+                
+                const targetItem = this;
+                const targetIndex = parseInt(targetItem.getAttribute('data-index'));
+                
+                if (draggedItem && draggedItem !== targetItem && draggedIndex !== null) {
+                    // Reorder the array
+                    const draggedImage = uploadedImages[draggedIndex];
+                    uploadedImages.splice(draggedIndex, 1);
+                    uploadedImages.splice(targetIndex, 0, draggedImage);
+                    
+                    // Re-render
+                    renderImages();
+                    showToast('图片顺序已调整', 'success');
+                }
+                
+                return false;
+            }
+
+            // Context menu for images
+            let currentContextImage = null;
+
+            function showImageContextMenu(e, image) {
+                const menu = document.getElementById('imageContextMenu');
+                currentContextImage = image;
+                
+                // Position the menu
+                menu.style.left = e.pageX + 'px';
+                menu.style.top = e.pageY + 'px';
+                menu.classList.add('active');
+                
+                // Close menu on click outside
+                setTimeout(() => {
+                    document.addEventListener('click', closeContextMenu);
+                }, 0);
+            }
+
+            function closeContextMenu() {
+                const menu = document.getElementById('imageContextMenu');
+                menu.classList.remove('active');
+                document.removeEventListener('click', closeContextMenu);
+                currentContextImage = null;
+            }
+
+            // Context menu actions
+            function initContextMenu() {
+                const copyBtn = document.getElementById('contextCopyImage');
+                const saveBtn = document.getElementById('contextSaveImage');
+                
+                copyBtn.addEventListener('click', async function(e) {
+                    e.stopPropagation();
+                    if (!currentContextImage) return;
+                    
+                    try {
+                        // For data URLs, we can copy directly
+                        if (currentContextImage.url.startsWith('data:')) {
+                            const response = await fetch(currentContextImage.url);
+                            const blob = await response.blob();
+                            await navigator.clipboard.write([
+                                new ClipboardItem({ [blob.type]: blob })
+                            ]);
+                            showToast('图片已复制到剪贴板', 'success');
+                        } else {
+                            // For remote URLs, we need to fetch first
+                            const response = await fetch(currentContextImage.url);
+                            const blob = await response.blob();
+                            await navigator.clipboard.write([
+                                new ClipboardItem({ [blob.type]: blob })
+                            ]);
+                            showToast('图片已复制到剪贴板', 'success');
+                        }
+                    } catch (err) {
+                        console.error('Failed to copy image:', err);
+                        showToast('复制图片失败', 'error');
+                    }
+                    
+                    closeContextMenu();
+                });
+                
+                saveBtn.addEventListener('click', async function(e) {
+                    e.stopPropagation();
+                    if (!currentContextImage) return;
+                    
+                    try {
+                        // Create a temporary link to download
+                        const link = document.createElement('a');
+                        link.href = currentContextImage.url;
+                        link.download = currentContextImage.name || 'image.jpg';
+                        
+                        // For data URLs, we can download directly
+                        if (currentContextImage.url.startsWith('data:')) {
+                            document.body.appendChild(link);
+                            link.click();
+                            document.body.removeChild(link);
+                            showToast('图片已保存', 'success');
+                        } else {
+                            // For remote URLs, fetch and create blob URL
+                            const response = await fetch(currentContextImage.url);
+                            const blob = await response.blob();
+                            const blobUrl = URL.createObjectURL(blob);
+                            link.href = blobUrl;
+                            document.body.appendChild(link);
+                            link.click();
+                            document.body.removeChild(link);
+                            URL.revokeObjectURL(blobUrl);
+                            showToast('图片已保存', 'success');
+                        }
+                    } catch (err) {
+                        console.error('Failed to save image:', err);
+                        showToast('保存图片失败', 'error');
+                    }
+                    
+                    closeContextMenu();
+                });
+            }
+
+            // Touch events support
+            function setupTouchEvents(item, image) {
+                let touchStartTime = 0;
+                let longPressTimer = null;
+                let touchStartX = 0;
+                let touchStartY = 0;
+                let isDragging = false;
+                let touchMoved = false;
+                const longPressDuration = 500; // 500ms for long press
+                
+                item.addEventListener('touchstart', function(e) {
+                    touchStartTime = Date.now();
+                    touchStartX = e.touches[0].clientX;
+                    touchStartY = e.touches[0].clientY;
+                    touchMoved = false;
+                    isDragging = false;
+                    
+                    // Start long press timer for context menu
+                    longPressTimer = setTimeout(() => {
+                        if (!touchMoved) {
+                            // Long press detected - show context menu
+                            e.preventDefault();
+                            showImageContextMenu({
+                                pageX: touchStartX,
+                                pageY: touchStartY
+                            }, image);
+                            
+                            // Vibrate if supported
+                            if (navigator.vibrate) {
+                                navigator.vibrate(50);
+                            }
+                        }
+                    }, longPressDuration);
+                }, { passive: false });
+                
+                item.addEventListener('touchmove', function(e) {
+                    const touchX = e.touches[0].clientX;
+                    const touchY = e.touches[0].clientY;
+                    const deltaX = Math.abs(touchX - touchStartX);
+                    const deltaY = Math.abs(touchY - touchStartY);
+                    
+                    // If moved more than 10px, consider it as moving
+                    if (deltaX > 10 || deltaY > 10) {
+                        touchMoved = true;
+                        clearTimeout(longPressTimer);
+                        
+                        // Start drag operation if long press was initiated
+                        if (Date.now() - touchStartTime > longPressDuration && !isDragging) {
+                            isDragging = true;
+                            item.classList.add('dragging');
+                        }
+                        
+                        // If dragging, find the drop target
+                        if (isDragging) {
+                            e.preventDefault();
+                            const targetElement = document.elementFromPoint(touchX, touchY);
+                            const targetItem = targetElement?.closest('.image-preview-item');
+                            
+                            // Remove drag-over from all items
+                            document.querySelectorAll('.image-preview-item').forEach(el => {
+                                if (el !== item) el.classList.remove('drag-over');
+                            });
+                            
+                            // Add drag-over to current target
+                            if (targetItem && targetItem !== item) {
+                                targetItem.classList.add('drag-over');
+                            }
+                        }
+                    }
+                }, { passive: false });
+                
+                item.addEventListener('touchend', function(e) {
+                    clearTimeout(longPressTimer);
+                    
+                    // If it was a drag operation, handle drop
+                    if (isDragging) {
+                        const touchX = e.changedTouches[0].clientX;
+                        const touchY = e.changedTouches[0].clientY;
+                        const targetElement = document.elementFromPoint(touchX, touchY);
+                        const targetItem = targetElement?.closest('.image-preview-item');
+                        
+                        if (targetItem && targetItem !== item) {
+                            const sourceIndex = parseInt(item.getAttribute('data-index'));
+                            const targetIndex = parseInt(targetItem.getAttribute('data-index'));
+                            
+                            // Reorder the array
+                            const draggedImage = uploadedImages[sourceIndex];
+                            uploadedImages.splice(sourceIndex, 1);
+                            uploadedImages.splice(targetIndex, 0, draggedImage);
+                            
+                            // Re-render
+                            renderImages();
+                            showToast('图片顺序已调整', 'success');
+                        }
+                        
+                        item.classList.remove('dragging');
+                        document.querySelectorAll('.image-preview-item').forEach(el => {
+                            el.classList.remove('drag-over');
+                        });
+                        
+                        e.preventDefault();
+                    } else if (!touchMoved && Date.now() - touchStartTime < longPressDuration) {
+                        // Short tap - show image modal
+                        // Check if not clicking the delete button
+                        if (!e.target.classList.contains('image-delete-btn')) {
+                            showImageModal(image.url);
+                        }
+                    }
+                    
+                    isDragging = false;
+                }, { passive: false });
+                
+                item.addEventListener('touchcancel', function(e) {
+                    clearTimeout(longPressTimer);
+                    item.classList.remove('dragging');
+                    document.querySelectorAll('.image-preview-item').forEach(el => {
+                        el.classList.remove('drag-over');
+                    });
+                    isDragging = false;
+                });
+            }
+
+            // Initialize context menu
+            initContextMenu();
         }
 
         // 自定义弹窗逻辑
