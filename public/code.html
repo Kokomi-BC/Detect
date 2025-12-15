@@ -1530,6 +1530,8 @@
                 if (e.target.tagName === 'IMG') {
                     // Check if it's in left panel (already handled)
                     if (e.target.closest('.image-preview-item')) return;
+                    // Check if it's in right panel (already handled)
+                    if (e.target.closest('.parsed-image-item')) return;
                     
                     e.preventDefault();
                     if (window.electronAPI) {
@@ -2151,6 +2153,22 @@
                     }
                 }
             });
+
+            // Right side images context menu
+            const parsedImages = document.getElementById('parsedImages');
+            if (parsedImages) {
+                parsedImages.addEventListener('contextmenu', function(e) {
+                    const item = e.target.closest('.parsed-image-item');
+                    if (item) {
+                        e.preventDefault();
+                        e.stopPropagation(); // 阻止冒泡，防止触发全局图片右键菜单
+                        const img = item.querySelector('img');
+                        if (img && window.electronAPI) {
+                            window.electronAPI.send('show-image-context-menu', { src: img.src, type: 'right-side' });
+                        }
+                    }
+                });
+            }
 
             // IPC Listener for delete
             if (window.electronAPI) {

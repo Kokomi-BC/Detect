@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, session, Menu, MenuItem, shell, nativeTheme, dialog } = require('electron');
+const { app, BrowserWindow, ipcMain, session, Menu, MenuItem, shell, nativeTheme, dialog, clipboard, nativeImage, net } = require('electron');
 const path = require('path');
 const { WindowManager, WindowType } = require('./windowManager');
 const ExtractionManager = require('./extractionManager');
@@ -347,6 +347,119 @@ class DetectApp {
         console.error('设置主题失败:', error);
         return { success: false, error: error.message };
       }
+    });
+
+    // 显示图片右键菜单
+    ipcMain.on('show-image-context-menu', (event, { src, type }) => {
+      const menu = new Menu();
+      const win = BrowserWindow.fromWebContents(event.sender);
+
+      if (type === 'left-side') {
+        // 粘贴
+        menu.append(new MenuItem({
+          label: '粘贴',
+          accelerator: 'CmdOrCtrl+V',
+          click: () => {
+            event.sender.send('menu-action-paste');
+          }
+        }));
+        
+        // 删除
+        menu.append(new MenuItem({
+          label: '删除',
+          click: () => {
+            event.sender.send('menu-action-delete-selected');
+          }
+        }));
+
+        menu.append(new MenuItem({ type: 'separator' }));
+
+        // 复制
+        menu.append(new MenuItem({
+          label: '复制',
+          accelerator: 'CmdOrCtrl+C',
+          click: async () => {
+             try {
+               if (src.startsWith('data:')) {
+                 const image = nativeImage.createFromDataURL(src);
+                 clipboard.writeImage(image);
+               } else {
+                 if (src.startsWith('http')) {
+                    try {
+                        const response = await net.fetch(src);
+                        if (response.ok) {
+                            const buffer = await response.arrayBuffer();
+                            const image = nativeImage.createFromBuffer(Buffer.from(buffer));
+                            clipboard.writeImage(image);
+                        }
+                    } catch(e) {
+                        console.error('Copy failed', e);
+                        clipboard.writeText(src);
+                    }
+                 } else {
+                    const image = nativeImage.createFromPath(src);
+                    if (!image.isEmpty()) {
+                        clipboard.writeImage(image);
+                    } else {
+                        clipboard.writeText(src);
+                    }
+                 }
+               }
+             } catch (e) {
+               console.error('Copy image failed:', e);
+               clipboard.writeText(src);
+             }
+          }
+        }));
+
+        // 另存为
+        menu.append(new MenuItem({
+          label: '另存为...',
+          click: () => {
+            win.webContents.downloadURL(src);
+          }
+        }));
+
+      } else if (type === 'right-side') {
+        // 复制
+        menu.append(new MenuItem({
+          label: '复制',
+          accelerator: 'CmdOrCtrl+C',
+          click: async () => {
+             try {
+                const response = await net.fetch(src);
+                if (response.ok) {
+                    const buffer = await response.arrayBuffer();
+                    const image = nativeImage.createFromBuffer(Buffer.from(buffer));
+                    clipboard.writeImage(image);
+                }
+             } catch (e) {
+                console.error('Copy remote image failed:', e);
+                clipboard.writeText(src);
+             }
+          }
+        }));
+
+        // 复制图片地址
+        menu.append(new MenuItem({
+          label: '复制图片地址',
+          click: () => {
+            clipboard.writeText(src);
+          }
+        }));
+
+        menu.append(new MenuItem({ type: 'separator' }));
+
+        // 另存为
+        menu.append(new MenuItem({
+          label: '另存为...',
+          click: () => {
+            win.webContents.downloadURL(src);
+          }
+        }));
+      }
+
+      menu.popup({ window: win });
     });
 
     // 提取内容事件
