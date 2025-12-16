@@ -106,8 +106,21 @@ class DetectApp {
             return;
         }
 
-        // 为其他窗口（如内部浏览器窗口）添加原生右键菜单
+        
         contents.on('context-menu', (e, params) => {
+          // 如果窗口已经被销毁，直接返回
+          if (contents.isDestroyed()) return;
+
+          // 尝试获取所属窗口
+          const win = BrowserWindow.fromWebContents(contents);
+          if (!win) return;
+
+          // 检查窗口是否已经被 WindowManager 标记并处理
+          // 如果窗口有 __windowType 标记，说明 WindowManager 已经接管了它的右键菜单
+          if (win.__windowType === 'browser' || win.__windowType === 'navigation') {
+             return;
+          }
+
           const menu = new Menu();
 
           // 文本编辑相关
@@ -133,12 +146,12 @@ class DetectApp {
              }}));
           } else {
              // 普通区域
-             menu.append(new MenuItem({ label: '后退', role: 'back', enabled: contents.canGoBack() }));
-             menu.append(new MenuItem({ label: '前进', role: 'forward', enabled: contents.canGoForward() }));
+             menu.append(new MenuItem({ label: '后退', role: 'back', enabled: contents.navigationHistory.canGoBack() }));
+             menu.append(new MenuItem({ label: '前进', role: 'forward', enabled: contents.navigationHistory.canGoForward() }));
              menu.append(new MenuItem({ label: '刷新', role: 'reload' }));
           }
           
-          menu.popup({ window: BrowserWindow.fromWebContents(contents) });
+          menu.popup({ window: win });
         });
       });
     });

@@ -1,4 +1,4 @@
-const { BrowserWindow, Menu, MenuItem, clipboard } = require('electron');
+const { BrowserWindow, Menu, MenuItem, clipboard, shell } = require('electron');
 const path = require('path');
 
 /**
@@ -8,7 +8,7 @@ const WindowType = {
   MAIN: 'main',
   BROWSER: 'browser',
   NAVIGATION: 'navigation',
-  EXTRACTION: 'extraction'
+  EXTRACTION: `extraction`
 };
 
 /**
@@ -18,7 +18,7 @@ class WindowManager {
   constructor() {
     this.mainWindow = null;
     this.browserWindows = new Set(); // 所有浏览器窗口
-    this.navigationWindows = new Set(); // 导航窗口
+    this.navigationWindows = new Set(); // 主窗口
     this.extractionWindows = new Set(); // 提取窗口
   }
 
@@ -86,14 +86,17 @@ class WindowManager {
   markWindowType(window, type) {
     if (window && !window.isDestroyed()) {
       // 直接设置window对象属性（同步方式）
+      // 使用 writable: true 允许后续修改，虽然通常不需要
       Object.defineProperty(window, '__windowType', {
         value: type,
+        writable: true,
         enumerable: false,
         configurable: true
       });
       
       Object.defineProperty(window, '__isMainWindow', {
         value: type === WindowType.MAIN,
+        writable: true,
         enumerable: false,
         configurable: true
       });
@@ -188,6 +191,19 @@ class WindowManager {
     // 为窗口添加类型标记
     this.markWindowType(mainWindow, WindowType.MAIN);
 
+    // 设置主窗口的链接处理策略：拦截所有新窗口请求，使用自定义浏览器窗口打开
+    mainWindow.webContents.setWindowOpenHandler(({ url }) => {
+      // 检查是否是 http/https 协议
+      if (url.startsWith('http://') || url.startsWith('https://')) {
+        // 使用 createBrowserWindow 打开，这样新窗口会拥有正确的安全策略和右键菜单
+        this.createBrowserWindow(url);
+      } else {
+        // 其他协议使用系统默认方式打开
+        shell.openExternal(url).catch(err => console.error('打开外部链接失败:', err));
+      }
+      return { action: 'deny' };
+    });
+
     // 设置原生右键菜单
     this.setupWindowContextMenu(mainWindow);
 
@@ -255,6 +271,9 @@ class WindowManager {
     // 为窗口添加类型标记
     this.markWindowType(browserWindow, WindowType.BROWSER);
 
+    // 设置浏览器窗口的安全策略（防止打开新窗口）
+    this.setupNavigationWindowSecurity(browserWindow);
+
     // 加载URL
     browserWindow.loadURL(url).catch((error) => {
       console.error('浏览器窗口加载失败:', error);
@@ -318,18 +337,24 @@ class WindowManager {
 
     // 设置链接处理：在同一窗口中导航，不创建新窗口
     webContents.setWindowOpenHandler(({ url }) => {
-      window.loadURL(url).catch((error) => {
-        console.error('窗口导航失败:', error);
-      });
+      // 检查是否是 http/https 协议
+      if (url.startsWith('http://') || url.startsWith('https://')) {
+        // 使用 setImmediate 确保当前事件循环完成，避免导航冲突
+        setImmediate(() => {
+          if (!window.isDestroyed()) {
+            window.loadURL(url).catch((error) => {
+              // 忽略 ERR_ABORTED (-3) 错误，通常是因为被新的导航中断
+              if (error.code !== 'ERR_ABORTED' && error.errno !== -3) {
+                console.error('窗口导航失败:', error);
+              }
+            });
+          }
+        });
+      } else {
+        // 对于非 http/https 协议（如 mailto:），使用系统默认方式打开
+        shell.openExternal(url).catch(err => console.error('打开外部链接失败:', err));
+      }
       return { action: 'deny' }; // 拒绝创建新窗口
-    });
-
-    // 监听 new-window 事件，确保链接在当前窗口中打开
-    webContents.on('new-window', (event, navigationUrl) => {
-      event.preventDefault();
-      window.loadURL(navigationUrl).catch((error) => {
-        console.error('窗口导航失败:', error);
-      });
     });
   }
 
@@ -396,7 +421,8 @@ class WindowManager {
         }
       }));
 
-      
+      menu.append(new MenuItem({ type: 'separator' }));
+
       // 链接相关功能（如果有链接）
       if (params.linkURL) {
         menu.append(new MenuItem({
@@ -410,9 +436,18 @@ class WindowManager {
         menu.append(new MenuItem({
           label: '跳转到链接',
           click: () => {
-            this.jumpurl(params.linkURL);
+            // 在当前窗口加载链接，而不是创建新窗口
+            window.loadURL(params.linkURL).catch(err => console.error('跳转失败:', err));
           }
         }));
+
+        menu.append(new MenuItem({
+          label: '在系统浏览器中打开链接',
+          click: () => {
+            shell.openExternal(params.linkURL);
+          }
+        }));
+
         menu.append(new MenuItem({ type: 'separator' }));
       }
       
@@ -422,7 +457,8 @@ class WindowManager {
           label: '搜索 "' + params.selectionText + '"',
           click: () => {
             const searchUrl = `https://www.bing.com/search?q=${encodeURIComponent(params.selectionText)}`;
-            this.jumpurl(searchUrl);
+            // 在当前窗口加载搜索结果，而不是创建新窗口
+            window.loadURL(searchUrl).catch(err => console.error('搜索失败:', err));
           }
         }));
         
@@ -469,9 +505,19 @@ class WindowManager {
           webContents.print();
         }
       }));
+
+      menu.append(new MenuItem({ type: 'separator' }));
+
+      // 在系统浏览器中打开当前页面（放在最底部）
+      menu.append(new MenuItem({
+        label: '在系统浏览器中打开',
+        click: () => {
+          shell.openExternal(webContents.getURL());
+        }
+      }));
       
       if (menu.items.length > 0) {
-        menu.popup(window);
+        menu.popup({ window });
       }
     });
   }
@@ -527,7 +573,9 @@ class WindowManager {
           window.reload();
         }
       }));
-      
+
+      menu.append(new MenuItem({ type: 'separator' }));
+
       // 链接相关功能（如果有链接）
       if (params.linkURL) {
         menu.append(new MenuItem({
@@ -541,7 +589,15 @@ class WindowManager {
         menu.append(new MenuItem({
           label: '跳转到链接',
           click: () => {
-            this.jumpurl(params.linkURL);
+            // 在当前窗口加载链接，而不是创建新窗口
+            window.loadURL(params.linkURL).catch(err => console.error('跳转失败:', err));
+          }
+        }));
+
+        menu.append(new MenuItem({
+          label: '在系统浏览器中打开链接',
+          click: () => {
+            shell.openExternal(params.linkURL);
           }
         }));
         
@@ -554,7 +610,8 @@ class WindowManager {
           label: '搜索 "' + params.selectionText + '"',
           click: () => {
             const searchUrl = `https://www.bing.com/search?q=${encodeURIComponent(params.selectionText)}`;
-            this.jumpurl(searchUrl);
+            // 在当前窗口加载搜索结果，而不是创建新窗口
+            window.loadURL(searchUrl).catch(err => console.error('搜索失败:', err));
           }
         }));
         
@@ -601,9 +658,19 @@ class WindowManager {
         webContents.print();
       }
     }));
+
+      menu.append(new MenuItem({ type: 'separator' }));
+
+      // 在系统浏览器中打开当前页面（放在最底部）
+      menu.append(new MenuItem({
+        label: '在系统浏览器中打开',
+        click: () => {
+          shell.openExternal(webContents.getURL());
+        }
+      }));
       
       if (menu.items.length > 0) {
-        menu.popup(window);
+        menu.popup({ window });
       }
     });
   }
