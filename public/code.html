@@ -873,6 +873,12 @@
             height: 48px;
         }
 
+        /* Disable transitions during resize to prevent lag */
+        body.resizing .left-panel,
+        body.resizing .right-panel {
+            transition: none !important;
+        }
+
         /* Right Panel */
         .right-panel {
             flex: 1;
@@ -2311,6 +2317,7 @@
             // Mouse Events
             resizer.addEventListener('mousedown', function(e) {
                 isResizing = true;
+                document.body.classList.add('resizing');
                 document.body.style.cursor = 'col-resize';
             });
 
@@ -2321,13 +2328,17 @@
             });
 
             document.addEventListener('mouseup', function() {
-                isResizing = false;
-                document.body.style.cursor = 'default';
+                if (isResizing) {
+                    isResizing = false;
+                    document.body.classList.remove('resizing');
+                    document.body.style.cursor = 'default';
+                }
             });
 
             // Touch Events (复用逻辑)
             resizer.addEventListener('touchstart', function(e) {
                 isResizing = true;
+                document.body.classList.add('resizing');
                 document.body.style.cursor = 'col-resize';
                 e.preventDefault();
             }, { passive: false });
@@ -2339,8 +2350,11 @@
             }, { passive: false });
 
             document.addEventListener('touchend', function() {
-                isResizing = false;
-                document.body.style.cursor = 'default';
+                if (isResizing) {
+                    isResizing = false;
+                    document.body.classList.remove('resizing');
+                    document.body.style.cursor = 'default';
+                }
             });
         }
 
