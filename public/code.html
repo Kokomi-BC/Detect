@@ -41,6 +41,10 @@
             --radius-sm: 8px;
             --radius-md: 12px;
             --radius-lg: 20px;
+            
+            --bg-glass: rgba(255, 255, 255, 0.65);
+            --bg-menu: rgba(255, 255, 255, 0.95);
+            --shadow-accent: 0 4px 12px rgba(67, 97, 238, 0.25);
         }
 
         [data-theme="dark"] {
@@ -58,6 +62,10 @@
             --shadow-sm: 0 2px 8px rgba(0,0,0,0.2);
             --shadow-md: 0 8px 24px rgba(0,0,0,0.3);
             --shadow-lg: 0 16px 48px rgba(0,0,0,0.4);
+            
+            --bg-glass: rgba(17, 19, 21, 0.65);
+            --bg-menu: rgba(25, 28, 32, 0.95);
+            --shadow-accent: 0 4px 12px rgba(76, 201, 240, 0.25);
         }
 
         body {
@@ -80,6 +88,12 @@
         .text-input, .parsed-text, .parsed-title, .analysis-text, .custom-tooltip {
             user-select: text;
             -webkit-user-select: text;
+        }
+
+        /* Selection Color */
+        ::selection {
+            background: var(--accent-color);
+            color: #fff;
         }
 
         /* 沉浸式滚动条样式 */
@@ -162,7 +176,9 @@
             align-items: center;
             height: 64px;
             padding: 0 20px;
-            background: var(--bg-primary);
+            background: var(--bg-glass);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
             border-bottom: 1px solid var(--border-color);
             gap: 12px;
             position: relative;
@@ -186,13 +202,24 @@
         }
 
         .toolbar-btn:hover {
-            background: var(--bg-tertiary);
-            color: var(--text-primary);
+            background: var(--accent-light);
+            color: var(--accent-color);
+            box-shadow: var(--shadow-accent);
             transform: translateY(-1px);
+        }
+
+        /* Disable hover transform for more-menu to prevent shaking */
+        .toolbar-btn.more-menu:hover {
+            transform: none;
         }
 
         .toolbar-btn:active {
             transform: translateY(0) scale(0.95);
+        }
+
+        /* Disable scale effect for more-menu to prevent dropdown shrinking */
+        .toolbar-btn.more-menu:active {
+            transform: none;
         }
 
         .toolbar-btn.active {
@@ -227,7 +254,9 @@
             right: 0;
             min-width: 180px;
             display: none;
-            background: var(--bg-primary);
+            background: var(--bg-glass);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
             box-shadow: var(--shadow-lg);
             border-radius: var(--radius-md);
             padding: 8px;
@@ -251,7 +280,9 @@
         }
 
         .more-menu .dropdown-item:hover {
-            background: var(--bg-tertiary);
+            background: var(--accent-light);
+            color: var(--accent-color);
+            box-shadow: var(--shadow-accent);
         }
 
         /* Edit Options - Refactored for Edit Mode */
@@ -260,9 +291,9 @@
             top: -100px; /* Hidden initially */
             left: 50%;
             transform: translateX(-50%);
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
+            background: var(--bg-glass);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
             border: 1px solid var(--border-color);
             border-radius: 20px;
             padding: 8px 12px;
@@ -275,7 +306,7 @@
         }
 
         [data-theme="dark"] .edit-options {
-            background: rgba(26, 29, 32, 0.95);
+            background: var(--bg-glass);
         }
 
         body.edit-mode .edit-options {
@@ -297,8 +328,9 @@
             justify-content: center;
         }
         .edit-btn:hover {
-            background: var(--bg-tertiary);
-            color: var(--text-primary);
+            background: var(--accent-light);
+            color: var(--accent-color);
+            box-shadow: var(--shadow-accent);
         }
         .edit-btn.active {
             background: var(--accent-light);
@@ -375,7 +407,9 @@
         /* Context Menu */
         .context-menu {
             position: fixed;
-            background: var(--bg-primary);
+            background: var(--bg-glass);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
             border: 1px solid var(--border-color);
             border-radius: var(--radius-md);
             box-shadow: var(--shadow-lg);
@@ -400,7 +434,9 @@
             position: relative;
         }
         .context-menu-item:hover {
-            background: var(--bg-tertiary);
+            background: var(--accent-light);
+            color: var(--accent-color);
+            box-shadow: var(--shadow-accent);
         }
         .context-menu-item.disabled {
             opacity: 0.5;
@@ -417,7 +453,9 @@
             position: absolute;
             left: 100%;
             top: -4px;
-            background: var(--bg-primary);
+            background: var(--bg-menu);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
             border: 1px solid var(--border-color);
             border-radius: var(--radius-md);
             box-shadow: var(--shadow-lg);
@@ -425,6 +463,7 @@
             min-width: 160px;
             display: none;
             margin-left: 8px;
+            z-index: 1002;
         }
         /* Invisible bridge to prevent menu closing */
         .context-submenu::before {
@@ -457,14 +496,16 @@
             top: 100%;
             left: 50%;
             transform: translateX(-50%);
-            background: var(--bg-primary);
+            background: var(--bg-menu);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
             border: 1px solid var(--border-color);
             border-radius: var(--radius-md);
             box-shadow: var(--shadow-lg);
             padding: 4px;
             min-width: 100px;
             display: none;
-            z-index: 1000;
+            z-index: 1005;
             margin-top: 8px;
         }
         
@@ -501,7 +542,9 @@
             text-align: center;
         }
         .dropdown-item:hover {
-            background: var(--bg-tertiary);
+            background: var(--accent-light);
+            color: var(--accent-color);
+            box-shadow: var(--shadow-accent);
         }
         
         .dropdown-separator {
@@ -596,17 +639,21 @@
             to { opacity: 1; transform: scale(1); }
         }
         body.edit-mode .content-area {
-            padding: 90px 4% 40px 4%; /* Centered focus mode - Reduced margins */
+            padding: 0 4% 7px 4%; /* Reduced bottom padding */
             height: 100vh;
+            /* Add mask to fade out text at the very top */
+            mask-image: linear-gradient(to bottom, transparent 0px, black 80px, black 100%);
+            -webkit-mask-image: linear-gradient(to bottom, transparent 0px, black 80px, black 100%);
         }
         
         body.edit-mode .text-input {
             height: 100%;
             border: none;
             box-shadow: none;
-            background: transparent;
+            background: transparent; /* Transparent in edit mode to use body bg */
             font-size: 18px;
             line-height: 2;
+            padding-top: 120px; /* Push text down initially */
         }
 
         /* Content Area */
@@ -619,13 +666,33 @@
             gap: 12px;
         }
 
+        .editor-status-bar {
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            padding: 0 12px;
+            font-size: 12px;
+            color: var(--text-secondary);
+            background: transparent;
+            margin-top: auto;
+            opacity: 0.7;
+            min-height: 20px;
+        }
+        .status-separator {
+            margin: 0 8px;
+            opacity: 0.5;
+        }
+
         .text-input {
             flex: 1;
             min-height: 200px;
-            padding: 16px;
-            border: 2px solid transparent;
+            padding: 24px; /* Increased padding */
+            padding-top: 32px; /* Extra top padding */
+            border: 1px solid rgba(0,0,0,0.05); /* Subtle border */
             border-radius: var(--radius-lg);
-            background: var(--bg-primary);
+            background: var(--bg-glass); /* Glass background */
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
             color: var(--text-primary);
             font-size: 16px;
             line-height: 1.8;
@@ -638,9 +705,15 @@
             white-space: pre-wrap;
         }
 
+        [data-theme="dark"] .text-input {
+            border-color: rgba(255,255,255,0.05);
+        }
+
         .text-input:focus {
             border-color: var(--accent-color);
             box-shadow: var(--shadow-md);
+            background: var(--bg-primary); /* Solid background on focus for better readability? Or keep glass? User asked for glass. Let's keep glass but maybe slightly more opaque or just shadow change. */
+            background: var(--bg-glass);
         }
         
         .text-input:empty:before {
@@ -709,7 +782,7 @@
             justify-content: center;
             opacity: 0;
             transition: var(--transition-fast);
-            backdrop-filter: blur(4px);
+            backdrop-filter: blur(8px);
         }
 
         .image-preview-item:hover .image-delete-btn {
@@ -750,8 +823,8 @@
             justify-content: center;
             gap: 8px;
             pointer-events: auto;
-            backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
         }
 
         .detect-btn:hover {
@@ -1075,19 +1148,23 @@
         .custom-modal {
             position: fixed;
             top: 0; left: 0; right: 0; bottom: 0;
-            background: rgba(0,0,0,0.4);
+            background: rgba(0,0,0,0.3);
             display: none;
             align-items: center;
             justify-content: center;
             z-index: 9999;
-            backdrop-filter: blur(4px);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            transition: all 0.3s ease;
         }
         .custom-modal.active { display: flex; }
         
         .custom-modal-content {
-            background: var(--bg-primary);
+            background: var(--bg-glass);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
             border-radius: var(--radius-lg);
-            box-shadow: var(--shadow-lg);
+            box-shadow: 0 20px 50px rgba(0,0,0,0.2);
             padding: 32px;
             min-width: 360px;
             max-width: 90vw;
@@ -1119,29 +1196,45 @@
         .custom-modal-btn {
             padding: 10px 32px;
             border-radius: var(--radius-md);
-            border: none;
+            border: 1px solid rgba(0,0,0,0.05);
             font-size: 16px;
             font-weight: 600;
             cursor: pointer;
-            background: var(--accent-color);
-            color: #fff;
+            
+            /* Deeper glass effect for unselected */
+            background: rgba(0, 0, 0, 0.06);
+            color: var(--text-primary);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            
             transition: var(--transition-fast);
         }
+        
+        [data-theme="dark"] .custom-modal-btn {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: rgba(255,255,255,0.1);
+        }
+
         .custom-modal-btn:hover {
-            background: var(--accent-hover);
+            /* Theme color frosted glass for selected */
+            background: var(--accent-light);
+            color: var(--accent-color);
+            border-color: var(--accent-color);
             transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(67, 97, 238, 0.3);
+            box-shadow: var(--shadow-accent);
         }
         
         .custom-modal-btn.secondary {
-            background: var(--bg-tertiary);
-            color: var(--text-primary);
-            border: 1px solid transparent;
+            background: transparent;
+            border-color: var(--border-color);
+            opacity: 0.8;
         }
         .custom-modal-btn.secondary:hover {
-            background: var(--border-color);
-            transform: translateY(-2px);
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+            border-color: var(--text-secondary);
             box-shadow: var(--shadow-sm);
+            opacity: 1;
         }
 
         /* Loading State */
@@ -1386,7 +1479,7 @@
         /* 优化下拉菜单样式 */
         .more-menu .dropdown-menu {
             background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(12px);
+            backdrop-filter: blur(8px);
             border: 1px solid rgba(0,0,0,0.08);
             box-shadow: 0 10px 30px rgba(0,0,0,0.15);
             padding: 6px;
@@ -1396,7 +1489,7 @@
         }
         
         [data-theme="dark"] .more-menu .dropdown-menu {
-            background: rgba(30, 30, 30, 0.95);
+            background: var(--bg-glass);
             border-color: rgba(255,255,255,0.1);
         }
 
@@ -1502,7 +1595,7 @@
             transform: translateY(10px);
             transition: opacity 0.2s, transform 0.2s;
             box-shadow: 0 4px 20px rgba(0,0,0,0.2);
-            backdrop-filter: blur(4px);
+            backdrop-filter: blur(8px);
         }
         .custom-tooltip.active {
             opacity: 1;
@@ -1798,6 +1891,13 @@
                 <div contenteditable="true" class="text-input" id="textInput" placeholder="请输入要检测的新闻内容..."></div>
                 <!-- 图片预览 -->
                 <div class="image-preview-container" id="imagePreview"></div>
+                
+                <!-- 状态栏 -->
+                <div class="editor-status-bar">
+                    <span id="wordCount">0 字</span>
+                    <span class="status-separator">|</span>
+                    <span id="imageCount">0 图片</span>
+                </div>
             </div>
 
             <!-- 底部操作区 -->
@@ -1913,7 +2013,7 @@
     <!-- 自定义确认弹窗 -->
     <div class="custom-modal" id="customModal">
         <div class="custom-modal-content">
-            <div class="custom-modal-title">确认操作</div>
+            <div class="custom-modal-title">清空内容</div>
             <div class="custom-modal-message">确定要清空所有内容吗？</div>
             <div class="custom-modal-actions">
                 <button class="custom-modal-btn" id="modalConfirm">确定</button>
@@ -2242,6 +2342,24 @@
             });
         }
 
+        // 更新编辑器统计信息
+        function updateEditorStats() {
+            const textInput = document.getElementById('textInput');
+            const wordCountEl = document.getElementById('wordCount');
+            const imageCountEl = document.getElementById('imageCount');
+            
+            if (textInput && wordCountEl) {
+                const text = textInput.innerText || '';
+                // 简单字数统计：去除空白字符后的长度
+                const count = text.replace(/\s+/g, '').length;
+                wordCountEl.textContent = `${count} 字`;
+            }
+            
+            if (imageCountEl) {
+                imageCountEl.textContent = `${uploadedImages.length} 图片`;
+            }
+        }
+
         // 文本编辑器
         function initTextEditor() {
             const textInput = document.getElementById('textInput');
@@ -2249,8 +2367,60 @@
             const closeEditBtn = document.getElementById('closeEditBtn');
             // const editOptions = document.getElementById('editOptions'); // Controlled via CSS now
 
-            // 自动识别链接
+            // 粘贴纯文本处理
+            textInput.addEventListener('paste', function(e) {
+                e.preventDefault();
+                let text = (e.clipboardData || window.clipboardData).getData('text/plain');
+                if (!text) return;
+
+                // 检查字数限制
+                const currentLength = this.innerText.length; // innerText is more accurate for visible text
+                const maxLength = 20000;
+                
+                if (currentLength >= maxLength) {
+                    showToast('字数已超过最大限制 (20000字)', 'warning');
+                    return;
+                }
+
+                if (currentLength + text.length > maxLength) {
+                    const remaining = maxLength - currentLength;
+                    if (remaining > 0) {
+                        // 截断文本
+                        text = text.substring(0, remaining);
+                        document.execCommand('insertText', false, text);
+                    }
+                    showToast('字数已超过最大限制 (20000字)', 'warning');
+                } else {
+                    document.execCommand('insertText', false, text);
+                }
+            });
+
+            // 键盘输入限制
+            textInput.addEventListener('keydown', function(e) {
+                // 允许的功能键
+                const allowedKeys = [
+                    'Backspace', 'Delete', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 
+                    'Home', 'End', 'PageUp', 'PageDown', 'Tab'
+                ];
+                
+                // 允许组合键 (Ctrl/Cmd + A/C/V/X/Z)
+                if (e.ctrlKey || e.metaKey) return;
+                
+                if (allowedKeys.includes(e.key)) return;
+
+                if (this.innerText.length >= 20000) {
+                    // 如果有选中文本，允许输入（因为会替换）
+                    const selection = window.getSelection();
+                    if (selection.toString().length > 0) return;
+
+                    e.preventDefault();
+                    showToast('字数已超过最大限制 (20000字)', 'warning');
+                }
+            });
+
+            // 自动识别链接与字数统计
             textInput.addEventListener('input', function() {
+                updateEditorStats();
                 const text = this.innerText;
                 const urlRegex = /(https?:\/\/|www\.)[^\s<]+/g;
                 const matches = text.match(urlRegex);
@@ -2753,6 +2923,7 @@
 
                 imagePreview.appendChild(item);
             });
+            updateEditorStats();
         }
 
         // Placeholder helpers
@@ -2812,20 +2983,33 @@
                             showToast('剪贴板图片已上传', 'success');
                         };
                         reader.readAsDataURL(blob);
-                        hasHandled = true;
-                        break; // 一次只处理一个主要内容
+                        let text = await blob.text();
+                        
+                        // 检查字数限制
+                        const textInput = document.getElementById('textInput');
+                        const currentLength = textInput.innerText.length;
+                        const maxLength = 20000;
+
+                        if (currentLength >= maxLength) {
+                            showToast('字数已超过最大限制 (20000字)', 'warning');
+                            hasHandled = true;
+                            break;
+                        }
+
+                        if (currentLength + text.length > maxLength) {
+                            const remaining = maxLength - currentLength;
+                            if (remaining > 0) {
+                                text = text.substring(0, remaining);
+                                document.execCommand('insertText', false, text);
+                            }
+                            showToast('字数已超过最大限制 (20000字)', 'warning');
+                        } else {
+                            document.execCommand('insertText', false, text);
+                        }
+                        
                     }
                     
-                    // 2. 处理 HTML (带格式文本)
-                    if (item.types.includes('text/html')) {
-                        const blob = await item.getType('text/html');
-                        const html = await blob.text();
-                        document.execCommand('insertHTML', false, html);
-                        hasHandled = true;
-                        break;
-                    }
-                    
-                    // 3. 处理纯文本
+                    // 2. 优先处理纯文本 (避免 HTML 格式破坏)
                     if (item.types.includes('text/plain')) {
                         const blob = await item.getType('text/plain');
                         const text = await blob.text();
@@ -2833,6 +3017,17 @@
                         hasHandled = true;
                         break;
                     }
+
+                    // 3. 忽略 HTML 格式，防止样式污染
+                    /*
+                    if (item.types.includes('text/html')) {
+                        const blob = await item.getType('text/html');
+                        const html = await blob.text();
+                        document.execCommand('insertHTML', false, html);
+                        hasHandled = true;
+                        break;
+                    }
+                    */
                 }
 
                 if (!hasHandled) {
@@ -3170,7 +3365,6 @@
 
         // 自定义弹窗逻辑
         function showCustomModal(options) {
-            // 兼容旧用法: showCustomModal(onConfirm, onCancel)
             if (typeof options === 'function') {
                 options = {
                     onConfirm: options,
@@ -3195,7 +3389,6 @@
                 optionBtn.id = 'modalOption';
                 optionBtn.className = 'custom-modal-btn secondary';
                 optionBtn.style.display = 'none';
-                // 插入到 confirmBtn 之前
                 confirmBtn.parentNode.insertBefore(optionBtn, confirmBtn);
             }
 
@@ -3276,6 +3469,7 @@
                     uploadedImages = [];
                     detectedUrls = [];
                     document.getElementById('imagePreview').innerHTML = '';
+                    updateEditorStats();
                     document.getElementById('initialState').style.display = 'flex';
                     document.getElementById('resultItem').classList.remove('active');
                     document.getElementById('errorState').classList.remove('active');
@@ -3609,6 +3803,7 @@
                         uploadedImages = [];
                         detectedUrls = [];
                         document.getElementById('imagePreview').innerHTML = '';
+                        updateEditorStats();
                         document.getElementById('initialState').style.display = 'flex';
                         document.getElementById('resultItem').classList.remove('active');
                         document.getElementById('errorState').classList.remove('active');
@@ -3863,6 +4058,7 @@
                             const text = await navigator.clipboard.readText();
                             if (text) {
                                 document.getElementById('textInput').innerText = text;
+                                updateEditorStats();
                                 showToast('剪贴板文本已粘贴', 'success');
                             } else {
                                 showToast('剪贴板无可用内容', 'warning');
@@ -3877,6 +4073,7 @@
                         const text = await navigator.clipboard.readText();
                         if (text) {
                             document.getElementById('textInput').innerText = text;
+                            updateEditorStats();
                             showToast('剪贴板文本已粘贴', 'success');
                         } else {
                             showToast('剪贴板无可用内容', 'warning');
