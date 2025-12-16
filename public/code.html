@@ -69,6 +69,12 @@
             user-select: none; /* 禁止选中 */
             -webkit-user-select: none;
         }
+        
+        html {
+            height: 100%;
+            background: var(--bg-primary);
+            overflow: hidden;
+        }
 
         /* 允许选中的区域 */
         .text-input, .parsed-text, .parsed-title, .analysis-text, .custom-tooltip {
@@ -354,12 +360,237 @@
         }
         
         body.edit-mode .image-preview-container {
-            display: none;
+            display: grid; /* Show in edit mode */
+            margin-top: 24px;
+            padding-top: 24px;
+            border-top: 1px dashed var(--border-color);
         }
 
-        /* Text Input Expansion in Edit Mode */
+        /* Context Menu */
+        .context-menu {
+            position: fixed;
+            background: var(--bg-primary);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            box-shadow: var(--shadow-lg);
+            padding: 6px;
+            min-width: 180px;
+            z-index: 9999;
+            display: none;
+            animation: menuPopup 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
+        }
+        .context-menu.active { display: block; }
+
+        .context-menu-item {
+            padding: 8px 12px;
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            color: var(--text-primary);
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            transition: background 0.2s;
+            position: relative;
+        }
+        .context-menu-item:hover {
+            background: var(--bg-tertiary);
+        }
+        .context-menu-item.disabled {
+            opacity: 0.5;
+            pointer-events: none;
+        }
+        
+        .context-menu-separator {
+            height: 1px;
+            background: var(--border-color);
+            margin: 4px 0;
+        }
+
+        .context-submenu {
+            position: absolute;
+            left: 100%;
+            top: -4px;
+            background: var(--bg-primary);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            box-shadow: var(--shadow-lg);
+            padding: 6px;
+            min-width: 160px;
+            display: none;
+            margin-left: 8px;
+        }
+        /* Invisible bridge to prevent menu closing */
+        .context-submenu::before {
+            content: '';
+            position: absolute;
+            left: -12px;
+            top: 0;
+            bottom: 0;
+            width: 12px;
+            background: transparent;
+        }
+        .context-menu-item:hover .context-submenu {
+            display: block;
+            animation: menuPopup 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
+        }
+
+        .shortcut-hint {
+            font-size: 12px;
+            color: var(--text-secondary);
+            margin-left: 16px;
+        }
+
+        /* Dropdown Menu Styles */
+        .edit-btn-group {
+            position: relative;
+            display: inline-block;
+        }
+        .dropdown-menu {
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--bg-primary);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            box-shadow: var(--shadow-lg);
+            padding: 4px;
+            min-width: 100px;
+            display: none;
+            z-index: 1000;
+            margin-top: 8px;
+        }
+        
+        /* More Menu Specifics */
+        #moreDropdown {
+            left: auto;
+            right: 0;
+            transform: none;
+            transform-origin: top right;
+            min-width: 200px;
+            padding: 6px;
+        }
+        #moreDropdown .dropdown-item {
+            text-align: left;
+            padding: 8px 12px;
+            font-size: 13px;
+        }
+        .dropdown-menu.show {
+            display: block;
+            animation: dropdownPopup 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
+        }
+        /* Specific animation for right-aligned menu to prevent jumping */
+        #moreDropdown.show {
+            animation: dropdownPopupRight 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
+        }
+
+        .dropdown-item {
+            padding: 8px 12px;
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            color: var(--text-primary);
+            font-size: 14px;
+            transition: background 0.2s;
+            text-align: center;
+        }
+        .dropdown-item:hover {
+            background: var(--bg-tertiary);
+        }
+        
+        .dropdown-separator {
+            height: 1px;
+            background: var(--border-color);
+            margin: 4px 0;
+        }
+
+        .dropdown-item-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 12px;
+            font-size: 13px;
+            color: var(--text-primary);
+        }
+
+        .zoom-controls {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            background: var(--bg-tertiary);
+            border-radius: var(--radius-sm);
+            padding: 2px;
+        }
+
+        .zoom-btn {
+            width: 20px;
+            height: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: none;
+            background: transparent;
+            color: var(--text-primary);
+            cursor: pointer;
+            border-radius: var(--radius-sm);
+            font-size: 14px;
+        }
+
+        .zoom-btn:hover {
+            background: var(--bg-secondary);
+        }
+
+        .zoom-val {
+            min-width: 40px;
+            text-align: center;
+            font-size: 12px;
+            font-variant-numeric: tabular-nums;
+        }
+
+        /* Toggle Switch */
+        .toggle-switch {
+            width: 36px;
+            height: 20px;
+            background: var(--bg-tertiary);
+            border-radius: 10px;
+            position: relative;
+            transition: background 0.3s;
+            cursor: pointer;
+        }
+        .toggle-switch.active {
+            background: var(--accent-color);
+        }
+        .toggle-knob {
+            width: 16px;
+            height: 16px;
+            background: white;
+            border-radius: 50%;
+            position: absolute;
+            top: 2px;
+            left: 2px;
+            transition: transform 0.3s;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+        }
+        .toggle-switch.active .toggle-knob {
+            transform: translateX(16px);
+        }
+
+        @keyframes menuPopup {
+            from { opacity: 0; transform: scale(0.95); }
+            to { opacity: 1; transform: scale(1); }
+        }
+
+        @keyframes dropdownPopup {
+            from { opacity: 0; transform: translateX(-50%) scale(0.95); }
+            to { opacity: 1; transform: translateX(-50%) scale(1); }
+        }
+
+        @keyframes dropdownPopupRight {
+            from { opacity: 0; transform: scale(0.95); }
+            to { opacity: 1; transform: scale(1); }
+        }
         body.edit-mode .content-area {
-            padding: 90px 15% 40px 15%; /* Centered focus mode */
+            padding: 90px 8% 40px 8%; /* Centered focus mode - Reduced margins */
             height: 100vh;
         }
         
@@ -527,7 +758,7 @@
             background: var(--bg-tertiary);
             cursor: col-resize;
             position: relative;
-            z-index: 30;
+            z-index: 1;
             transition: all 0.3s;
             display: flex;
             align-items: center;
@@ -941,9 +1172,9 @@
 
         /* Parsed Content */
         .parsed-content {
-            margin-top: 24px;
-            padding-top: 24px;
-            border-top: 1px solid var(--border-color);
+            margin-top: 0;
+            padding-top: 0;
+            border-top: none;
             animation: slideInRight 0.5s ease;
         }
 
@@ -1410,35 +1641,77 @@
                     </svg>
                     <div class="dropdown-menu" id="moreDropdown">
                         <div class="dropdown-item" id="clearBrowserDataBtn">清除浏览器数据</div>
+                        <div class="dropdown-separator"></div>
+                        <div class="dropdown-item-row">
+                            <span>字体大小</span>
+                            <div class="zoom-controls">
+                                <button class="zoom-btn" id="fontDec">-</button>
+                                <span class="zoom-val" id="fontVal">16px</span>
+                                <button class="zoom-btn" id="fontInc">+</button>
+                            </div>
+                        </div>
+                        <div class="dropdown-item-row">
+                            <span>界面缩放</span>
+                            <div class="zoom-controls">
+                                <button class="zoom-btn" id="zoomDec">-</button>
+                                <span class="zoom-val" id="zoomVal">100%</span>
+                                <button class="zoom-btn" id="zoomInc">+</button>
+                            </div>
+                        </div>
+                        <div class="dropdown-separator"></div>
+                        <div class="dropdown-item-row" id="browserToggleRow" style="cursor: pointer;">
+                            <span>使用系统浏览器</span>
+                            <div class="toggle-switch" id="browserToggle">
+                                <div class="toggle-knob"></div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
 
             <!-- 编辑选项 -->
             <div class="edit-options" id="editOptions">
+                <button class="edit-btn" id="editPasteBtn" title="粘贴">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></svg>
+                </button>
+                <button class="edit-btn" id="editFormatPainterBtn" title="清除格式">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12h20"/><path d="M7 4v16"/><path d="M17 4v16"/><path d="M12 4v8"/></svg>
+                </button>
+                <div class="toolbar-separator"></div>
                 <button class="edit-btn" data-command="bold" title="加粗">
-                    <svg width="24" height="28" viewBox="0 0 24 28" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 8h6a3 3 0 0 1 0 6H7zm0 6h7a2.5 2.5 0 0 1 0 5H7z"/></svg>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 4h8a4 4 0 0 1 4 4 4 4 0 0 1-4 4H6z"/><path d="M6 12h9a4 4 0 0 1 4 4 4 4 0 0 1-4 4H6z"/></svg>
                 </button>
                 <button class="edit-btn" data-command="italic" title="斜体">
-                    <svg width="24" height="28" viewBox="0 0 24 28" fill="none" stroke="currentColor" stroke-width="2"><line x1="17" y1="6" x2="9" y2="24"/></svg>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="19" y1="4" x2="10" y2="4"/><line x1="14" y1="20" x2="5" y2="20"/><line x1="15" y1="4" x2="9" y2="20"/></svg>
                 </button>
                 <button class="edit-btn" data-command="underline" title="下划线">
-                    <svg width="24" height="28" viewBox="0 0 24 28" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6v8a6 6 0 0 0 12 0V6"/><line x1="4" y1="26" x2="20" y2="26"/></svg>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 3v7a6 6 0 0 0 6 6 6 6 0 0 0 6-6V3"/><line x1="4" y1="21" x2="20" y2="21"/></svg>
                 </button>
-                <button class="edit-btn" data-command="insertUnorderedList" title="无序列表">
-                    <svg width="24" height="28" viewBox="0 0 24 28" fill="none" stroke="currentColor" stroke-width="2"><circle cx="6" cy="9" r="1.5"/><circle cx="6" cy="16" r="1.5"/><circle cx="6" cy="23" r="1.5"/><line x1="10" y1="9" x2="18" y2="9"/><line x1="10" y1="16" x2="18" y2="16"/><line x1="10" y1="23" x2="18" y2="23"/></svg>
-                </button>
-                <button class="edit-btn" data-command="insertOrderedList" title="有序列表">
-                    <svg width="24" height="28" viewBox="0 0 24 28" fill="none" stroke="currentColor" stroke-width="2"><text x="3" y="11" font-size="8">1</text><line x1="10" y1="9" x2="18" y2="9"/><text x="3" y="18" font-size="8">2</text><line x1="10" y1="16" x2="18" y2="16"/><text x="3" y="25" font-size="8">3</text><line x1="10" y1="23" x2="18" y2="23"/></svg>
-                </button>
+                <div class="toolbar-separator"></div>
                 <button class="edit-btn" data-command="justifyLeft" title="左对齐">
-                    <svg width="24" height="28" viewBox="0 0 24 28" fill="none" stroke="currentColor" stroke-width="2"><line x1="4" y1="9" x2="20" y2="9"/><line x1="4" y1="16" x2="14" y2="16"/><line x1="4" y1="23" x2="20" y2="23"/></svg>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="4" y1="9" x2="20" y2="9"/><line x1="4" y1="16" x2="14" y2="16"/><line x1="4" y1="23" x2="20" y2="23"/></svg>
                 </button>
                 <button class="edit-btn" data-command="justifyCenter" title="居中">
-                    <svg width="24" height="28" viewBox="0 0 24 28" fill="none" stroke="currentColor" stroke-width="2"><line x1="6" y1="9" x2="18" y2="9"/><line x1="8" y1="16" x2="16" y2="16"/><line x1="4" y1="23" x2="20" y2="23"/></svg>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="6" y1="9" x2="18" y2="9"/><line x1="8" y1="16" x2="16" y2="16"/><line x1="4" y1="23" x2="20" y2="23"/></svg>
                 </button>
                 <button class="edit-btn" data-command="justifyRight" title="右对齐">
-                    <svg width="24" height="28" viewBox="0 0 24 28" fill="none" stroke="currentColor" stroke-width="2"><line x1="4" y1="9" x2="20" y2="9"/><line x1="10" y1="16" x2="20" y2="16"/><line x1="4" y1="23" x2="20" y2="23"/></svg>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="4" y1="9" x2="20" y2="9"/><line x1="10" y1="16" x2="20" y2="16"/><line x1="4" y1="23" x2="20" y2="23"/></svg>
+                </button>
+                <div class="toolbar-separator"></div>
+                <div class="edit-btn-group" id="editHeadingGroup">
+                    <button class="edit-btn" id="editHeadingBtn" title="段落格式">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 12h8"/><path d="M4 18V6"/><path d="M12 18V6"/><path d="M21 6v12h-5"/></svg>
+                    </button>
+                    <div class="dropdown-menu" id="headingDropdown">
+                        <div class="dropdown-item" data-cmd="formatBlock" data-val="H1">标题 1</div>
+                        <div class="dropdown-item" data-cmd="formatBlock" data-val="H2">标题 2</div>
+                        <div class="dropdown-item" data-cmd="formatBlock" data-val="H3">标题 3</div>
+                        <div class="dropdown-item" data-cmd="formatBlock" data-val="P">正文</div>
+                    </div>
+                </div>
+                <div class="toolbar-separator"></div>
+                <button class="edit-btn" id="editAddImageBtn" title="添加图片">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
                 </button>
                 <div class="toolbar-separator"></div>
                 <button class="edit-btn close-edit-btn" id="closeEditBtn" title="完成编辑">
@@ -1446,6 +1719,69 @@
                         <path d="M5 12l5 5l10 -10" />
                     </svg>
                 </button>
+            </div>
+
+            <!-- Context Menu -->
+            <div class="context-menu" id="editContextMenu">
+                <div class="context-menu-item" id="ctxSearch">
+                    <span>搜索</span>
+                </div>
+                <div class="context-menu-item" id="ctxGoTo">
+                    <span>转到</span>
+                </div>
+                <div class="context-menu-separator" id="ctxSearchSep"></div>
+                <div class="context-menu-item" id="ctxCut">
+                    <span>剪切</span>
+                    <span class="shortcut-hint">Ctrl+X</span>
+                </div>
+                <div class="context-menu-item" id="ctxCopy">
+                    <span>复制</span>
+                    <span class="shortcut-hint">Ctrl+C</span>
+                </div>
+                <div class="context-menu-item" id="ctxPaste">
+                    <span>粘贴</span>
+                    <span class="shortcut-hint">Ctrl+V</span>
+                </div>
+                <div class="context-menu-item" id="ctxPastePlain">
+                    <span>仅粘贴文本</span>
+                    <span class="shortcut-hint">Ctrl+Shift+V</span>
+                </div>
+                <div class="context-menu-item" id="ctxDelete">
+                    <span>删除</span>
+                    <span class="shortcut-hint">Del</span>
+                </div>
+                <div class="context-menu-item" id="ctxSaveAs">
+                    <span>另存为</span>
+                </div>
+                <div class="context-menu-separator ctx-format-group"></div>
+                <div class="context-menu-item ctx-format-group">
+                    <span>文本格式</span>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+                    <div class="context-submenu">
+                        <div class="context-menu-item" data-cmd="bold">加粗 <span class="shortcut-hint">Ctrl+B</span></div>
+                        <div class="context-menu-item" data-cmd="italic">斜体 <span class="shortcut-hint">Ctrl+I</span></div>
+                        <div class="context-menu-item" data-cmd="underline">下划线 <span class="shortcut-hint">Ctrl+U</span></div>
+                        <div class="context-menu-item" data-cmd="removeFormat">清除格式</div>
+                    </div>
+                </div>
+                <div class="context-menu-item ctx-format-group">
+                    <span>段落级别</span>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+                    <div class="context-submenu">
+                        <div class="context-menu-item" data-cmd="formatBlock" data-val="H1">标题 1</div>
+                        <div class="context-menu-item" data-cmd="formatBlock" data-val="H2">标题 2</div>
+                        <div class="context-menu-item" data-cmd="formatBlock" data-val="H3">标题 3</div>
+                        <div class="context-menu-item" data-cmd="formatBlock" data-val="P">正文</div>
+                    </div>
+                </div>
+                <div class="context-menu-separator ctx-format-group"></div>
+                <div class="context-menu-item" id="ctxSelectAll">
+                    <span>全选</span>
+                    <span class="shortcut-hint">Ctrl+A</span>
+                </div>
+                <div class="context-menu-item" id="ctxAddImage">
+                    <span>添加图片</span>
+                </div>
             </div>
 
             <!-- 内容区域 -->
@@ -1607,6 +1943,11 @@
                         }
                     });
 
+                    // Prevent clicks inside the dropdown from closing it (by bubbling to moreBtn)
+                    dropdown.addEventListener('click', function(e) {
+                        e.stopPropagation();
+                    });
+
                     document.addEventListener('pointerdown', function(e) {
                         if (!moreBtn.contains(e.target)) {
                             toggleDropdown(false);
@@ -1649,22 +1990,112 @@
             initModal();
             initIPC();
             initClipboardBtn();
+            initZoomControls();
 
-            // Global context menu for images
+            // Global context menu for images - REMOVED to use custom menu
+            /* 
             document.addEventListener('contextmenu', function(e) {
                 if (e.target.tagName === 'IMG') {
-                    // Check if it's in left panel (already handled)
-                    if (e.target.closest('.image-preview-item')) return;
-                    // Check if it's in right panel (already handled)
-                    if (e.target.closest('.parsed-image-item')) return;
-                    
-                    e.preventDefault();
-                    if (window.electronAPI) {
-                        window.electronAPI.send('show-image-context-menu', { src: e.target.src, type: 'normal' });
-                    }
+                    // ...
+                }
+            }); 
+            */
+        });
+
+        // Zoom & Font Size Logic
+        function initZoomControls() {
+            let currentZoom = 100;
+            let currentFontSize = 16;
+            const textInput = document.getElementById('textInput');
+            
+            // Font Size
+            const updateFontDisplay = () => {
+                document.getElementById('fontVal').textContent = `${currentFontSize}px`;
+                textInput.style.fontSize = `${currentFontSize}px`;
+                localStorage.setItem('editorFontSize', currentFontSize);
+            };
+
+            // Load saved font size
+            const savedFont = localStorage.getItem('editorFontSize');
+            if (savedFont) {
+                currentFontSize = parseInt(savedFont);
+                updateFontDisplay();
+            }
+
+            document.getElementById('fontInc').addEventListener('click', (e) => {
+                e.stopPropagation();
+                if (currentFontSize < 32) {
+                    currentFontSize += 2;
+                    updateFontDisplay();
                 }
             });
-        });
+
+            document.getElementById('fontDec').addEventListener('click', (e) => {
+                e.stopPropagation();
+                if (currentFontSize > 12) {
+                    currentFontSize -= 2;
+                    updateFontDisplay();
+                }
+            });
+
+            // UI Zoom
+            const updateZoomDisplay = () => {
+                document.getElementById('zoomVal').textContent = `${currentZoom}%`;
+                if (window.electronAPI && window.electronAPI.setZoomFactor) {
+                    window.electronAPI.setZoomFactor(currentZoom / 100);
+                } else {
+                    // Fallback for dev/browser
+                    document.body.style.zoom = `${currentZoom}%`;
+                }
+                localStorage.setItem('appZoom', currentZoom);
+            };
+
+            // Load saved zoom
+            const savedZoom = localStorage.getItem('appZoom');
+            if (savedZoom) {
+                currentZoom = parseInt(savedZoom);
+                updateZoomDisplay();
+            }
+
+            document.getElementById('zoomInc').addEventListener('click', (e) => {
+                e.stopPropagation();
+                if (currentZoom < 150) {
+                    currentZoom += 10;
+                    updateZoomDisplay();
+                }
+            });
+
+            document.getElementById('zoomDec').addEventListener('click', (e) => {
+                e.stopPropagation();
+                if (currentZoom > 80) {
+                    currentZoom -= 10;
+                    updateZoomDisplay();
+                }
+            });
+
+            // Browser Toggle Logic
+            const browserToggle = document.getElementById('browserToggle');
+            const browserToggleRow = document.getElementById('browserToggleRow');
+            let useSystemBrowser = localStorage.getItem('useSystemBrowser') === 'true';
+
+            const updateToggle = () => {
+                if (useSystemBrowser) {
+                    browserToggle.classList.add('active');
+                } else {
+                    browserToggle.classList.remove('active');
+                }
+                localStorage.setItem('useSystemBrowser', useSystemBrowser);
+            };
+            
+            // Initialize toggle state
+            updateToggle();
+
+            browserToggleRow.addEventListener('click', (e) => {
+                e.stopPropagation();
+                useSystemBrowser = !useSystemBrowser;
+                updateToggle();
+            });
+        }
 
         // 主题切换
         function initTheme() {
@@ -1858,8 +2289,380 @@
             document.querySelectorAll('.edit-btn:not(.close-edit-btn)').forEach(btn => {
                 btn.addEventListener('click', function() {
                     const command = this.dataset.command;
-                    document.execCommand(command, false, null);
+                    if (command) {
+                        document.execCommand(command, false, null);
+                        textInput.focus();
+                    }
+                });
+            });
+
+            // New Toolbar Buttons Logic
+            const editPasteBtn = document.getElementById('editPasteBtn');
+            const editFormatPainterBtn = document.getElementById('editFormatPainterBtn');
+            const editHeadingBtn = document.getElementById('editHeadingBtn');
+            const editAddImageBtn = document.getElementById('editAddImageBtn');
+            const headingDropdown = document.getElementById('headingDropdown');
+
+            if (editPasteBtn) {
+                editPasteBtn.addEventListener('click', async () => {
+                    try {
+                        const text = await navigator.clipboard.readText();
+                        document.execCommand('insertText', false, text);
+                    } catch (err) {
+                        showToast('无法访问剪贴板', 'error');
+                    }
                     textInput.focus();
+                });
+            }
+
+            if (editFormatPainterBtn) {
+                editFormatPainterBtn.addEventListener('click', () => {
+                    document.execCommand('removeFormat', false, null);
+                    textInput.focus();
+                });
+            }
+
+            // Heading Dropdown Logic
+            if (editHeadingBtn && headingDropdown) {
+                editHeadingBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    headingDropdown.classList.toggle('show');
+                });
+
+                // Dropdown items click
+                headingDropdown.querySelectorAll('.dropdown-item').forEach(item => {
+                    item.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        const cmd = item.dataset.cmd;
+                        const val = item.dataset.val;
+                        document.execCommand(cmd, false, val);
+                        headingDropdown.classList.remove('show');
+                        textInput.focus();
+                    });
+                });
+
+                // Close dropdown when clicking outside
+                document.addEventListener('click', (e) => {
+                    if (!editHeadingBtn.contains(e.target) && !headingDropdown.contains(e.target)) {
+                        headingDropdown.classList.remove('show');
+                    }
+                });
+            }
+
+            if (editAddImageBtn) {
+                editAddImageBtn.addEventListener('click', () => {
+                    document.getElementById('fileInput').click();
+                });
+            }
+
+            // Context Menu Logic
+            const contextMenu = document.getElementById('editContextMenu');
+            
+            // Global context menu handler
+            document.addEventListener('contextmenu', (e) => {
+                e.preventDefault(); // Always prevent default to block native menu
+
+                // Determine context
+                const isInput = e.target.closest('#textInput') || e.target.closest('.content-area');
+                const isRightPanel = e.target.closest('.right-panel');
+                const isImage = e.target.tagName === 'IMG';
+                
+                // Only show custom menu for main areas or images
+                if (!isInput && !isRightPanel && !isImage) return;
+
+                // Check if right panel is active (has result or preview)
+                if (isRightPanel) {
+                    const resultItem = document.getElementById('resultItem');
+                    if (!resultItem.classList.contains('active')) return;
+                }
+
+                // Selection Logic for Right Panel (Text only)
+                if (isRightPanel && !isImage) {
+                    // Clear left panel selection to avoid confusion
+                    const selection = window.getSelection();
+                    if (selection.rangeCount > 0) {
+                        const range = selection.getRangeAt(0);
+                        if (document.getElementById('textInput').contains(range.commonAncestorContainer)) {
+                            selection.removeAllRanges();
+                        }
+                    }
+                }
+
+                // Get selected text for Search/GoTo
+                const selectedText = window.getSelection().toString().trim();
+                const isUrl = selectedText && /^(http|https):\/\/[^ "]+$/.test(selectedText);
+
+                // Toggle items based on context
+                const isEditMode = document.body.classList.contains('edit-mode');
+                
+                // Helper to show/hide
+                const setDisplay = (id, show) => {
+                    const el = document.getElementById(id);
+                    if (el) el.style.display = show ? 'flex' : 'none';
+                };
+
+                // Store target info
+                contextMenu.dataset.targetType = isImage ? 'image' : (isInput ? 'input' : 'output');
+                if (isImage) {
+                    contextMenu.dataset.imageSrc = e.target.src;
+                    contextMenu.currentElement = e.target;
+                    
+                    // 获取图片ID以便正确删除
+                    const item = e.target.closest('.image-preview-item');
+                    if (item && item.dataset.id) {
+                        contextMenu.dataset.imageId = item.dataset.id;
+                    } else {
+                        delete contextMenu.dataset.imageId;
+                    }
+                } else {
+                    contextMenu.currentElement = null;
+                    delete contextMenu.dataset.imageId;
+                }
+
+                if (isImage) {
+                    // Image Context
+                    setDisplay('ctxSearch', false);
+                    setDisplay('ctxSearchSep', false);
+                    setDisplay('ctxGoTo', false);
+                    
+                    // Cut/Delete: Only in Input (Left Panel)
+                    // For images, the image itself is the selection target
+                    const isInputImage = isInput || e.target.closest('.image-preview-item');
+                    
+                    setDisplay('ctxCut', isInputImage);
+                    setDisplay('ctxDelete', isInputImage);
+                    
+                    setDisplay('ctxCopy', true); // Copy Image
+                    setDisplay('ctxSaveAs', true); // Save Image
+                    
+                    setDisplay('ctxPaste', false);
+                    setDisplay('ctxPastePlain', false);
+                    setDisplay('ctxAddImage', false);
+                    setDisplay('ctxSelectAll', false);
+                    
+                    // Hide format groups
+                    const formatGroups = contextMenu.querySelectorAll('.ctx-format-group');
+                    formatGroups.forEach(el => el.style.display = 'none');
+
+                } else {
+                    // Text Context
+                    // Search & GoTo
+                    if (selectedText) {
+                        const searchItem = document.getElementById('ctxSearch');
+                        const searchText = selectedText.length > 8 ? selectedText.substring(0, 8) + '...' : selectedText;
+                        searchItem.querySelector('span').textContent = `搜索: ${searchText}`;
+                        setDisplay('ctxSearch', true);
+                        setDisplay('ctxSearchSep', true);
+                    } else {
+                        setDisplay('ctxSearch', false);
+                        setDisplay('ctxSearchSep', false);
+                    }
+                    
+                    setDisplay('ctxGoTo', isUrl);
+
+                    // Cut/Delete: Only in Input AND when text is selected
+                    setDisplay('ctxCut', isInput && !!selectedText);
+                    setDisplay('ctxDelete', isInput && !!selectedText);
+
+                    // Save As: Only for images
+                    setDisplay('ctxSaveAs', false);
+
+                    // Copy (Always show if text selected)
+                    setDisplay('ctxCopy', !!selectedText);
+
+                    // Paste & Format (Only for Input)
+                    setDisplay('ctxPaste', isInput);
+                    setDisplay('ctxPastePlain', isInput);
+                    setDisplay('ctxAddImage', isInput);
+                    
+                    // Format Groups (Only for Input + Edit Mode)
+                    const formatGroups = contextMenu.querySelectorAll('.ctx-format-group');
+                    formatGroups.forEach(el => {
+                        el.style.display = (isInput && isEditMode) ? (el.classList.contains('context-menu-separator') ? 'block' : 'flex') : 'none';
+                    });
+
+                    // Select All
+                    setDisplay('ctxSelectAll', true);
+                }
+
+                // Position menu (Smart Positioning)
+                const x = e.clientX;
+                const y = e.clientY;
+                const winWidth = window.innerWidth;
+                const winHeight = window.innerHeight;
+                
+                // Measure height
+                contextMenu.style.visibility = 'hidden';
+                contextMenu.classList.add('active');
+                const menuHeight = contextMenu.offsetHeight;
+                const menuWidth = contextMenu.offsetWidth;
+                contextMenu.classList.remove('active');
+                contextMenu.style.visibility = 'visible';
+
+                let top = y;
+                let left = x;
+
+                // Flip vertically if near bottom
+                if (y + menuHeight > winHeight) {
+                    top = y - menuHeight;
+                }
+                // Flip horizontally if near right
+                if (x + menuWidth > winWidth) {
+                    left = winWidth - menuWidth - 10;
+                }
+
+                contextMenu.style.left = `${left}px`;
+                contextMenu.style.top = `${top}px`;
+                contextMenu.classList.add('active');
+            });
+
+            // Hide context menu on click elsewhere
+            document.addEventListener('pointerdown', (e) => {
+                if (!contextMenu.contains(e.target)) {
+                    contextMenu.classList.remove('active');
+                }
+            });
+
+            // Context Menu Actions
+            document.getElementById('ctxSearch').addEventListener('click', () => {
+                const text = window.getSelection().toString().trim();
+                if (text) {
+                    // Use default browser search or specific engine
+                    const url = `https://www.bing.com/search?q=${encodeURIComponent(text)}`;
+                    const useSystemBrowser = localStorage.getItem('useSystemBrowser') === 'true';
+                    
+                    if (useSystemBrowser && window.electronAPI && window.electronAPI.openExternal) {
+                        // Open in external browser (System Default)
+                        window.electronAPI.openExternal(url);
+                    } else {
+                        // Open in internal browser (New Window)
+                        window.open(url, '_blank');
+                    }
+                }
+                contextMenu.classList.remove('active');
+            });
+
+            document.getElementById('ctxGoTo').addEventListener('click', () => {
+                const text = window.getSelection().toString().trim();
+                if (text) {
+                    const useSystemBrowser = localStorage.getItem('useSystemBrowser') === 'true';
+                    if (useSystemBrowser && window.electronAPI && window.electronAPI.openExternal) {
+                        window.electronAPI.openExternal(text);
+                    } else {
+                        window.open(text, '_blank');
+                    }
+                }
+                contextMenu.classList.remove('active');
+            });
+
+            document.getElementById('ctxCopy').addEventListener('click', async () => {
+                if (contextMenu.dataset.targetType === 'image') {
+                     const src = contextMenu.dataset.imageSrc;
+                     if (window.electronAPI) {
+                         window.electronAPI.send('copy-image', src);
+                         showToast('图片已复制', 'success');
+                     }
+                } else {
+                    const text = window.getSelection().toString();
+                    if (text) {
+                        await navigator.clipboard.writeText(text);
+                        showToast('已复制到剪贴板', 'success');
+                    }
+                }
+                contextMenu.classList.remove('active');
+            });
+
+            document.getElementById('ctxCut').addEventListener('click', () => {
+                if (contextMenu.dataset.targetType === 'image') {
+                    // Copy Image then Delete
+                    const src = contextMenu.dataset.imageSrc;
+                    if (window.electronAPI) window.electronAPI.send('copy-image', src);
+                    
+                    // Delete logic
+                    const id = contextMenu.dataset.imageId;
+                    if (id) {
+                        deleteImage(parseFloat(id));
+                    } else if (contextMenu.currentElement) {
+                        contextMenu.currentElement.remove();
+                    }
+                } else {
+                    document.execCommand('cut');
+                }
+                contextMenu.classList.remove('active');
+            });
+
+            document.getElementById('ctxDelete').addEventListener('click', () => {
+                if (contextMenu.dataset.targetType === 'image') {
+                    const id = contextMenu.dataset.imageId;
+                    if (id) {
+                        deleteImage(parseFloat(id));
+                    } else if (contextMenu.currentElement) {
+                        contextMenu.currentElement.remove();
+                    }
+                } else {
+                    document.execCommand('delete');
+                }
+                contextMenu.classList.remove('active');
+            });
+
+            document.getElementById('ctxSaveAs').addEventListener('click', () => {
+                const src = contextMenu.dataset.imageSrc;
+                if (src && window.electronAPI) {
+                    window.electronAPI.send('download-image', src);
+                }
+                contextMenu.classList.remove('active');
+            });
+
+            document.getElementById('ctxSelectAll').addEventListener('click', () => {
+                const targetType = contextMenu.dataset.targetType;
+                if (targetType === 'input') {
+                    const range = document.createRange();
+                    range.selectNodeContents(document.getElementById('textInput'));
+                    const sel = window.getSelection();
+                    sel.removeAllRanges();
+                    sel.addRange(range);
+                } else {
+                    // Select right panel content (parsedText)
+                    const content = document.getElementById('parsedText');
+                    if (content && content.style.display !== 'none') {
+                        const range = document.createRange();
+                        range.selectNodeContents(content);
+                        const sel = window.getSelection();
+                        sel.removeAllRanges();
+                        sel.addRange(range);
+                    }
+                }
+                contextMenu.classList.remove('active');
+            });
+
+            document.getElementById('ctxPaste').addEventListener('click', async () => {
+                handlePaste();
+                contextMenu.classList.remove('active');
+            });
+
+            document.getElementById('ctxPastePlain').addEventListener('click', async () => {
+                try {
+                    const text = await navigator.clipboard.readText();
+                    document.execCommand('insertText', false, text);
+                } catch (err) {
+                    showToast('无法访问剪贴板', 'error');
+                }
+                contextMenu.classList.remove('active');
+            });
+
+            document.getElementById('ctxAddImage').addEventListener('click', () => {
+                document.getElementById('fileInput').click();
+                contextMenu.classList.remove('active');
+            });
+
+            // Submenu actions
+            contextMenu.querySelectorAll('[data-cmd]').forEach(item => {
+                item.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const cmd = item.dataset.cmd;
+                    const val = item.dataset.val || null;
+                    document.execCommand(cmd, false, val);
+                    contextMenu.classList.remove('active');
                 });
             });
         }
@@ -1976,45 +2779,78 @@
 
         // 粘贴处理逻辑
         async function handlePaste() {
-            if (uploadedImages.length >= maxImages) {
-                showToast(`最多只能上传${maxImages}张图片`, 'warning');
+            // 检查是否支持 Clipboard API
+            if (!navigator.clipboard || !window.ClipboardItem) {
+                showToast('当前浏览器不支持剪贴板API', 'error');
                 return;
             }
 
-            if (navigator.clipboard && window.ClipboardItem) {
-                try {
-                    const items = await navigator.clipboard.read();
-                    let foundImage = false;
-                    for (const item of items) {
-                        for (const type of item.types) {
-                            if (type.startsWith('image/')) {
-                                foundImage = true;
-                                const blob = await item.getType(type);
-                                const reader = new FileReader();
-                                reader.onload = function(e) {
-                                    const imageData = {
-                                        id: Date.now() + Math.random(),
-                                        url: e.target.result,
-                                        name: '剪贴板图片'
-                                    };
-                                    uploadedImages.push(imageData);
-                                    renderImages();
-                                    showToast('剪贴板图片已上传', 'success');
-                                };
-                                reader.readAsDataURL(blob);
-                                return;
-                            }
+            try {
+                const items = await navigator.clipboard.read();
+                let hasHandled = false;
+
+                for (const item of items) {
+                    // 1. 优先处理图片
+                    const imageType = item.types.find(type => type.startsWith('image/'));
+                    if (imageType) {
+                        if (uploadedImages.length >= maxImages) {
+                            showToast(`最多只能上传${maxImages}张图片`, 'warning');
+                            return;
                         }
+                        
+                        const blob = await item.getType(imageType);
+                        const reader = new FileReader();
+                        reader.onload = function(e) {
+                            const imageData = {
+                                id: Date.now() + Math.random(),
+                                url: e.target.result,
+                                name: '剪贴板图片'
+                            };
+                            uploadedImages.push(imageData);
+                            renderImages();
+                            showToast('剪贴板图片已上传', 'success');
+                        };
+                        reader.readAsDataURL(blob);
+                        hasHandled = true;
+                        break; // 一次只处理一个主要内容
                     }
-                    if (!foundImage) {
-                        showToast('剪贴板中没有图片', 'warning');
+                    
+                    // 2. 处理 HTML (带格式文本)
+                    if (item.types.includes('text/html')) {
+                        const blob = await item.getType('text/html');
+                        const html = await blob.text();
+                        document.execCommand('insertHTML', false, html);
+                        hasHandled = true;
+                        break;
                     }
-                } catch (err) {
-                    console.error(err);
-                    showToast('无法访问剪贴板内容', 'error');
+                    
+                    // 3. 处理纯文本
+                    if (item.types.includes('text/plain')) {
+                        const blob = await item.getType('text/plain');
+                        const text = await blob.text();
+                        document.execCommand('insertText', false, text);
+                        hasHandled = true;
+                        break;
+                    }
                 }
-            } else {
-                showToast('当前浏览器不支持剪贴板API', 'error');
+
+                if (!hasHandled) {
+                    showToast('剪贴板中没有可粘贴的图片或文本', 'warning');
+                }
+
+            } catch (err) {
+                console.error(err);
+                // 降级处理：尝试直接读取文本
+                try {
+                    const text = await navigator.clipboard.readText();
+                    if (text) {
+                        document.execCommand('insertText', false, text);
+                    } else {
+                        showToast('无法访问剪贴板内容', 'error');
+                    }
+                } catch (e) {
+                    showToast('无法访问剪贴板', 'error');
+                }
             }
         }
 
@@ -2291,10 +3127,10 @@
                         renderImages();
                     }
                     
-                    const image = uploadedImages.find(img => img.id === id);
-                    if (image && window.electronAPI) {
-                        window.electronAPI.send('show-image-context-menu', { src: image.url, type: 'left-side' });
-                    }
+                    // const image = uploadedImages.find(img => img.id === id);
+                    // if (image && window.electronAPI) {
+                    //     window.electronAPI.send('show-image-context-menu', { src: image.url, type: 'left-side' });
+                    // }
                 }
             });
 
@@ -2305,11 +3141,11 @@
                     const item = e.target.closest('.parsed-image-item');
                     if (item) {
                         e.preventDefault();
-                        e.stopPropagation(); // 阻止冒泡，防止触发全局图片右键菜单
-                        const img = item.querySelector('img');
-                        if (img && window.electronAPI) {
-                            window.electronAPI.send('show-image-context-menu', { src: img.src, type: 'right-side' });
-                        }
+                        // e.stopPropagation(); // 阻止冒泡，防止触发全局图片右键菜单
+                        // const img = item.querySelector('img');
+                        // if (img && window.electronAPI) {
+                        //     window.electronAPI.send('show-image-context-menu', { src: img.src, type: 'right-side' });
+                        // }
                     }
                 });
             }

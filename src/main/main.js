@@ -98,6 +98,49 @@ class DetectApp {
     // 应用准备就绪
     app.whenReady().then(() => {
       this.isAppReady = true;
+
+      // 监听新窗口创建事件，为新窗口添加右键菜单
+      app.on('web-contents-created', (event, contents) => {
+        // 忽略主窗口的 webContents (主窗口有自定义菜单)
+        if (this.mainWindow && contents === this.mainWindow.webContents) {
+            return;
+        }
+
+        // 为其他窗口（如内部浏览器窗口）添加原生右键菜单
+        contents.on('context-menu', (e, params) => {
+          const menu = new Menu();
+
+          // 文本编辑相关
+          if (params.isEditable) {
+            menu.append(new MenuItem({ label: '撤销', role: 'undo' }));
+            menu.append(new MenuItem({ label: '重做', role: 'redo' }));
+            menu.append(new MenuItem({ type: 'separator' }));
+            menu.append(new MenuItem({ label: '剪切', role: 'cut' }));
+            menu.append(new MenuItem({ label: '复制', role: 'copy' }));
+            menu.append(new MenuItem({ label: '粘贴', role: 'paste' }));
+            menu.append(new MenuItem({ label: '全选', role: 'selectAll' }));
+          } else if (params.selectionText) {
+            // 选中文本
+            menu.append(new MenuItem({ label: '复制', role: 'copy' }));
+            menu.append(new MenuItem({ label: '搜索', click: () => {
+                shell.openExternal(`https://www.bing.com/search?q=${encodeURIComponent(params.selectionText)}`);
+            }}));
+          } else if (params.mediaType === 'image') {
+             // 图片
+             menu.append(new MenuItem({ label: '复制图片', role: 'copyImage' }));
+             menu.append(new MenuItem({ label: '复制图片地址', click: () => {
+                 clipboard.writeText(params.srcURL);
+             }}));
+          } else {
+             // 普通区域
+             menu.append(new MenuItem({ label: '后退', role: 'back', enabled: contents.canGoBack() }));
+             menu.append(new MenuItem({ label: '前进', role: 'forward', enabled: contents.canGoForward() }));
+             menu.append(new MenuItem({ label: '刷新', role: 'reload' }));
+          }
+          
+          menu.popup({ window: BrowserWindow.fromWebContents(contents) });
+        });
+      });
     });
 
 
@@ -346,6 +389,51 @@ class DetectApp {
       } catch (error) {
         console.error('设置主题失败:', error);
         return { success: false, error: error.message };
+      }
+    });
+
+    // 下载图片
+    ipcMain.on('download-image', (event, url) => {
+      const win = BrowserWindow.fromWebContents(event.sender);
+      win.webContents.downloadURL(url);
+    });
+
+    // 打开外部链接
+    ipcMain.on('open-external', (event, url) => {
+      shell.openExternal(url);
+    });
+
+    // 复制图片
+    ipcMain.on('copy-image', async (event, src) => {
+      try {
+        if (src.startsWith('data:')) {
+          const image = nativeImage.createFromDataURL(src);
+          clipboard.writeImage(image);
+        } else {
+          if (src.startsWith('http')) {
+            try {
+              const response = await net.fetch(src);
+              if (response.ok) {
+                const buffer = await response.arrayBuffer();
+                const image = nativeImage.createFromBuffer(Buffer.from(buffer));
+                clipboard.writeImage(image);
+              }
+            } catch(e) {
+              console.error('Copy failed', e);
+              clipboard.writeText(src);
+            }
+          } else {
+            const image = nativeImage.createFromPath(src);
+            if (!image.isEmpty()) {
+              clipboard.writeImage(image);
+            } else {
+              clipboard.writeText(src);
+            }
+          }
+        }
+      } catch (e) {
+        console.error('Copy image failed:', e);
+        clipboard.writeText(src);
       }
     });
 

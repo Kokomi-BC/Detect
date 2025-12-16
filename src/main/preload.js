@@ -1,4 +1,4 @@
-const { contextBridge, ipcRenderer } = require('electron');
+const { contextBridge, ipcRenderer, webFrame } = require('electron');
 
 /**
  * 预加载脚本 - 在渲染进程加载前执行
@@ -25,6 +25,14 @@ contextBridge.exposeInMainWorld('electronAPI', {
   },
   invoke: (channel, ...args) => {
     return ipcRenderer.invoke(channel, ...args);
+  },
+  // 缩放控制
+  setZoomFactor: (factor) => {
+    webFrame.setZoomFactor(factor);
+  },
+  // 打开外部链接
+  openExternal: (url) => {
+    ipcRenderer.send('open-external', url);
   }
 });
 
