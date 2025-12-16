@@ -227,7 +227,8 @@
             padding: 8px;
             z-index: 999;
             border: 1px solid var(--border-color);
-            animation: slideDown 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
+            transform-origin: top right;
+            animation: menuPopup 0.25s cubic-bezier(0.2, 0.8, 0.2, 1);
         }
 
         .more-menu .dropdown-menu.show {
@@ -247,31 +248,128 @@
             background: var(--bg-tertiary);
         }
 
-        /* Edit Options */
+        /* Edit Options - Refactored for Edit Mode */
         .edit-options {
-            display: none;
-            padding: 12px 20px;
-            background: var(--bg-primary);
-            border-bottom: 1px solid var(--border-color);
+            position: fixed;
+            top: -100px; /* Hidden initially */
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid var(--border-color);
+            border-radius: 20px;
+            padding: 8px 12px;
             gap: 8px;
-            animation: slideDown 0.3s ease;
+            box-shadow: var(--shadow-lg);
+            z-index: 1000;
+            transition: top 0.5s cubic-bezier(0.34, 1.56, 0.64, 1); /* Bouncy/Android-like */
+            display: flex;
+            align-items: center;
         }
-        .edit-options.active { display: flex; }
+
+        [data-theme="dark"] .edit-options {
+            background: rgba(26, 29, 32, 0.95);
+        }
+
+        body.edit-mode .edit-options {
+            top: 24px;
+        }
 
         .edit-btn {
-            width: 32px;
-            height: 32px;
-            padding: 6px;
+            width: 40px;
+            height: 40px;
+            padding: 8px;
             border: none;
-            background: var(--bg-secondary);
+            background: transparent;
             color: var(--text-secondary);
-            border-radius: var(--radius-sm);
+            border-radius: 10px;
             cursor: pointer;
             transition: var(--transition-fast);
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
         .edit-btn:hover {
-            background: var(--accent-color);
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+        }
+        .edit-btn.active {
+            background: var(--accent-light);
+            color: var(--accent-color);
+        }
+
+        .close-edit-btn {
+            color: var(--success-color);
+            background: rgba(46, 196, 182, 0.1);
+            margin-left: 8px;
+        }
+        .close-edit-btn:hover {
+            background: var(--success-color);
             color: white;
+            transform: scale(1.05);
+        }
+
+        /* Edit Mode Global Transitions */
+        body.edit-mode .left-panel {
+            max-width: 100%;
+            flex: 1 0 100% !important; /* Force full width */
+            z-index: 100;
+        }
+        
+        .right-panel, .resizer, .toolbar, .bottom-area, .image-preview-container {
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        body.edit-mode .right-panel {
+            flex: 0 0 0 !important;
+            min-width: 0;
+            opacity: 0;
+            overflow: hidden;
+            transform: translateX(20px);
+        }
+        
+        body.edit-mode .resizer {
+            display: none;
+        }
+
+        body.edit-mode .toolbar {
+            height: 0;
+            padding: 0;
+            overflow: hidden;
+            opacity: 0;
+            transform: translateY(-20px);
+            border: none;
+        }
+
+        body.edit-mode .bottom-area {
+            height: 0;
+            padding: 0;
+            overflow: hidden;
+            opacity: 0;
+            transform: translateY(20px);
+            border: none;
+        }
+        
+        body.edit-mode .image-preview-container {
+            display: none;
+        }
+
+        /* Text Input Expansion in Edit Mode */
+        body.edit-mode .content-area {
+            padding: 90px 15% 40px 15%; /* Centered focus mode */
+            height: 100vh;
+        }
+        
+        body.edit-mode .text-input {
+            height: 100%;
+            border: none;
+            box-shadow: none;
+            background: transparent;
+            font-size: 18px;
+            line-height: 2;
         }
 
         /* Content Area */
@@ -297,6 +395,10 @@
             box-shadow: var(--shadow-sm);
             transition: var(--transition);
             outline: none;
+            overflow-y: auto;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+            white-space: pre-wrap;
         }
 
         .text-input:focus {
@@ -676,6 +778,8 @@
             font-size: 15px;
             line-height: 1.6;
             color: var(--text-primary);
+            word-wrap: break-word;
+            overflow-wrap: break-word;
         }
 
         /* Image Modal */
@@ -849,6 +953,8 @@
             margin-bottom: 20px;
             color: var(--text-primary);
             line-height: 1.4;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
         }
 
         .parsed-text {
@@ -857,6 +963,8 @@
             color: var(--text-primary);
             white-space: pre-wrap;
             text-align: justify;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
         }
 
         /* Fake Highlight */
@@ -905,6 +1013,17 @@
         @keyframes slideDown {
             from { opacity: 0; transform: translateY(-10px); }
             to { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes menuPopup {
+            0% {
+                opacity: 0;
+                transform: scale(0.8) translateY(-20px);
+            }
+            100% {
+                opacity: 1;
+                transform: scale(1) translateY(0);
+            }
         }
 
         /* Responsive */
@@ -1239,7 +1358,7 @@
                     </svg>
                 </button>
                 <div class="toolbar-separator"></div>
-                <button class="toolbar-btn" id="editBtn" title="编辑选项">
+                <button class="toolbar-btn" id="editBtn" title="编辑">
                     <!-- Material Icons: edit -->
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M3 17.25V21h3.75l11.06-11.06a1.003 1.003 0 0 0 0-1.42l-2.34-2.34a1.003 1.003 0 0 0-1.42 0L3 17.25z" fill="none"/>
@@ -1320,6 +1439,12 @@
                 </button>
                 <button class="edit-btn" data-command="justifyRight" title="右对齐">
                     <svg width="24" height="28" viewBox="0 0 24 28" fill="none" stroke="currentColor" stroke-width="2"><line x1="4" y1="9" x2="20" y2="9"/><line x1="10" y1="16" x2="20" y2="16"/><line x1="4" y1="23" x2="20" y2="23"/></svg>
+                </button>
+                <div class="toolbar-separator"></div>
+                <button class="edit-btn close-edit-btn" id="closeEditBtn" title="完成编辑">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M5 12l5 5l10 -10" />
+                    </svg>
                 </button>
             </div>
 
@@ -1686,7 +1811,8 @@
         function initTextEditor() {
             const textInput = document.getElementById('textInput');
             const editBtn = document.getElementById('editBtn');
-            const editOptions = document.getElementById('editOptions');
+            const closeEditBtn = document.getElementById('closeEditBtn');
+            // const editOptions = document.getElementById('editOptions'); // Controlled via CSS now
 
             // 自动识别链接
             textInput.addEventListener('input', function() {
@@ -1704,14 +1830,32 @@
                 }
             });
 
+            // Toggle Edit Mode
+            function toggleEditMode(active) {
+                if (active) {
+                    document.body.classList.add('edit-mode');
+                    editBtn.classList.add('active');
+                    textInput.focus();
+                } else {
+                    document.body.classList.remove('edit-mode');
+                    editBtn.classList.remove('active');
+                }
+            }
+
             // 编辑选项切换
             editBtn.addEventListener('click', function() {
-                editOptions.classList.toggle('active');
-                this.classList.toggle('active');
+                const isEditMode = document.body.classList.contains('edit-mode');
+                toggleEditMode(!isEditMode);
             });
 
+            if (closeEditBtn) {
+                closeEditBtn.addEventListener('click', function() {
+                    toggleEditMode(false);
+                });
+            }
+
             // 编辑按钮功能
-            document.querySelectorAll('.edit-btn').forEach(btn => {
+            document.querySelectorAll('.edit-btn:not(.close-edit-btn)').forEach(btn => {
                 btn.addEventListener('click', function() {
                     const command = this.dataset.command;
                     document.execCommand(command, false, null);
@@ -2325,7 +2469,11 @@
                 // 检查是否处于错误状态
                 const isErrorState = document.getElementById('errorState').classList.contains('active');
                 
-                if (textContent === lastTextContent && imagesNow === imagesLast && !isResultEmpty && !isErrorState) {
+                // 检查是否处于预览模式（评分区域被隐藏）
+                const scoreSection = document.querySelector('.result-score');
+                const isPreviewMode = scoreSection && scoreSection.style.display === 'none';
+                
+                if (textContent === lastTextContent && imagesNow === imagesLast && !isResultEmpty && !isErrorState && !isPreviewMode) {
                     showToast('内容未变化，无需重复检测', 'info');
                     return;
                 }
