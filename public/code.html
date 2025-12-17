@@ -252,7 +252,7 @@
             position: absolute;
             top: calc(100% + 8px);
             right: 0;
-            min-width: 180px;
+            min-width: 240px;
             display: none;
             background: var(--bg-menu);
             backdrop-filter: blur(20px);
@@ -277,6 +277,9 @@
             color: var(--text-primary);
             font-size: 14px;
             transition: background 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
         }
 
         .more-menu .dropdown-item:hover {
@@ -574,11 +577,16 @@
 
         .dropdown-item-row {
             display: flex;
-            justify-content: space-between;
+            justify-content: flex-start;
             align-items: center;
             padding: 8px 12px;
             font-size: 13px;
             color: var(--text-primary);
+            gap: 8px;
+            white-space: nowrap;
+        }
+        .dropdown-item-row > :last-child {
+            margin-left: auto;
         }
 
         .zoom-controls {
@@ -1744,6 +1752,9 @@
                     <div class="dropdown-menu" id="moreDropdown">
                         
                         <div class="dropdown-item-row">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M9 4v3h5v12h3V7h5V4H9zm-6 8h3v7h3v-7h3V9H3v3z"/>
+                            </svg>
                             <span>字体大小</span>
                             <div class="zoom-controls">
                                 <button class="zoom-btn" id="fontDec">-</button>
@@ -1752,6 +1763,9 @@
                             </div>
                         </div>
                         <div class="dropdown-item-row">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14zM12 10h-2v2H9v-2H7V9h2V7h1v2h2v1z"/>
+                            </svg>
                             <span>界面缩放</span>
                             <div class="zoom-controls">
                                 <button class="zoom-btn" id="zoomDec">-</button>
@@ -1759,9 +1773,23 @@
                                 <button class="zoom-btn" id="zoomInc">+</button>
                             </div>
                         </div>
-                        <div class="dropdown-item" id="clearBrowserDataBtn">清除浏览器数据</div>
+                        <div class="dropdown-item" id="fullScreenBtn">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"/>
+                            </svg>
+                            <span>全屏显示</span>
+                        </div>
+                        <div class="dropdown-item" id="clearBrowserDataBtn">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/>
+                            </svg>
+                            <span>清除浏览器数据</span>
+                        </div>
                         <div class="dropdown-separator"></div>
                         <div class="dropdown-item-row" id="browserToggleRow" style="cursor: pointer;">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/>
+                            </svg>
                             <span>使用系统浏览器</span>
                             <div class="toggle-switch" id="browserToggle">
                                 <div class="toggle-knob"></div>
@@ -2160,6 +2188,21 @@
                     // 暴露关闭方法供其他逻辑复用
                     window.__hideMoreDropdown = () => toggleDropdown(false);
                 })();
+
+                // 全屏显示功能
+                document.getElementById('fullScreenBtn').addEventListener('click', function() {
+                    if (!document.fullscreenElement) {
+                        document.documentElement.requestFullscreen().catch(err => {
+                            console.error(`Error attempting to enable full-screen mode: ${err.message} (${err.name})`);
+                        });
+                    } else {
+                        if (document.exitFullscreen) {
+                            document.exitFullscreen();
+                        }
+                    }
+                    // Close dropdown
+                    if (window.__hideMoreDropdown) window.__hideMoreDropdown();
+                });
 
                 // 清除浏览器数据功能
                 document.getElementById('clearBrowserDataBtn').addEventListener('click', async function() {
