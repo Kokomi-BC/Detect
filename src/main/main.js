@@ -450,6 +450,14 @@ class DetectApp {
       }
     });
 
+    // 执行粘贴
+    ipcMain.on('perform-paste', (event) => {
+      const win = BrowserWindow.fromWebContents(event.sender);
+      if (win) {
+        win.webContents.paste();
+      }
+    });
+
     // 显示图片右键菜单
     ipcMain.on('show-image-context-menu', (event, { src, type }) => {
       const menu = new Menu();

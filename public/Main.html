@@ -2638,6 +2638,8 @@
                 let text = (e.clipboardData || window.clipboardData).getData('text/plain');
                 if (!text) return;
 
+                e.stopPropagation(); // 阻止冒泡，表示文本已处理
+
                 // 检查字数限制
                 const currentLength = this.innerText.length; // innerText is more accurate for visible text
                 const maxLength = 20000;
@@ -3383,7 +3385,18 @@
 
         // 粘贴处理逻辑
         async function handlePaste() {
-            // 检查是否支持 Clipboard API
+            // 优先使用 Electron API 触发系统粘贴，这样可以利用 document 的 paste 事件处理文件
+            if (window.electronAPI) {
+                window.electronAPI.send('perform-paste');
+                return;
+            }
+
+            // 降级处理：尝试使用 execCommand
+            document.getElementById('textInput').focus();
+            const success = document.execCommand('paste');
+            if (success) return;
+
+            // 如果 execCommand 失败，尝试使用 Clipboard API (仅支持文本和截图，不支持文件系统文件)
             if (!navigator.clipboard || !window.ClipboardItem) {
                 showToast('当前浏览器不支持剪贴板API', 'error');
                 return;
@@ -3427,17 +3440,6 @@
                         hasHandled = true;
                         break;
                     }
-
-                    // 3. 忽略 HTML 格式，防止样式污染
-                    /*
-                    if (item.types.includes('text/html')) {
-                        const blob = await item.getType('text/html');
-                        const html = await blob.text();
-                        document.execCommand('insertHTML', false, html);
-                        hasHandled = true;
-                        break;
-                    }
-                    */
                 }
 
                 if (!hasHandled) {
@@ -3674,17 +3676,48 @@
 
             // 粘贴上传
             document.addEventListener('paste', function(e) {
-                const items = e.clipboardData.items;
-                for (let item of items) {
-                    if (item.type.indexOf('image') !== -1) {
+                let hasHandled = false;
+
+                // 1. 优先检查 files 列表（支持从文件管理器复制的文件）
+                if (e.clipboardData.files && e.clipboardData.files.length > 0) {
+                    const imageFiles = Array.from(e.clipboardData.files).filter(file => file.type.startsWith('image/'));
+                    if (imageFiles.length > 0) {
                         e.preventDefault();
-                        const file = item.getAsFile();
-                        if (uploadedImages.length < maxImages) {
-                            handleFiles([file]);
-                        } else {
-                            showToast(`最多只能上传${maxImages}张图片`, 'warning');
+                        handleFiles(imageFiles);
+                        hasHandled = true;
+                    }
+                }
+
+                // 2. 检查 items（支持截图等）
+                if (!hasHandled) {
+                    const items = e.clipboardData.items;
+                    for (let item of items) {
+                        if (item.type.indexOf('image') !== -1) {
+                            e.preventDefault();
+                            const file = item.getAsFile();
+                            if (file) {
+                                handleFiles([file]);
+                                hasHandled = true;
+                            }
+                            break;
                         }
                     }
+                }
+
+                // 3. 如果焦点不在输入框，尝试处理纯文本
+                if (!hasHandled && document.activeElement !== document.getElementById('textInput')) {
+                    const text = e.clipboardData.getData('text/plain');
+                    if (text) {
+                        e.preventDefault();
+                        const textInput = document.getElementById('textInput');
+                        textInput.focus();
+                        document.execCommand('insertText', false, text);
+                        hasHandled = true;
+                    }
+                }
+
+                if (!hasHandled) {
+                    showToast('剪贴板中没有可粘贴的图片或文本', 'warning');
                 }
             });
 
