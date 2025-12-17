@@ -3314,6 +3314,13 @@
                 // Click to select
                 item.addEventListener('click', function(e) {
                     if (e.target.classList.contains('image-delete-btn')) return;
+                    
+                    // Hide tooltip if active
+                    hideTooltip();
+                    
+                    // Stop propagation to prevent document click handler from clearing selection
+                    e.stopPropagation();
+
                     if (e.ctrlKey || e.metaKey) {
                         if (selectedImages.has(image.id)) selectedImages.delete(image.id);
                         else selectedImages.add(image.id);
@@ -4776,6 +4783,14 @@
 
         // Global event listeners for tooltip management
         document.addEventListener('click', function(e) {
+            // Clear image selection if clicking outside
+            if (selectedImages.size > 0) {
+                // Since image click stops propagation, any click reaching here is outside an image
+                // (or on an element that bubbled up, but not an image item)
+                selectedImages.clear();
+                renderImages();
+            }
+
             const tooltip = document.getElementById('customTooltip');
             // If clicking inside tooltip, do nothing
             if (tooltip && tooltip.contains(e.target)) {
