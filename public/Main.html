@@ -76,12 +76,14 @@
             overflow: hidden;
             user-select: none; /* 禁止选中 */
             -webkit-user-select: none;
+            transition: background-color var(--transition-fast), color var(--transition-fast);
         }
         
         html {
             height: 100%;
             background: var(--bg-primary);
             overflow: hidden;
+            transition: background-color var(--transition-fast);
         }
 
         /* 允许选中的区域 */
@@ -300,7 +302,7 @@
             border: 1px solid var(--border-color);
             border-radius: 20px;
             padding: 8px 12px;
-            gap: 8px;
+            gap: 4px;
             box-shadow: var(--shadow-lg);
             z-index: 1000;
             transition: top 0.5s cubic-bezier(0.34, 1.56, 0.64, 1); /* Bouncy/Android-like */
@@ -319,7 +321,7 @@
         .edit-btn {
             width: 40px;
             height: 40px;
-            padding: 8px;
+            padding: 6px;
             border: none;
             background: transparent;
             color: var(--text-secondary);
@@ -329,6 +331,12 @@
             display: flex;
             align-items: center;
             justify-content: center;
+        }
+        .edit-btn[disabled] {
+            opacity: 0.4;
+            cursor: not-allowed;
+            pointer-events: none;
+            box-shadow: none;
         }
         .edit-btn:hover {
             background: var(--accent-light);
@@ -359,7 +367,7 @@
         }
         
         .right-panel, .resizer, .toolbar, .bottom-area, .image-preview-container {
-            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            transition: var(--transition);
             opacity: 1;
             transform: translateY(0);
         }
@@ -396,8 +404,8 @@
         
         body.edit-mode .image-preview-container {
             display: grid; /* Show in edit mode */
-            margin-top: 24px;
-            padding-top: 24px;
+            margin-top: 0;
+            padding-top: 0;
             border-top: none;
         }
         
@@ -475,6 +483,7 @@
             display: none;
             margin-left: 8px;
             z-index: 1002;
+            transform-origin: top left;
         }
         /* Left-side submenu when near right edge */
         .context-submenu.left-side {
@@ -482,6 +491,7 @@
             right: 100%;
             margin-left: 0;
             margin-right: 8px;
+            transform-origin: top right;
         }
         /* Invisible bridge to prevent menu closing */
         .context-submenu::before {
@@ -513,6 +523,13 @@
             position: relative;
             display: inline-block;
         }
+        
+        /* Hover to expand for format and heading dropdowns */
+        .edit-btn-group:hover .dropdown-menu {
+            display: block;
+            animation: dropdownPopup 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
+        }
+
         .dropdown-menu {
             position: absolute;
             top: 100%;
@@ -529,6 +546,28 @@
             display: none;
             z-index: 1005;
             margin-top: 8px;
+        }
+        /* Bridge the gap between button and menu */
+        .dropdown-menu::before {
+            content: '';
+            position: absolute;
+            top: -10px;
+            left: 0;
+            width: 100%;
+            height: 10px;
+            background: transparent;
+        }
+        .dropdown-menu.format-menu {
+            /* Reset to vertical list style */
+            min-width: 140px;
+            padding: 6px;
+        }
+        .dropdown-menu.format-menu .dropdown-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 12px;
+            text-align: left;
         }
         
         /* More Menu Specifics */
@@ -674,13 +713,16 @@
         }
         
         body.edit-mode .text-input {
-            height: 100%;
+            height: auto;
+            min-height: 200px;
+            flex: 0 0 auto;
             border: none;
             box-shadow: none;
             background: transparent; /* Transparent in edit mode to use body bg */
             font-size: 18px;
             line-height: 2;
             padding-top: 120px; /* Push text down initially */
+            padding-bottom: 20px;
         }
 
         /* Content Area */
@@ -922,6 +964,7 @@
             align-items: center;
             background: var(--bg-primary);
             border-bottom: 1px solid var(--border-color);
+            transition: background-color var(--transition-fast), border-color var(--transition-fast);
         }
 
         .result-title {
@@ -934,6 +977,8 @@
             flex: 1;
             padding: 24px;
             overflow-y: auto;
+            background: transparent;
+            transition: background-color var(--transition-fast), border-color var(--transition-fast);
         }
 
         /* Initial State */
@@ -974,6 +1019,28 @@
             max-width: 420px;
         }
 
+            /* Heading Dropdown Items */
+        #headingDropdown {
+            min-width: 140px;
+            white-space: nowrap;
+        }
+        .heading-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 12px;
+            text-align: left;
+        }
+        .heading-icon {
+            width: 24px;
+            text-align: center;
+            color: var(--text-secondary);
+            /* Removed fixed font-family/weight to match context menu style */
+        }
+        .heading-item:hover .heading-icon {
+            color: var(--accent-color);
+        }
+
         /* Result Item */
         .result-item {
             display: none;
@@ -986,11 +1053,12 @@
             align-items: center;
             gap: 24px;
             padding: 24px;
-            background: var(--bg-primary);
+            background: var(--bg-glass);
             border-radius: var(--radius-lg);
             margin-bottom: 24px;
             box-shadow: var(--shadow-sm);
             border: 1px solid var(--border-color);
+            transition: background-color var(--transition-fast), border-color var(--transition-fast), box-shadow var(--transition-fast);
         }
 
         /* SVG Score Circle */
@@ -1060,12 +1128,13 @@
 
         /* Analysis List */
         .result-analysis {
-            background: var(--bg-primary);
+            background: var(--bg-glass);
             border-radius: var(--radius-lg);
             padding: 24px;
             margin-bottom: 24px;
             box-shadow: var(--shadow-sm);
             border: 1px solid var(--border-color);
+            transition: background-color var(--transition-fast), border-color var(--transition-fast), box-shadow var(--transition-fast);
         }
 
         .analysis-title {
@@ -1091,15 +1160,16 @@
             gap: 16px;
             margin-bottom: 12px;
             padding: 16px;
-            background: var(--bg-secondary);
+            background: var(--bg-glass);
             border-radius: var(--radius-md);
             transition: var(--transition);
             border-left: 4px solid transparent;
+            border: 1px solid var(--border-color);
         }
 
         .analysis-item:hover {
             transform: translateX(4px);
-            background: var(--bg-primary);
+            background: var(--bg-glass);
             box-shadow: var(--shadow-sm);
         }
 
@@ -1281,6 +1351,8 @@
             height: 100%;
             color: var(--text-secondary);
             animation: fadeIn 0.3s ease;
+            background: transparent;
+            transition: background-color var(--transition-fast), color var(--transition-fast);
         }
         .loading-state.active { display: flex; }
 
@@ -1301,6 +1373,7 @@
             border-radius: 3px;
             margin-top: 16px;
             overflow: hidden;
+            transition: background-color var(--transition-fast);
         }
 
         .progress-bar {
@@ -1317,6 +1390,8 @@
             padding-top: 0;
             border-top: none;
             animation: slideInRight 0.5s ease;
+            background: transparent;
+            transition: background-color var(--transition-fast), color var(--transition-fast);
         }
 
         .parsed-title {
@@ -1484,6 +1559,8 @@
             text-align: center;
             color: var(--danger-color);
             animation: fadeIn 0.3s ease;
+            background: transparent;
+            transition: background-color var(--transition-fast), color var(--transition-fast);
         }
 
         .error-state.active {
@@ -1801,32 +1878,84 @@
 
             <!-- 编辑选项 -->
             <div class="edit-options" id="editOptions">
+                <button class="edit-btn" id="editCutBtn" title="剪切" disabled>
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M9.64 7.64c.23-.5.36-1.05.36-1.64 0-2.21-1.79-4-4-4S2 3.79 2 6s1.79 4 4 4c.59 0 1.14-.13 1.64-.36L10 12l-2.36 2.36C7.14 14.13 6.59 14 6 14c-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4c0-.59-.13-1.14-.36-1.64L12 14l7 7h3v-1L9.64 7.64zM6 8c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm0 12c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm6-7.5c-.28 0-.5-.22-.5-.5s.22-.5.5-.5.5.22.5.5-.22.5-.5.5zM19 3l-6 6 2 2 7-7V3z"/>
+                    </svg>
+                </button>
                 <button class="edit-btn" id="editPasteBtn" title="粘贴">
                     <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
                         <path d="M19 2h-4.18C14.4.84 13.3 0 12 0c-1.3 0-2.4.84-2.82 2H5c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-7 0c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zm7 18H5V4h2v3h10V4h2v16z"/>
                     </svg>
                 </button>
+                <button class="edit-btn" id="editUndoBtn" title="撤销" disabled>
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M12 5V1L7 6l5 5V7c3.31 0 6 2.69 6 6 0 1.01-.25 1.97-.69 2.81l1.46 1.46C19.49 16.08 20 14.6 20 13c0-4.42-3.58-8-8-8z"/>
+                    </svg>
+                </button>
+                <button class="edit-btn" id="editRedoBtn" title="重做" disabled>
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M12 5V1l5 5-5 5V7c-3.31 0-6 2.69-6 6 0 1.01.25 1.97.69 2.81L5.23 17.27C4.51 16.08 4 14.6 4 13c0-4.42 3.58-8 8-8z"/>
+                    </svg>
+                </button>
+                <div class="toolbar-separator"></div>
                 <button class="edit-btn" id="editFormatPainterBtn" title="清除格式">
                     <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
                         <path d="M3.27 5L2 6.27l6.97 6.97L6.5 19h3l1.57-3.66L16.73 21 18 19.73 3.55 5.27 3.27 5zM6 5v.18L8.82 8h2.4l-.72 1.68 2.1 2.1L14.21 8H20V5H6z"/>
                     </svg>
                 </button>
-                <div class="toolbar-separator"></div>
-                <button class="edit-btn" data-command="bold" title="加粗">
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
-                        <path d="M15.6 10.79c.97-.67 1.65-1.77 1.65-2.79 0-2.26-1.75-4-4-4H7v14h7.04c2.09 0 3.71-1.7 3.71-3.79 0-1.52-.86-2.82-2.15-3.42zM10 6.5h3c.83 0 1.5.67 1.5 1.5s-.67 1.5-1.5 1.5h-3v-3zm3.5 9H10v-3h3.5c.83 0 1.5.67 1.5 1.5s-.67 1.5-1.5 1.5z"/>
-                    </svg>
-                </button>
-                <button class="edit-btn" data-command="italic" title="斜体">
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
-                        <path d="M10 4v3h2.21l-3.42 8H6v3h8v-3h-2.21l3.42-8H18V4z"/>
-                    </svg>
-                </button>
-                <button class="edit-btn" data-command="underline" title="下划线">
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
-                        <path d="M12 17c3.31 0 6-2.69 6-6V3h-2.5v8c0 1.93-1.57 3.5-3.5 3.5S8.5 12.93 8.5 11V3H6v8c0 3.31 2.69 6 6 6zm-7 2v2h14v-2H5z"/>
-                    </svg>
-                </button>
+                <div class="edit-btn-group" id="editFormatGroup">
+                    <button class="edit-btn" id="editFormatBtn" title="文本格式">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M5 17v2h14v-2H5zm4.5-4.2h5l.9 2.2h2.1L12.75 4h-1.5L6.5 15h2.1l.9-2.2zM12 5.98L13.87 11h-3.74L12 5.98z"/>
+                        </svg>
+                    </button>
+                    <div class="dropdown-menu format-menu" id="formatDropdown">
+                        <div class="dropdown-item" data-command="bold" title="加粗">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M15.6 10.79c.97-.67 1.65-1.77 1.65-2.79 0-2.26-1.75-4-4-4H7v14h7.04c2.09 0 3.71-1.7 3.71-3.79 0-1.52-.86-2.82-2.15-3.42zM10 6.5h3c.83 0 1.5.67 1.5 1.5s-.67 1.5-1.5 1.5h-3v-3zm3.5 9H10v-3h3.5c.83 0 1.5.67 1.5 1.5s-.67 1.5-1.5 1.5z"/>
+                            </svg>
+                            <span>加粗</span>
+                        </div>
+                        <div class="dropdown-item" data-command="italic" title="斜体">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M10 4v3h2.21l-3.42 8H6v3h8v-3h-2.21l3.42-8H18V4z"/>
+                            </svg>
+                            <span>斜体</span>
+                        </div>
+                        <div class="dropdown-item" data-command="underline" title="下划线">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M12 17c3.31 0 6-2.69 6-6V3h-2.5v8c0 1.93-1.57 3.5-3.5 3.5S8.5 12.93 8.5 11V3H6v8c0 3.31 2.69 6 6 6zm-7 2v2h14v-2H5z"/>
+                            </svg>
+                            <span>下划线</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="edit-btn-group" id="editHeadingGroup">
+                    <button class="edit-btn" id="editHeadingBtn" title="段落格式">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M4 19h6v-2H4v2zM20 5H4v2h16V5zm-3 6H4v2h13.25c1.1 0 2 .9 2 2s-.9 2-2 2H15v-2l-3 3 3 3v-2h2c2.21 0 4-1.79 4-4s-1.79-4-4-4z"/>
+                        </svg>
+                    </button>
+                    <div class="dropdown-menu" id="headingDropdown">
+                        <div class="dropdown-item heading-item" data-cmd="formatBlock" data-val="H1">
+                            <span class="heading-icon" style="font-weight: 800; font-size: 16px;">H1</span>
+                            <span>标题 1</span>
+                        </div>
+                        <div class="dropdown-item heading-item" data-cmd="formatBlock" data-val="H2">
+                            <span class="heading-icon" style="font-weight: 700; font-size: 15px;">H2</span>
+                            <span>标题 2</span>
+                        </div>
+                        <div class="dropdown-item heading-item" data-cmd="formatBlock" data-val="H3">
+                            <span class="heading-icon" style="font-weight: 600; font-size: 14px;">H3</span>
+                            <span>标题 3</span>
+                        </div>
+                        <div class="dropdown-item heading-item" data-cmd="formatBlock" data-val="P">
+                            <span class="heading-icon" style="font-size: 14px;">¶</span>
+                            <span>正文</span>
+                        </div>
+                    </div>
+                </div>
                 <div class="toolbar-separator"></div>
                 <button class="edit-btn" data-command="justifyLeft" title="左对齐">
                     <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
@@ -1843,20 +1972,6 @@
                         <path d="M3 21h18v-2H3v2zm6-4h12v-2H9v2zm-6-4h18v-2H3v2zm6-4h12V7H9v2zM3 3v2h18V3H3z"/>
                     </svg>
                 </button>
-                <div class="toolbar-separator"></div>
-                <div class="edit-btn-group" id="editHeadingGroup">
-                    <button class="edit-btn" id="editHeadingBtn" title="段落格式">
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
-                            <path d="M4 19h6v-2H4v2zM20 5H4v2h16V5zm-3 6H4v2h13.25c1.1 0 2 .9 2 2s-.9 2-2 2H15v-2l-3 3 3 3v-2h2c2.21 0 4-1.79 4-4s-1.79-4-4-4z"/>
-                        </svg>
-                    </button>
-                    <div class="dropdown-menu" id="headingDropdown">
-                        <div class="dropdown-item" data-cmd="formatBlock" data-val="H1">标题 1</div>
-                        <div class="dropdown-item" data-cmd="formatBlock" data-val="H2">标题 2</div>
-                        <div class="dropdown-item" data-cmd="formatBlock" data-val="H3">标题 3</div>
-                        <div class="dropdown-item" data-cmd="formatBlock" data-val="P">正文</div>
-                    </div>
-                </div>
                 <div class="toolbar-separator"></div>
                 <button class="edit-btn" id="editAddImageBtn" title="添加图片">
                     <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
@@ -2609,23 +2724,29 @@
                 });
             }
 
-            // 编辑按钮功能
+            // 编辑按钮功能（通用 data-command）
             document.querySelectorAll('.edit-btn:not(.close-edit-btn)').forEach(btn => {
                 btn.addEventListener('click', function() {
                     const command = this.dataset.command;
                     if (command) {
                         document.execCommand(command, false, null);
                         textInput.focus();
+                        refreshUndoRedo && refreshUndoRedo();
                     }
                 });
             });
 
             // New Toolbar Buttons Logic
             const editPasteBtn = document.getElementById('editPasteBtn');
+            const editCutBtn = document.getElementById('editCutBtn');
             const editFormatPainterBtn = document.getElementById('editFormatPainterBtn');
             const editHeadingBtn = document.getElementById('editHeadingBtn');
             const editAddImageBtn = document.getElementById('editAddImageBtn');
             const headingDropdown = document.getElementById('headingDropdown');
+            const editUndoBtn = document.getElementById('editUndoBtn');
+            const editRedoBtn = document.getElementById('editRedoBtn');
+            const editFormatBtn = document.getElementById('editFormatBtn');
+            const formatDropdown = document.getElementById('formatDropdown');
 
             if (editPasteBtn) {
                 editPasteBtn.addEventListener('click', async () => {
@@ -2634,24 +2755,81 @@
                 });
             }
 
+            if (editCutBtn) {
+                editCutBtn.addEventListener('click', () => {
+                    document.execCommand('cut');
+                    textInput.focus();
+                    refreshUndoRedo();
+                });
+            }
+
             if (editFormatPainterBtn) {
                 editFormatPainterBtn.addEventListener('click', () => {
                     document.execCommand('removeFormat', false, null);
                     textInput.focus();
+                    refreshUndoRedo && refreshUndoRedo();
                 });
             }
+
+            // 撤销/重做逻辑
+            function refreshUndoRedo() {
+                if (!editUndoBtn || !editRedoBtn) return;
+                let canUndo = false, canRedo = false;
+                try {
+                    canUndo = document.queryCommandEnabled('undo');
+                    canRedo = document.queryCommandEnabled('redo');
+                } catch (e) {
+                    // ignore
+                }
+                editUndoBtn.disabled = !canUndo;
+                editRedoBtn.disabled = !canRedo;
+
+                if (editCutBtn) {
+                    let canCut = false;
+                    try {
+                        canCut = document.queryCommandEnabled('cut');
+                    } catch (e) {}
+                    // Fallback: check selection if queryCommandEnabled returns false (sometimes unreliable)
+                    if (!canCut) {
+                        const sel = window.getSelection();
+                        canCut = sel && sel.toString().length > 0;
+                    }
+                    editCutBtn.disabled = !canCut;
+                }
+            }
+            if (editUndoBtn) {
+                editUndoBtn.addEventListener('click', () => {
+                    textInput.focus();
+                    document.execCommand('undo');
+                    refreshUndoRedo();
+                });
+            }
+            if (editRedoBtn) {
+                editRedoBtn.addEventListener('click', () => {
+                    textInput.focus();
+                    document.execCommand('redo');
+                    refreshUndoRedo();
+                });
+            }
+            ['input','keyup','mouseup','paste','cut'].forEach(ev => {
+                textInput.addEventListener(ev, () => {
+                    refreshUndoRedo();
+                });
+            });
+            textInput.addEventListener('focus', refreshUndoRedo);
+            document.addEventListener('selectionchange', refreshUndoRedo);
 
             // Heading Dropdown Logic
             if (editHeadingBtn && headingDropdown) {
                 editHeadingBtn.addEventListener('click', (e) => {
-                    e.stopPropagation();
+                    // e.stopPropagation(); // Removed to allow other dropdowns to close
                     headingDropdown.classList.toggle('show');
                 });
 
                 // Dropdown items click
                 headingDropdown.querySelectorAll('.dropdown-item').forEach(item => {
                     item.addEventListener('click', (e) => {
-                        e.stopPropagation();
+                        // e.stopPropagation();
                         const cmd = item.dataset.cmd;
                         const val = item.dataset.val;
                         document.execCommand(cmd, false, val);
@@ -2668,6 +2846,44 @@
                 });
             }
 
+            // 文本格式菜单逻辑
+            if (editFormatBtn && formatDropdown) {
+                editFormatBtn.addEventListener('click', (e) => {
+                    // e.stopPropagation(); // Removed
+                    formatDropdown.classList.toggle('show');
+                });
+                // 在菜单内点击格式按钮后自动收起
+                formatDropdown.addEventListener('click', (e) => {
+                    const item = e.target.closest('.dropdown-item');
+                    if (item && item.dataset && item.dataset.command) {
+                        document.execCommand(item.dataset.command, false, null);
+                        textInput.focus();
+                        refreshUndoRedo && refreshUndoRedo();
+                        // 延迟以便 execCommand 先执行
+                        setTimeout(() => formatDropdown.classList.remove('show'), 0);
+                    }
+                });
+                // 点击外部关闭
+                document.addEventListener('click', (e) => {
+                    if (!editFormatBtn.contains(e.target) && !formatDropdown.contains(e.target)) {
+                        formatDropdown.classList.remove('show');
+                    }
+                });
+            }
+
+            // Prevent overlapping dropdowns on hover
+            document.querySelectorAll('.edit-btn-group').forEach(group => {
+                group.addEventListener('mouseenter', () => {
+                    // Close all other open dropdowns in the toolbar
+                    document.querySelectorAll('.dropdown-menu.show').forEach(menu => {
+                        // Don't close if it's the one we are hovering (though hover handles display)
+                        if (!group.contains(menu)) {
+                            menu.classList.remove('show');
+                        }
+                    });
+                });
+            });
+
             if (editAddImageBtn) {
                 editAddImageBtn.addEventListener('click', () => {
                     document.getElementById('fileInput').click();
@@ -2677,9 +2893,29 @@
             // Context Menu Logic
             const contextMenu = document.getElementById('editContextMenu');
             
+            // Submenu positioning logic
+            document.querySelectorAll('.context-menu-item').forEach(item => {
+                item.addEventListener('mouseenter', () => {
+                    const submenu = item.querySelector('.context-submenu');
+                    if (submenu) {
+                        const rect = item.getBoundingClientRect();
+                        const submenuWidth = 160; // Min width from CSS
+                        // Check if there's space on the right
+                        if (rect.right + submenuWidth > window.innerWidth) {
+                            submenu.classList.add('left-side');
+                        } else {
+                            submenu.classList.remove('left-side');
+                        }
+                    }
+                });
+            });
+
             // Global context menu handler
             document.addEventListener('contextmenu', (e) => {
                 e.preventDefault(); // Always prevent default to block native menu
+
+                // Close any open toolbar dropdowns
+                document.querySelectorAll('.dropdown-menu.show').forEach(el => el.classList.remove('show'));
 
                 // Determine context
                 const isInput = e.target.closest('#textInput') || e.target.closest('.content-area');
@@ -2804,6 +3040,18 @@
 
                     // Select All
                     setDisplay('ctxSelectAll', true);
+                    const selectAllItem = document.getElementById('ctxSelectAll');
+                    if (isInput) {
+                        const textInput = document.getElementById('textInput');
+                        const hasContent = textInput.innerText.trim().length > 0 || textInput.querySelector('img');
+                        if (!hasContent) {
+                            selectAllItem.classList.add('disabled');
+                        } else {
+                            selectAllItem.classList.remove('disabled');
+                        }
+                    } else {
+                        selectAllItem.classList.remove('disabled');
+                    }
                 }
 
                 // Position menu (Smart Positioning)
@@ -2835,6 +3083,24 @@
                 contextMenu.style.left = `${left}px`;
                 contextMenu.style.top = `${top}px`;
                 contextMenu.classList.add('active');
+
+                // Check clipboard content to update Paste Plain Text state
+                if (isInput) {
+                    const pastePlainItem = document.getElementById('ctxPastePlain');
+                    // Reset state first
+                    pastePlainItem.classList.remove('disabled');
+                    
+                    if (navigator.clipboard && navigator.clipboard.read) {
+                        navigator.clipboard.read().then(items => {
+                            const hasImage = items.some(item => item.types.some(type => type.startsWith('image/')));
+                            if (hasImage) {
+                                pastePlainItem.classList.add('disabled');
+                            }
+                        }).catch(err => {
+                            console.warn('Clipboard check failed:', err);
+                        });
+                    }
+                }
 
                 // Check submenu positioning
                 const submenus = contextMenu.querySelectorAll('.context-submenu');
@@ -3149,30 +3415,8 @@
                             showToast('剪贴板图片已上传', 'success');
                         };
                         reader.readAsDataURL(blob);
-                        let text = await blob.text();
-                        
-                        // 检查字数限制
-                        const textInput = document.getElementById('textInput');
-                        const currentLength = textInput.innerText.length;
-                        const maxLength = 20000;
-
-                        if (currentLength >= maxLength) {
-                            showToast('字数已超过最大限制 (20000字)', 'warning');
-                            hasHandled = true;
-                            break;
-                        }
-
-                        if (currentLength + text.length > maxLength) {
-                            const remaining = maxLength - currentLength;
-                            if (remaining > 0) {
-                                text = text.substring(0, remaining);
-                                document.execCommand('insertText', false, text);
-                            }
-                            showToast('字数已超过最大限制 (20000字)', 'warning');
-                        } else {
-                            document.execCommand('insertText', false, text);
-                        }
-                        
+                        hasHandled = true;
+                        break;
                     }
                     
                     // 2. 优先处理纯文本 (避免 HTML 格式破坏)

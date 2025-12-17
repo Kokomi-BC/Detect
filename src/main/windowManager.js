@@ -173,7 +173,7 @@ class WindowManager {
       minWidth: 800,
       minHeight: 530,
       frame: true, // 恢复原生标题栏
-      backgroundColor: '#F5E6E6',
+      backgroundColor: '#FFFFFF',
       webPreferences: {
         preload: path.join(__dirname, 'preload.js'),
         nodeIntegration: false,
