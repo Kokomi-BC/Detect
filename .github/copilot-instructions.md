@@ -1,62 +1,63 @@
-# Detect - Fake News Detection App Instructions
+# Detect — AI 助手使用说明（供 Copilot / AI 代码代理）
 
-## Project Overview
-This is an Electron-based application for detecting fake news using LLM analysis. The application extracts content from URLs, analyzes text and images, and provides a credibility assessment.
+目标：帮助 AI 代码代理快速上手本仓库并在不破坏现有结构的前提下做出安全、可验证的改动。
 
-## Architecture
-The project follows a standard Electron main/renderer architecture but with a specific implementation:
+要点速览
+- 主进程（Node/Electron）代码在 `src/main/`；渲染进程是单文件、非框架的 `public/Main.html`。
+- 切勿把渲染端重构为 React/框架，除非得到明确要求。
+- 与 LLM 的交互通过 `src/main/llmService.js`，该模块期待并返回严格的 JSON 输出。
 
-- **Main Process** (`src/main/`): Handles application lifecycle, native integrations, content extraction, and LLM communication.
-- **Renderer Process** (`public/code.html`): A **monolithic HTML/Vanilla JS** implementation. Despite `package.json` listing React dependencies, the current active UI is entirely contained within `public/code.html` using embedded scripts and direct DOM manipulation.
+架构与关键文件
+- `src/main/main.js`：应用入口，管理窗口、IPC 路由和启动逻辑。
+- `src/main/llmService.js`：封装对 Volcengine（Doubao）或其它 LLM 的调用；提示语必须要求“strict JSON”以避免解析失败。
+- `src/main/extractionManager.js`、`imageExtractor.js`、`urlProcessor.js`：负责网页内容与图片提取、预处理逻辑。
+- `src/main/preload.js`：用 `contextBridge` 暴露 `electronAPI` 给渲染进程；检视此处可以了解渲染端可用的 IPC 接口名与用法。
+- `public/Main.html`：单页 UI（HTML + 内联 CSS 变量 + 原生 JS）——所有前端逻辑均集中在此文件。
 
-## Key Components
+IPC / 通信模式（必须遵循）
+- 请求/响应（同步语义）：渲染端 `await window.electronAPI.invoke('channel', data)` ⇄ 主端 `ipcMain.handle('channel', async (evt, data) => { ... })`。
+    - 常见 channel：`analyze-content`、`open-image-dialog`、`set-theme`。
+- 事件推送（fire-and-forget）：渲染端 `window.electronAPI.send('channel', data)` ⇄ 主端 `ipcMain.on('channel', ...)`。
+    - 示例：`extract-content`（主进程异步处理并通过事件回传结果）。
+- 主到渲染：主窗口使用 `mainWindow.webContents.send('channel', data)`，渲染端通过 `window.electronAPI.on('channel', handler)` 监听。
+    - 示例：`extract-content-result`、`theme-changed`。
 
-### Main Process (`src/main/`)
-- **`main.js`**: Entry point. Manages `DetectApp` class, `WindowManager`, and IPC setup.
-- **`llmService.js`**: Handles interaction with Volcengine (Doubao) API for content analysis. Returns strict JSON.
-- **`extractionManager.js`**: Manages URL content extraction.
-- **`preload.js`**: Exposes `electronAPI` to the renderer via `contextBridge`.
+错误处理约定
+- 所有 `ipcMain.handle` 的實現应捕获异常并返回结构化对象，例如：
 
-### Renderer Process (`public/`)
-- **`code.html`**: Contains the entire UI structure, styles (CSS variables), and logic (JavaScript).
-- **Interaction**: Uses `window.electronAPI` to communicate with the main process.
+    {
+        success: false,
+        error: '错误信息'
+    }
 
-## Data Flow & IPC Patterns
-Communication relies on the `electronAPI` bridge:
+    这样渲染端统一检查 `success` 字段而不是抛原始异常。
 
-1.  **Async Requests (Request/Response)**:
-    -   Renderer: `await window.electronAPI.invoke('channel', data)`
-    -   Main: `ipcMain.handle('channel', async (event, data) => { ... })`
-    -   *Examples*: `analyze-content`, `open-image-dialog`, `set-theme`.
+开发与调试
+- 启动（开发模式）：`npm run dev` — 启动 webpack-dev-server（渲染）并并行运行 `electron .`。
+- 构建渲染：`npm run build:renderer`。
+- 构建 Electron 应用：`npm run build:electron`（使用 electron-builder，见 `package.json`）。
+- 在开发时打开主/渲染端控制台调试：渲染端直接在 `public/Main.html` 中使用 `console.log`，主进程日志输出到终端。
 
-2.  **Event-Based (Fire-and-Forget / Push)**:
-    -   Renderer: `window.electronAPI.send('channel', data)`
-    -   Main: `ipcMain.on('channel', (event, data) => { ... })`
-    -   *Examples*: `extract-content` (triggers async result later), `window-minimize`.
+项目惯例与注意事项（针对 AI 代理）
+- 渲染端：坚持 Vanilla JS + DOM 操作；不要把现有 UI 拆分为组件或引入框架。
+- LLM 输出必须为严格 JSON。修改 `llmService.js` 时，始终把提示语写成明确的“Return only JSON” 格式，并在接收端做稳健的 JSON.parse 异常处理。
+- 任何新增 IPC channel：
+    - 若需要返回结果，使用 `ipcMain.handle` + `window.electronAPI.invoke`。
+    - 若仅触发侧效应，使用 `ipcMain.on` + `window.electronAPI.send`。
+    - 主端通知渲染端使用 `mainWindow.webContents.send`。
+- 主题与样式使用 `public/Main.html` 中的 CSS 变量（`:root` 与 `[data-theme="dark"]`）。修改主题时请更新这两个位置。
 
-3.  **Main-to-Renderer Events**:
-    -   Main: `mainWindow.webContents.send('channel', data)`
-    -   Renderer: `window.electronAPI.on('channel', (event, data) => { ... })`
-    -   *Examples*: `extract-content-result`, `theme-changed`.
+快速定位示例
+- 查看入口与 IPC：[src/main/main.js](src/main/main.js#L1)
+- LLM 提示与 API：[src/main/llmService.js](src/main/llmService.js#L1)
+- 内容提取：[src/main/extractionManager.js](src/main/extractionManager.js#L1)
+- 渲染端完整 UI：[public/Main.html](public/Main.html#L1)
 
-## Critical Workflows
+如何提交变更（建议）
+- 小范围改动：在本地分支提交并推 PR；在 PR 描述里注明为何不重构渲染端（若改动涉及 `Main.html`）。
+- 涉及 LLM 提示或解析的改动：提供示例输入/输出并在单元或集成测试里验证 JSON 可解析性。
 
-### Development
-- **Start Dev Server**: `npm run dev`
-    - Runs `webpack serve` for the renderer (port 8080).
-    - Runs `electron .` concurrently.
+反馈与迭代
+- 如果你需要我补充：明确想要更详细的 `llmService` 提示模板、常见错误示例或为 `Main.html` 编写小型重构指南。
 
-### Building
-- **Build Renderer**: `npm run build:renderer` (Webpack)
-- **Build App**: `npm run build:electron` (Electron Builder)
-
-## Coding Conventions
-- **Renderer UI**: Do **not** introduce React/Vue components unless explicitly asked to refactor. Maintain the existing Vanilla JS + DOM manipulation style in `code.html`.
-- **LLM Integration**: Ensure `LLMService` prompts request strict JSON output to avoid parsing errors.
-- **Styling**: Use CSS variables defined in `code.html` (`:root` and `[data-theme="dark"]`) for theming.
-- **Error Handling**: Main process should catch errors and return `{ success: false, error: 'msg' }` objects for `invoke` handlers.
-
-## Important Files
-- `src/main/main.js`: IPC handlers registry.
-- `src/main/llmService.js`: AI prompt engineering and API calls.
-- `public/code.html`: The complete frontend implementation.
+—— 结束 ——

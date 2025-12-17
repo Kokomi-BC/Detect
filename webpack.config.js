@@ -32,8 +32,8 @@ module.exports = {
   },
   plugins: [
     new HtmlWebpackPlugin({
-      template: path.join(__dirname, 'public/code.html'),
-      filename: 'code.html',
+      template: path.join(__dirname, 'public/Main.html'),
+      filename: 'Main.html',
       cache: false,
       minify: false,
     }),
@@ -48,7 +48,7 @@ module.exports = {
     port: 8080,
     hot: true,
     historyApiFallback: {
-      index: 'code.html',
+      index: 'Main.html',
     },
   },
   target: 'electron-renderer',

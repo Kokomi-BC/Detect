@@ -213,7 +213,7 @@ class WindowManager {
         .catch((error) => {
           console.error('加载开发服务器失败:', error);
           // 如果开发服务器失败，加载本地HTML文件
-          mainWindow.loadFile(path.join(__dirname, '../../public/code.html'))
+          mainWindow.loadFile(path.join(__dirname, '../../public/Main.html'))
             .catch((localError) => {
               console.error('加载本地HTML文件也失败:', localError);
               throw localError;
@@ -221,7 +221,7 @@ class WindowManager {
         });
     } else {
       // 生产模式加载构建后的文件
-      mainWindow.loadFile(path.join(__dirname, '../../dist/code.html'))
+      mainWindow.loadFile(path.join(__dirname, '../../dist/Main.html'))
         .catch((error) => {
           console.error('加载生产版本失败:', error);
           throw error;
