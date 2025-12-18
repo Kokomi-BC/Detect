@@ -7,8 +7,8 @@ set "PROJECT_DIR=%~dp0"
 echo 当前项目目录: %PROJECT_DIR%
 cd /d "%PROJECT_DIR%"
 
-echo 正在执行 npm run build...
-call npm run build&& npm start
+echo 正在执行 npm run build:renderer...
+call npm run build:renderer && npm start
 
 if errorlevel 1 (
     echo.

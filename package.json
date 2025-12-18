@@ -1,88 +1,101 @@
 {
-  "name": "detect-fake-news",
+  "name": "fake-news-detector",
   "version": "1.2.1",
   "description": "假新闻检测应用",
   "main": "src/main/index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "dev": "cross-env NODE_ENV=development concurrently \"webpack serve --mode development\" \"wait-on http://localhost:8080 && electron .\"",
-    "build:renderer": "webpack --mode production",
-    "build": "npm run build:renderer",
-    "build:electron": "electron-builder",
     "start": "electron .",
-    "prepublishOnly": "npm run build",
-    "prepare": "npm run build"
+    "build:renderer": "webpack --mode production",
+    "build:dev": "webpack --mode development",
+    "build": "npm run build:renderer && electron-builder",
+    "dev": "concurrently \"npm run build:dev -- --watch\" \"wait-on dist/index.html && electron .\"",
+    "package": "electron-builder --dir",
+    "make": "electron-builder --win",
+    "make:portable": "electron-builder --win --x64 --config.portable.target=portable",
+    "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [
     "electron",
     "fake-news",
-    "react"
+    "detector"
   ],
   "author": "",
   "license": "ISC",
   "type": "commonjs",
   "repository": {
     "type": "git",
-    "url": "https://github.com/yourusername/detect-fake-news.git"
+    "url": "https://github.com/Kokomi-BC/Detect.git"
   },
   "bugs": {
-    "url": "https://github.com/yourusername/detect-fake-news/issues"
+    "url": "https://github.com/Kokomi-BC/Detect/issues"
   },
-  "homepage": "https://github.com/yourusername/detect-fake-news#readme",
+  "homepage": "https://github.com/Kokomi-BC/Detect#readme",
   "engines": {
-    "node": ">=14.0.0"
+    "node": ">=16.0.0"
   },
   "devDependencies": {
-    "@babel/core": "^7.28.5",
-    "@babel/preset-env": "^7.28.5",
-    "@babel/preset-react": "^7.28.5",
-    "@babel/preset-typescript": "^7.28.5",
-    "babel-loader": "^10.0.0",
     "concurrently": "^8.2.2",
-    "cross-env": "^10.1.0",
     "css-loader": "^7.1.2",
-    "electron": "^39.1.2",
-    "electron-builder": "^25.0.5",
+    "electron": "^39.2.7",
+    "electron-builder": "^24.6.4",
     "html-webpack-plugin": "^5.6.5",
     "style-loader": "^4.0.0",
     "ts-loader": "^9.5.4",
     "typescript": "^5.9.3",
     "wait-on": "^7.2.0",
     "webpack": "^5.102.1",
-    "webpack-cli": "^6.0.1",
-    "webpack-dev-server": "^5.2.2"
+    "webpack-cli": "^6.0.1"
+  },
+  "dependencies": {
+    "@mozilla/readability": "^0.6.0",
+    "cheerio": "^1.1.2",
+    "electron-squirrel-startup": "^1.0.1",
+    "jsdom": "22.1.0",
+    "openai": "^6.9.1"
   },
   "build": {
     "appId": "com.detectfake.app",
     "productName": "假新闻检测应用",
     "electronDownload": {
-      "mirror": "https://cdn.npmmirror.com/binaries/electron/"
+      "mirror": "https://npmmirror.com/mirrors/electron/"
     },
     "files": [
       "dist/**/*",
-      "src/main/**/*"
+      "src/main/**/*",
+      "package.json"
     ],
     "directories": {
-      "output": "release"
+      "output": "release",
+      "buildResources": "build"
     },
     "win": {
       "target": [
-        "nsis",
-        "portable"
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
       ],
-      "sign": false
+      "signAndEditExecutable": false,
+      "requestedExecutionLevel": "asInvoker"
     },
     "nsis": {
-      "oneClick": true,
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
-      "createStartMenuShortcut": true
+      "createStartMenuShortcut": true,
+      "shortcutName": "假新闻检测"
+    },
+    "portable": {
+      "artifactName": "${productName}-${version}-portable.exe"
     },
     "publish": null
-  },
-  "dependencies": {
-    "@mozilla/readability": "^0.6.0",
-    "cheerio": "^1.1.2",
-    "jsdom": "^27.2.0",
-    "openai": "^6.9.1"
   }
 }
