@@ -959,12 +959,15 @@
 
         .result-header {
             height: 64px;
-            padding: 0 24px;
+            padding: 0 20px;
             display: flex;
             align-items: center;
-            background: var(--bg-primary);
+            background: var(--bg-glass);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
             border-bottom: 1px solid var(--border-color);
             transition: background-color var(--transition-fast), border-color var(--transition-fast);
+            z-index: 20;
         }
 
         .result-title {
@@ -1474,11 +1477,24 @@
         }
 
         /* Responsive */
-        @media (max-width: 768px) {
+        @media (max-width: 768px) and (orientation: portrait) {
             .container { flex-direction: column; }
             .left-panel, .right-panel { max-width: 100%; min-width: 100%; }
             .resizer { display: none; }
             .image-preview-container { grid-template-columns: repeat(auto-fill, minmax(80px, 1fr)); }
+        }
+
+        /* Landscape Mode Optimization */
+        @media (max-height: 600px) and (orientation: landscape) {
+            .left-panel {
+                min-width: 200px;
+            }
+            .right-panel {
+                min-width: 200px;
+            }
+            .toolbar, .result-header {
+                height: 48px;
+            }
         }
 
         /* 虚假内容高亮样式 */
