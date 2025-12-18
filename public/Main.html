@@ -1927,6 +1927,16 @@
                         </svg>
                     </button>
                     <div class="dropdown-menu format-menu" id="formatDropdown">
+                        <div class="dropdown-item-row" style="padding: 8px 12px; gap: 8px;">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="color: var(--text-secondary);">
+                                <path d="M9 4v3h5v12h3V7h5V4H9zm-6 8h3v7h3v-7h3V9H3v3z"/>
+                            </svg>
+                            <div class="zoom-controls" style="display: flex; gap: 2px; margin-left: auto;">
+                                <button class="zoom-btn" id="editFontDec" title="减小字号" style="width: 28px; height: 28px; font-size: 16px; background: var(--bg-tertiary);">-</button>
+                                <button class="zoom-btn" id="editFontInc" title="增大字号" style="width: 28px; height: 28px; font-size: 16px; background: var(--bg-tertiary);">+</button>
+                            </div>
+                        </div>
+                        <div class="dropdown-separator"></div>
                         <div class="dropdown-item" data-command="bold" title="加粗">
                             <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
                                 <path d="M15.6 10.79c.97-.67 1.65-1.77 1.65-2.79 0-2.26-1.75-4-4-4H7v14h7.04c2.09 0 3.71-1.7 3.71-3.79 0-1.52-.86-2.82-2.15-3.42zM10 6.5h3c.83 0 1.5.67 1.5 1.5s-.67 1.5-1.5 1.5h-3v-3zm3.5 9H10v-3h3.5c.83 0 1.5.67 1.5 1.5s-.67 1.5-1.5 1.5z"/>
@@ -2386,8 +2396,26 @@
             
             // Font Size
             const updateFontDisplay = () => {
-                document.getElementById('fontVal').textContent = `${currentFontSize}px`;
-                textInput.style.fontSize = `${currentFontSize}px`;
+                const val = `${currentFontSize}px`;
+                // Update More Menu display
+                const fontVal = document.getElementById('fontVal');
+                if (fontVal) fontVal.textContent = val;
+                
+                // Update Edit Toolbar display
+                const editFontVal = document.getElementById('editFontVal');
+                if (editFontVal) editFontVal.textContent = val;
+
+                // Update Editor Font
+                textInput.style.fontSize = val;
+                
+                // Update Right Panel Font (Parsed Text)
+                const parsedText = document.getElementById('parsedText');
+                if (parsedText) parsedText.style.fontSize = val;
+                
+                // Update Parsed Content container to ensure inherited styles work
+                const parsedContent = document.getElementById('parsedContent');
+                if (parsedContent) parsedContent.style.fontSize = val;
+
                 localStorage.setItem('editorFontSize', currentFontSize);
             };
 
@@ -2398,9 +2426,10 @@
                 updateFontDisplay();
             }
 
+            // More Menu Controls
             document.getElementById('fontInc').addEventListener('click', (e) => {
                 e.stopPropagation();
-                if (currentFontSize < 32) {
+                if (currentFontSize < 48) { // Increased max size range
                     currentFontSize += 2;
                     updateFontDisplay();
                 }
@@ -2413,6 +2442,115 @@
                     updateFontDisplay();
                 }
             });
+            
+            // Edit Toolbar Controls - Local Selection
+            // const editFontVal = document.getElementById('editFontVal'); // Removed
+
+            function getSelectionFontSize() {
+                const selection = window.getSelection();
+                if (selection.rangeCount > 0) {
+                    let node = selection.getRangeAt(0).commonAncestorContainer;
+                    if (node.nodeType === 3) node = node.parentNode;
+                    if (document.getElementById('textInput').contains(node)) {
+                        return parseFloat(window.getComputedStyle(node).fontSize);
+                    }
+                }
+                return currentFontSize; 
+            }
+
+            function applySelectionFontSize(newSize) {
+                const textInput = document.getElementById('textInput');
+                textInput.focus();
+                
+                // Use fontName hack to wrap selection
+                const uuid = 'fs-' + Date.now();
+                document.execCommand('fontName', false, uuid);
+                
+                const fonts = textInput.querySelectorAll(`font[face="${uuid}"]`);
+                const newSpans = [];
+                fonts.forEach(font => {
+                    const span = document.createElement('span');
+                    span.style.fontSize = newSize + 'px';
+                    while (font.firstChild) {
+                        span.appendChild(font.firstChild);
+                    }
+                    font.parentNode.replaceChild(span, font);
+                    newSpans.push(span);
+                });
+
+                // Restore selection to cover the newly created spans
+                if (newSpans.length > 0) {
+                    const range = document.createRange();
+                    range.setStartBefore(newSpans[0]);
+                    range.setEndAfter(newSpans[newSpans.length - 1]);
+                    const sel = window.getSelection();
+                    sel.removeAllRanges();
+                    sel.addRange(range);
+                }
+            }
+
+            function updateFontButtonsState() {
+                const editFontInc = document.getElementById('editFontInc');
+                const editFontDec = document.getElementById('editFontDec');
+                if (!editFontInc || !editFontDec) return;
+
+                const sel = window.getSelection();
+                const textInput = document.getElementById('textInput');
+                let isDisabled = true;
+
+                if (sel.rangeCount > 0 && !sel.isCollapsed) {
+                    // Check if selection intersects with textInput
+                    let node = sel.anchorNode;
+                    if (node.nodeType === 3) node = node.parentNode;
+                    
+                    if (textInput.contains(node)) {
+                        isDisabled = false;
+                    }
+                }
+                
+                editFontInc.disabled = isDisabled;
+                editFontDec.disabled = isDisabled;
+                editFontInc.style.opacity = isDisabled ? '0.5' : '1';
+                editFontDec.style.opacity = isDisabled ? '0.5' : '1';
+                editFontInc.style.cursor = isDisabled ? 'not-allowed' : 'pointer';
+                editFontDec.style.cursor = isDisabled ? 'not-allowed' : 'pointer';
+            }
+
+            const editFontInc = document.getElementById('editFontInc');
+            if (editFontInc) {
+                editFontInc.addEventListener('mousedown', e => e.preventDefault());
+                editFontInc.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    if (editFontInc.disabled) return;
+                    const current = getSelectionFontSize();
+                    if (current < 72) {
+                        applySelectionFontSize(current + 2);
+                    }
+                });
+            }
+            
+            const editFontDec = document.getElementById('editFontDec');
+            if (editFontDec) {
+                editFontDec.addEventListener('mousedown', e => e.preventDefault());
+                editFontDec.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    if (editFontDec.disabled) return;
+                    const current = getSelectionFontSize();
+                    if (current > 12) {
+                        applySelectionFontSize(current - 2);
+                    }
+                });
+            }
+
+            // Update font size display on selection change
+            document.addEventListener('selectionchange', () => {
+                if (document.body.classList.contains('edit-mode')) {
+                    updateFontButtonsState();
+                }
+            });
+            
+            // Initial check
+            updateFontButtonsState();
 
             // UI Zoom
             const updateZoomDisplay = () => {
@@ -3103,6 +3241,24 @@
                 // Flip horizontally if near right
                 if (x + menuWidth > winWidth) {
                     left = winWidth - menuWidth - 10;
+                }
+
+                // Ensure menu stays within viewport bounds
+                if (top < 10) top = 10;
+                if (left < 10) left = 10;
+                // Also check bottom/right bounds again in case flipping caused issues (e.g. very tall menu)
+                if (top + menuHeight > winHeight) {
+                    // If it's too tall, align to bottom or top depending on which has more space, 
+                    // or just let it clip/scroll (but we don't have scroll on context menu).
+                    // For now, just pin to bottom if it goes off bottom, but respect top bound.
+                    if (winHeight - menuHeight > 0) {
+                        top = winHeight - menuHeight - 10;
+                    } else {
+                        top = 10; // Too tall, pin to top
+                        // Ideally we should enable scrolling for the menu if it's too tall
+                        contextMenu.style.maxHeight = (winHeight - 20) + 'px';
+                        contextMenu.style.overflowY = 'auto';
+                    }
                 }
 
                 contextMenu.style.left = `${left}px`;
@@ -3918,16 +4074,16 @@
 
             // 页面预览功能
             document.getElementById('previewBtn').addEventListener('click', function() {
-                const text = document.getElementById('textInput').innerText.trim();
+                const text = document.getElementById('textInput').innerHTML; // Use innerHTML to preserve formatting
                 
-                if (!text && uploadedImages.length === 0) {
+                if (!document.getElementById('textInput').innerText.trim() && uploadedImages.length === 0) {
                     showToast('没有可预览的内容', 'warning');
                     return;
                 }
 
-                if (isURL(text)) {
+                if (isURL(document.getElementById('textInput').innerText.trim())) {
                     // URL Preview
-                    extractContent(text, true);
+                    extractContent(document.getElementById('textInput').innerText.trim(), true);
                 } else {
                     // Local Preview
                     renderPreview(text, uploadedImages);
@@ -3956,6 +4112,7 @@
             let lastImages = [];
             document.getElementById('detectBtn').addEventListener('click', function() {
                 const textContent = document.getElementById('textInput').innerText.trim();
+                const htmlContent = document.getElementById('textInput').innerHTML; // Get HTML content
                 // 优先判断内容是否为空
                 if (!textContent) {
                     if (uploadedImages.length > 0) {
@@ -3997,7 +4154,7 @@
                             },
                             onOption: () => {
                                 window.lastExtractedUrl = null;
-                                analyzeContent(textContent, uploadedImages);
+                                analyzeContent(textContent, uploadedImages, false, htmlContent);
                             },
                             onCancel: () => {
                                 // 取消，不做任何事
@@ -4010,7 +4167,7 @@
                     extractContent(textContent);
                 } else {
                     window.lastExtractedUrl = null;
-                    analyzeContent(textContent, uploadedImages);
+                    analyzeContent(textContent, uploadedImages, false, htmlContent);
                 }
                 // 记录本次内容和图片
                 lastTextContent = textContent;
@@ -4217,7 +4374,7 @@
             parsedContent.style.display = 'block';
             parsedTitle.textContent = title || '';
             parsedTitle.style.display = title ? 'block' : 'none';
-            parsedText.textContent = text || '';
+            parsedText.innerHTML = text || ''; // Use innerHTML
             
             // Render Images
             parsedImages.innerHTML = '';
@@ -4494,7 +4651,7 @@
 
      
         // AI分析功能
-        async function analyzeContent(text, images, fromExtraction = false) {
+        async function analyzeContent(text, images, fromExtraction = false, htmlContent = null) {
             const detectBtn = document.getElementById('detectBtn');
             const loadingState = document.getElementById('loadingState');
             const initialState = document.getElementById('initialState');
@@ -4572,7 +4729,7 @@
                 
                 // 稍微延迟一下让用户看到100%
                 setTimeout(() => {
-                    showAnalysisResult(result, text, images);
+                    showAnalysisResult(result, htmlContent || text, images, !!htmlContent);
                     showToast('分析完成', 'success');
                     loadingState.classList.remove('active');
                     detectBtn.classList.remove('loading');
@@ -4590,7 +4747,7 @@
             }
         }
 
-        function showAnalysisResult(result, originalText, originalImages) {
+        function showAnalysisResult(result, originalText, originalImages, isHtml = false) {
             const resultItem = document.getElementById('resultItem');
             const parsedContent = document.getElementById('parsedContent');
             const parsedTitle = document.getElementById('parsedTitle');
@@ -4684,23 +4841,39 @@
             // Highlight fake parts
             let displayText = originalText;
             if ((result.type === 2 || result.type === 3) && result.fake_parts) {
-                let safeText = displayText.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-                
-                // Sort fake parts by length descending to avoid nested replacement issues
-                const sortedParts = [...result.fake_parts].sort((a, b) => b.text.length - a.text.length);
+                if (isHtml) {
+                    let safeText = displayText;
+                    const sortedParts = [...result.fake_parts].sort((a, b) => b.text.length - a.text.length);
+                    sortedParts.forEach(part => {
+                        if (part.text) {
+                            const highlight = `<span class="fake-highlight" data-reason="${part.reason.replace(/"/g, '&quot;')}" onclick="showReasonTooltip(event, this)">${part.text}</span>`;
+                            safeText = safeText.replace(part.text, highlight);
+                        }
+                    });
+                    parsedText.innerHTML = safeText;
+                } else {
+                    let safeText = displayText.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+                    
+                    // Sort fake parts by length descending to avoid nested replacement issues
+                    const sortedParts = [...result.fake_parts].sort((a, b) => b.text.length - a.text.length);
 
-                sortedParts.forEach(part => {
-                    if (part.text) {
-                        const safePart = part.text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-                        // 使用 CSS 类控制样式
-                        const highlight = `<span class="fake-highlight" data-reason="${part.reason.replace(/"/g, '&quot;')}" onclick="showReasonTooltip(event, this)">${safePart}</span>`;
-                        // Replace only the first occurrence to avoid over-replacing
-                        safeText = safeText.replace(safePart, highlight);
-                    }
-                });
-                parsedText.innerHTML = safeText;
+                    sortedParts.forEach(part => {
+                        if (part.text) {
+                            const safePart = part.text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+                            // 使用 CSS 类控制样式
+                            const highlight = `<span class="fake-highlight" data-reason="${part.reason.replace(/"/g, '&quot;')}" onclick="showReasonTooltip(event, this)">${safePart}</span>`;
+                            // Replace only the first occurrence to avoid over-replacing
+                            safeText = safeText.replace(safePart, highlight);
+                        }
+                    });
+                    parsedText.innerHTML = safeText;
+                }
             } else {
-                parsedText.textContent = originalText;
+                if (isHtml) {
+                    parsedText.innerHTML = originalText;
+                } else {
+                    parsedText.textContent = originalText;
+                }
             }
             
             // Render Images
