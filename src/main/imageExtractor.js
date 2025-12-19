@@ -183,17 +183,20 @@ class ImageExtractor {
   shouldFilterImage(imgUrl, width, height, isWechatArticle) {
     // 检查图片格式是否在屏蔽列表中
     if (this.urlProcessor.isImageFormatBlocked(imgUrl)) {
+      console.log(`过滤图片 [格式屏蔽]: ${imgUrl}`);
       return { shouldFilter: true, reason: '格式被屏蔽' };
     }
     
     // 检查域名是否在屏蔽列表中
     if (this.urlProcessor.isDomainBlocked(imgUrl)) {
+      console.log(`过滤图片 [域名屏蔽]: ${imgUrl}`);
       return { shouldFilter: true, reason: '域名被屏蔽' };
     }
     
     // 图片尺寸过滤：过滤掉过小或尺寸未知的图片
     // 微信网址时额外屏蔽272x272尺寸的图片
     if (isWechatArticle && width === 272 && height === 272) {
+      console.log(`过滤图片 [微信特定尺寸]: ${imgUrl} (${width}x${height})`);
       return { shouldFilter: true, reason: '微信网址272x272尺寸' };
     }
     
@@ -201,9 +204,11 @@ class ImageExtractor {
     if ((width > 0 && height > 0 && (width < 201 || height < 201)) || 
         (width === 0 && height === 0) || 
         (width > 4400 || height > 4400)) {
+      const reason = width === 0 && height === 0 ? '尺寸未知' : '尺寸过小';
+      console.log(`过滤图片 [${reason}]: ${imgUrl} (${width}x${height})`);
       return { 
         shouldFilter: true, 
-        reason: width === 0 && height === 0 ? '尺寸未知' : '尺寸过小' 
+        reason: reason 
       };
     }
     
@@ -256,13 +261,27 @@ class ImageExtractor {
      */
   async waitForImagesLoad(window) {
     try {
-        await window.webContents.executeJavaScript();
-      `Promise.all(Array.from(document.images).map(img => {
-        if (img.complete) return Promise.resolve();
-        return new Promise(resolve => {
-          img.onload = img.onerror = resolve;
-        });
-      }))`
+      await window.webContents.executeJavaScript(`
+        (async () => {
+          // 等待所有图片加载
+          await Promise.all(Array.from(document.images).map(img => {
+            if (img.complete) return Promise.resolve();
+            return new Promise(resolve => {
+              img.onload = img.onerror = resolve;
+              // 设置超时防止无限等待
+              setTimeout(resolve, 3000);
+            });
+          }));
+
+          // 将真实尺寸写入属性，供后续提取使用
+          Array.from(document.images).forEach(img => {
+            if (img.naturalWidth > 0) {
+              img.setAttribute('data-real-width', img.naturalWidth);
+              img.setAttribute('data-real-height', img.naturalHeight);
+            }
+          });
+        })()
+      `);
       console.log('图片真实尺寸获取完成');
       return true;
     } catch (error) {
@@ -278,7 +297,35 @@ class ImageExtractor {
    */
   async waitForWechatContent(window) {
     try {
-      await window.webContents.executeJavaScript();
+      await window.webContents.executeJavaScript(`
+        (async () => {
+          // 简单的滚动以触发懒加载
+          const scrollStep = 500;
+          const delay = 100;
+          let lastHeight = 0;
+          let retries = 0;
+          
+          while (retries < 3) {
+            window.scrollBy(0, scrollStep);
+            await new Promise(r => setTimeout(r, delay));
+            
+            const newHeight = document.body.scrollHeight;
+            if (newHeight === lastHeight) {
+              retries++;
+            } else {
+              lastHeight = newHeight;
+              retries = 0;
+            }
+            
+            if (window.scrollY + window.innerHeight >= document.body.scrollHeight) {
+              break;
+            }
+          }
+          
+          // 滚回顶部
+          window.scrollTo(0, 0);
+        })()
+      `);
       
       console.log('微信文章内容加载完成');
       return true;
