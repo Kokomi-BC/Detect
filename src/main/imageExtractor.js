@@ -1,5 +1,4 @@
 const cheerio = require('cheerio');
-const { sleep } = require('./utils');
 const URLProcessor = require('./urlProcessor');
 
 /**
@@ -250,32 +249,20 @@ class ImageExtractor {
       added: 0
     };
   }
-
-  /**
-   * 记录过滤统计信息
-   */
-  logFilterStats() {
-    console.log('图片过滤统计:');
-    console.log(`- 总图片数: ${this.filteredImagesCount.total}`);
-    console.log(`- 格式被屏蔽: ${this.filteredImagesCount.blockedFormat}`);
-    console.log(`- 域名被屏蔽: ${this.filteredImagesCount.blockedDomain}`);
-    console.log(`- 加载失败: ${this.filteredImagesCount.loadFailed}`);
-    console.log(`- 透明图片: ${this.filteredImagesCount.transparent}`);
-    console.log(`- 尺寸过小过滤: ${this.filteredImagesCount.tooSmall}`);
-    console.log(`- 最终添加: ${this.filteredImagesCount.added}`);
-  }
-
-  /**
-   * 等待所有图片加载完成
-   * @param {BrowserWindow} window 浏览器窗口
-   * @param {boolean} isWechatArticle 是否为微信文章
-   * @returns {Promise<boolean>}
-   */
-  async waitForImagesLoad(window, isWechatArticle = false) {
+    /**
+     * 等待所有图片加载完成
+     * @param {BrowserWindow} window 浏览器窗口
+     * @returns {Promise<boolean>}
+     */
+  async waitForImagesLoad(window) {
     try {
-      const extraWaitTime = isWechatArticle ? 2000 : 2000;
-      
-      await window.webContents.executeJavaScript();
+        await window.webContents.executeJavaScript();
+      `Promise.all(Array.from(document.images).map(img => {
+        if (img.complete) return Promise.resolve();
+        return new Promise(resolve => {
+          img.onload = img.onerror = resolve;
+        });
+      }))`
       console.log('图片真实尺寸获取完成');
       return true;
     } catch (error) {

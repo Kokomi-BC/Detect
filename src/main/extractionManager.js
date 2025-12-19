@@ -3,7 +3,7 @@ const { JSDOM } = require('jsdom');
 const { WindowManager } = require('./windowManager');
 const ImageExtractor = require('./imageExtractor');
 const URLProcessor = require('./urlProcessor');
-const { retry, truncateText } = require('./utils');
+const {truncateText } = require('./utils');
 
 /**
  * 内容提取管理器 - 负责网页内容的提取和管理
@@ -61,9 +61,7 @@ class ExtractionManager {
       this.currentExtractionWindow = null;
 
       // 提取内容
-      const result = await this.processExtractedContent(htmlContent, url, isWechatArticle);
-      
-      return result;
+        return await this.processExtractedContent(htmlContent, url, isWechatArticle);
       
     } catch (error) {
       // 如果是取消操作，不记录错误，返回特定状态
@@ -238,7 +236,7 @@ class ExtractionManager {
           }
           
           // 等待DOM完全加载并获取图片真实尺寸
-          await this.imageExtractor.waitForImagesLoad(win, isWechatArticle);
+          await this.imageExtractor.waitForImagesLoad(win);
         } catch (error) {
           console.error(`等待内容加载时出错:`, error.message);
         }
@@ -432,17 +430,6 @@ class ExtractionManager {
     this.currentExtractionWindow = null;
     this.currentExtractionEvent = null;
     this.isExtractionCancelled = false;
-  }
-
-  /**
-   * 获取当前提取状态
-   * @returns {Object}
-   */
-  getExtractionState() {
-    return {
-      isExtractionCancelled: this.isExtractionCancelled,
-      hasCurrentExtraction: this.currentExtractionWindow !== null
-    };
   }
 }
 
