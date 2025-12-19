@@ -388,19 +388,28 @@ class ExtractionManager {
       throw new Error('无法解析文章内容');
     }
 
-    // 提取图片
-    const imageResult = await this.imageExtractor.extractImages(htmlContent, url, isWechatArticle);
+    // 1. 从原始HTML中提取图片元数据（尺寸、加载状态等）
+    const imageMetadata = this.imageExtractor.extractImageMetadata(htmlContent, url);
+
+    // 2. 处理Readability提取的内容：过滤图片、清洗HTML、收集有效图片
+    const { cleanedContent, images } = this.imageExtractor.processReadabilityContent(
+      article.content, 
+      imageMetadata, 
+      url, 
+      isWechatArticle
+    );
 
     // 限制提取的内容长度
     const MAX_CONTENT_LENGTH = 20000;
-    const content = article?.textContent ? 
+    const textContent = article?.textContent ? 
       truncateText(article.textContent, MAX_CONTENT_LENGTH) : '';
 
     return {
       success: true,
       title: article?.title || '',
-      content: content,
-      images: imageResult.images,
+      content: cleanedContent || '',   // 返回清洗后的HTML内容（已过滤图片）
+      textContent: textContent,        // 返回纯文本内容用于分析
+      images: images,                  // 返回从正文中提取并过滤后的图片列表
       url: url
     };
   }

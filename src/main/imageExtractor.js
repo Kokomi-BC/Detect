@@ -20,34 +20,22 @@ class ImageExtractor {
   }
 
   /**
-   * 从HTML中提取图片
-   * @param {string} htmlContent HTML内容
+   * 从原始HTML中提取图片元数据
+   * @param {string} htmlContent 原始HTML内容
    * @param {string} baseUrl 基础URL
-   * @param {boolean} isWechatArticle 是否为微信文章
-   * @returns {Promise<Object>}
+   * @returns {Map<string, Object>} 图片URL到元数据的映射
    */
-  async extractImages(htmlContent, baseUrl, isWechatArticle = false) {
-    console.log('开始提取图片...');
-    
-    // 重置统计信息
-    this.resetFilterStats();
-    
+  extractImageMetadata(htmlContent, baseUrl) {
     const $ = cheerio.load(htmlContent);
-    const images = [];
-    const uniqueImageUrls = new Set(); // 用于存储唯一图片URL
-
-    // 处理所有图片，包括 <img> 和 <picture> 中的 WebP
+    const metadataMap = new Map();
+    
     const allMediaElements = $('img, picture source');
     
     for (let i = 0; i < allMediaElements.length; i++) {
       const element = allMediaElements[i];
       const tagName = element.name;
       
-      // 根据标签类型提取URL
-      const elementUrls = [];
-      
       if (tagName === 'img' || tagName === 'source') {
-        // 获取元素属性的函数
         const getElementAttribute = (attrName) => {
           return $(element).attr(attrName) || 
                  $(element).attr(`data-${attrName}`) || 
@@ -58,20 +46,17 @@ class ImageExtractor {
                  $(element).attr(`data-lazyload-${attrName}`);
         };
         
-        // 处理source标签时只处理图像类型
         if (tagName === 'source') {
           const type = getElementAttribute('type');
           if (!type || !type.startsWith('image/')) continue;
         }
         
-        // 提取主要URL
         const src = getElementAttribute('src');
         if (src) {
           try {
             const fullUrl = new URL(src, baseUrl).href;
             const normalizedUrl = this.urlProcessor.normalizeUrl(fullUrl);
             
-            // 优先获取真实尺寸（在DOM加载完成后设置），否则使用元素属性
             const width = parseInt(
               $(element).attr('data-real-width') ||
               $(element).attr('width') || 
@@ -92,103 +77,99 @@ class ImageExtractor {
             const loadFailed = $(element).attr('data-load-failed') === 'true';
             const hasTransparency = $(element).attr('data-has-transparency') === 'true';
 
-            console.log(`提取到图片URL: ${normalizedUrl}, 尺寸: ${width}x${height}, 失败: ${loadFailed}, 透明: ${hasTransparency}`);
-            
-            elementUrls.push({ url: normalizedUrl, width: width, height: height, loadFailed, hasTransparency });
+            // 存储元数据，如果已存在则保留尺寸较大的（假设）
+            if (!metadataMap.has(normalizedUrl) || (width > 0 && height > 0)) {
+              metadataMap.set(normalizedUrl, { width, height, loadFailed, hasTransparency });
+            }
           } catch (error) {
-            // 跳过无效URL
-            console.error(`跳过无效URL: ${src}, 错误: ${error.message}`);
-            continue;
-          }
-        }
-        
-        // 提取srcset中的所有URL
-        const srcset = getElementAttribute('srcset');
-        if (srcset) {
-          const srcsetUrls = this.urlProcessor.parseSrcset(srcset, baseUrl);
-          
-          const loadFailed = $(element).attr('data-load-failed') === 'true';
-          const hasTransparency = $(element).attr('data-has-transparency') === 'true';
-
-          for (const srcsetUrl of srcsetUrls) {
-            // 优先获取真实尺寸
-            const width = parseInt(
-              $(element).attr('data-real-width') ||
-              $(element).attr('width') || 
-              $(element).attr('data-width') || 
-              $(element).attr('data-original-width') || 
-              $(element).attr('data-lazy-width') || 
-              '0', 10
-            );
-            const height = parseInt(
-              $(element).attr('data-real-height') ||
-              $(element).attr('height') || 
-              $(element).attr('data-height') || 
-              $(element).attr('data-original-height') || 
-              $(element).attr('data-lazy-height') || 
-              '0', 10
-            );
-            
-            elementUrls.push({ 
-              url: srcsetUrl.url, 
-              width: width, 
-              height: height,
-              descriptors: srcsetUrl.descriptors,
-              loadFailed,
-              hasTransparency
-            });
+            // 忽略无效URL
           }
         }
       }
-      
-      // 对每个提取到的 URL 应用过滤逻辑
-      for (const imgInfo of elementUrls) {
-        this.filteredImagesCount.total++;
-        const { url: imgUrl, width: finalWidth, height: finalHeight, loadFailed, hasTransparency } = imgInfo;
+    }
+    return metadataMap;
+  }
+
+  /**
+   * 处理Readability提取的内容，过滤图片并返回清洗后的HTML和图片列表
+   * @param {string} articleContent Readability提取的HTML内容
+   * @param {Map<string, Object>} imageMetadataMap 图片元数据映射
+   * @param {string} baseUrl 基础URL
+   * @param {boolean} isWechatArticle 是否为微信文章
+   * @returns {Object} { cleanedContent, images }
+   */
+  processReadabilityContent(articleContent, imageMetadataMap, baseUrl, isWechatArticle) {
+    console.log('开始处理Readability内容中的图片...');
+    this.resetFilterStats();
+    
+    const $ = cheerio.load(articleContent);
+    const images = [];
+    const uniqueImageUrls = new Set();
+
+    $('img').each((i, element) => {
+      const src = $(element).attr('src');
+      if (!src) {
+        $(element).remove();
+        return;
+      }
+
+      try {
+        const fullUrl = new URL(src, baseUrl).href;
+        const normalizedUrl = this.urlProcessor.normalizeUrl(fullUrl);
+        let metadata = imageMetadataMap.get(normalizedUrl);
+        
+        // 如果Map中没有，尝试直接解析当前元素属性作为备选
+        if (!metadata) {
+           const width = parseInt($(element).attr('width') || '0', 10);
+           const height = parseInt($(element).attr('height') || '0', 10);
+           metadata = { width, height, loadFailed: false, hasTransparency: false };
+        }
+
+        const { width, height, loadFailed, hasTransparency } = metadata;
         
         // 检查加载失败
         if (loadFailed) {
           this.incrementFilterCount('加载失败');
-          console.log(`过滤加载失败图片: ${imgUrl}`);
-          continue;
+          $(element).remove();
+          return;
         }
 
         // 检查透明度
         if (hasTransparency) {
           this.incrementFilterCount('透明图片');
-          console.log(`过滤透明图片: ${imgUrl}`);
-          continue;
+          $(element).remove();
+          return;
         }
 
-        // 检查是否应该过滤这个图片
-        const filterResult = this.shouldFilterImage(imgUrl, finalWidth, finalHeight, isWechatArticle);
+        // 检查是否应该过滤
+        const filterResult = this.shouldFilterImage(normalizedUrl, width, height, isWechatArticle);
         
         if (filterResult.shouldFilter) {
           this.incrementFilterCount(filterResult.reason);
-          console.log(`过滤图片（${filterResult.reason}）: ${imgUrl}, 尺寸: ${finalWidth}x${finalHeight}`);
-          continue;
+          $(element).remove();
+          return;
         }
         
-        // 将符合条件的图片 URL 添加到结果中（去重）
-        const normalizedUrl = this.urlProcessor.normalizeUrl(imgUrl);
+        // 图片保留，添加到列表
         if (!uniqueImageUrls.has(normalizedUrl)) {
           uniqueImageUrls.add(normalizedUrl);
-          images.push(imgUrl);
+          images.push(normalizedUrl);
           this.filteredImagesCount.added++;
-          console.log(`添加图片: ${imgUrl}, 尺寸: ${finalWidth}x${finalHeight}`);
-          if (images.length >= 10) break;
         }
+        
+        // 更新src为绝对路径，确保预览正常显示
+        $(element).attr('src', normalizedUrl);
+        
+      } catch (error) {
+        console.error(`处理图片出错: ${src}`, error);
+        $(element).remove();
       }
-      
-      if (images.length >= 10) break;
-    }
-    
-    // 输出过滤统计信息
-    this.logFilterStats();
-    
+    });
+
+
     return {
-      images: images.slice(0, 10), // 最多提取10张图片
-      stats: this.filteredImagesCount
+      cleanedContent: $.html(), // 返回处理后的HTML
+      images: images.slice(0, 4)
     };
   }
 
@@ -294,109 +275,7 @@ class ImageExtractor {
     try {
       const extraWaitTime = isWechatArticle ? 2000 : 2000;
       
-      await window.webContents.executeJavaScript(`
-        (async function() {
-          // 检查图片是否含有透明部分
-          function hasTransparency(img) {
-            try {
-              const canvas = document.createElement('canvas');
-              canvas.width = img.naturalWidth;
-              canvas.height = img.naturalHeight;
-              const ctx = canvas.getContext('2d');
-              ctx.drawImage(img, 0, 0);
-              
-              const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-              const data = imageData.data;
-              
-              // 检查Alpha通道，步长为4（RGBA）
-              // 为了性能，对于大图可以增加采样步长，但这里为了准确性检查所有像素
-              // 只要发现一个透明度小于250的像素，就认为是透明图片
-              const len = data.length;
-              // 简单的性能优化：如果图片很大，可以跳过一些像素检查
-              const step = (len > 1000000) ? 40 : 4; 
-              
-              for (let i = 3; i < len; i += step) {
-                if (data[i] < 250) {
-                  return true;
-                }
-              }
-              return false;
-            } catch (e) {
-              return false;
-            }
-          }
-
-          // 等待所有图片加载完成
-          const images = Array.from(document.querySelectorAll('img'));
-          const imagePromises = images.map(img => {
-            return new Promise((resolve) => {
-              const processImage = () => {
-                const width = img.naturalWidth || img.width || 0;
-                const height = img.naturalHeight || img.height || 0;
-                img.setAttribute('data-real-width', width);
-                img.setAttribute('data-real-height', height);
-                
-                // 检查透明度
-                if (width > 0 && height > 0 && hasTransparency(img)) {
-                  img.setAttribute('data-has-transparency', 'true');
-                }
-                resolve();
-              };
-
-              if (img.complete) {
-                // 图片已加载
-                if (img.naturalWidth === 0) {
-                   img.setAttribute('data-load-failed', 'true');
-                   img.setAttribute('data-real-width', '0');
-                   img.setAttribute('data-real-height', '0');
-                   resolve();
-                } else {
-                   processImage();
-                }
-              } else {
-                // 等待图片加载完成
-                img.onload = () => {
-                  processImage();
-                };
-                img.onerror = () => {
-                  // 加载失败
-                  img.setAttribute('data-load-failed', 'true');
-                  img.setAttribute('data-real-width', '0');
-                  img.setAttribute('data-real-height', '0');
-                  resolve();
-                };
-                // 设置超时，避免无限等待
-                setTimeout(() => {
-                  if (!img.complete || img.naturalWidth === 0) {
-                     if (!img.complete) img.setAttribute('data-load-failed', 'true');
-                     const width = img.naturalWidth || img.width || 0;
-                     const height = img.naturalHeight || img.height || 0;
-                     img.setAttribute('data-real-width', width);
-                     img.setAttribute('data-real-height', height);
-                  } else {
-                     // 超时时如果已经有尺寸了，尝试检查透明度
-                     if (img.naturalWidth > 0) {
-                        if (hasTransparency(img)) {
-                           img.setAttribute('data-has-transparency', 'true');
-                        }
-                     }
-                  }
-                  resolve();
-                }, 2000);
-              }
-            });
-          });
-          
-          // 等待所有图片处理完成，微信文章等待更长时间
-          await Promise.all(imagePromises);
-          
-          // 额外等待确保动态内容加载完成
-          await new Promise(resolve => setTimeout(resolve, ${extraWaitTime}));
-          
-          return true;
-        })()
-      `);
-      
+      await window.webContents.executeJavaScript();
       console.log('图片真实尺寸获取完成');
       return true;
     } catch (error) {
@@ -412,37 +291,7 @@ class ImageExtractor {
    */
   async waitForWechatContent(window) {
     try {
-      await window.webContents.executeJavaScript(`
-        (async function() {
-          // 等待微信文章主要内容区域出现
-          let retries = 0;
-          while (retries < 40) { // 增加重试次数到40次
-            const articleContent = document.querySelector('#js_content, .rich_media_content, .article-content');
-            if (articleContent && articleContent.textContent.trim().length > 50) { // 降低文本长度要求到50
-              // 检查内容是否真的加载完成
-              const images = articleContent.querySelectorAll('img');
-              let imagesLoaded = true;
-              
-              // 检查图片是否加载完成
-              for (let img of images) {
-                if (!img.complete && img.src) {
-                  imagesLoaded = false;
-                  break;
-                }
-              }
-              
-              if (imagesLoaded) {
-                break;
-              }
-            }
-            await new Promise(resolve => setTimeout(resolve, 500));
-            retries++;
-          }
-          // 额外等待1秒确保动态内容加载完成
-          await new Promise(resolve => setTimeout(resolve, 1000));
-          return true;
-        })()
-      `);
+      await window.webContents.executeJavaScript();
       
       console.log('微信文章内容加载完成');
       return true;

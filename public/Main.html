@@ -1417,6 +1417,100 @@
             overflow-wrap: break-word;
         }
 
+        .parsed-text.is-html {
+            white-space: normal;
+        }
+        .parsed-text.is-html p {
+            margin-bottom: 1em;
+        }
+        .parsed-text.is-html img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 8px;
+            margin: 10px 0;
+        }
+        .parsed-text.is-html h1, 
+        .parsed-text.is-html h2, 
+        .parsed-text.is-html h3, 
+        .parsed-text.is-html h4, 
+        .parsed-text.is-html h5, 
+        .parsed-text.is-html h6 {
+            margin-top: 1.5em;
+            margin-bottom: 0.5em;
+            font-weight: 600;
+            line-height: 1.3;
+        }
+        .parsed-text.is-html ul, 
+        .parsed-text.is-html ol {
+            padding-left: 2em;
+            margin-bottom: 1em;
+        }
+        .parsed-text.is-html li {
+            margin-bottom: 0.5em;
+        }
+        .parsed-text.is-html blockquote {
+            border-left: 4px solid var(--accent-color);
+            padding-left: 1em;
+            margin-left: 0;
+            color: var(--text-secondary);
+            font-style: italic;
+        }
+        .parsed-text.is-html pre {
+            background: var(--bg-tertiary);
+            padding: 1em;
+            border-radius: 8px;
+            overflow-x: auto;
+            white-space: pre;
+        }
+        .parsed-text.is-html code {
+            font-family: monospace;
+            background: var(--bg-tertiary);
+            padding: 0.2em 0.4em;
+            border-radius: 4px;
+        }
+
+        /* Parsed Images */
+        .parsed-images-container {
+            margin-top: 20px;
+        }
+        
+        #parsedImages .parsed-images-title {
+            font-size: 12px;
+            color: var(--text-secondary);
+            margin-bottom: 8px;
+            font-weight: 500;
+        }
+
+        #parsedImages {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        #parsedImages .parsed-image-item {
+            position: relative;
+            width: 80px;
+            height: 80px;
+            border-radius: var(--radius-md);
+            overflow: hidden;
+            cursor: pointer;
+            border: 1px solid var(--border-color);
+            transition: var(--transition-bounce);
+            flex-shrink: 0; /* Prevent shrinking */
+        }
+
+        #parsedImages .parsed-image-item img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        #parsedImages .parsed-image-item:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-md);
+        }
+
         /* Fake Highlight */
         .fake-highlight {
             background-color: rgba(255, 159, 28, 0.2);
@@ -1638,37 +1732,6 @@
             transform: scale(1.1);
         }
 
-        .parsed-images {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
-            gap: 12px;
-            margin-bottom: 20px;
-        }
-        
-        .parsed-image-item {
-            position: relative;
-            aspect-ratio: 1;
-            border-radius: var(--radius-md);
-            overflow: hidden;
-            cursor: pointer;
-            border: 1px solid var(--border-color);
-            background: var(--bg-tertiary);
-            transition: var(--transition);
-        }
-        
-        .parsed-image-item:hover {
-            transform: translateY(-2px);
-            box-shadow: var(--shadow-md);
-            border-color: var(--accent-color);
-        }
-
-        .parsed-image-item img {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-            display: block;
-        }
-
         .cancel-extract-btn {
             margin-top: 20px;
             padding: 10px 28px;
@@ -1848,7 +1911,7 @@
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
                                 <path d="M9 4v3h5v12h3V7h5V4H9zm-6 8h3v7h3v-7h3V9H3v3z"/>
                             </svg>
-                            <span>字体大小</span>
+                            <span>字体缩放</span>
                             <div class="zoom-controls">
                                 <button class="zoom-btn" id="fontDec">-</button>
                                 <span class="zoom-val" id="fontVal">16px</span>
@@ -1859,7 +1922,7 @@
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
                                 <path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14zM12 10h-2v2H9v-2H7V9h2V7h1v2h2v1z"/>
                             </svg>
-                            <span>界面缩放</span>
+                            <span>UI缩放</span>
                             <div class="zoom-controls">
                                 <button class="zoom-btn" id="zoomDec">-</button>
                                 <span class="zoom-val" id="zoomVal">100%</span>
@@ -2244,7 +2307,7 @@
                     <!-- 解析内容 -->
                     <div class="parsed-content" id="parsedContent" style="display: none;">
                         <h3 class="parsed-title" id="parsedTitle"></h3>
-                        <div class="parsed-images" id="parsedImages"></div>
+                        <div class="parsed-images-container" id="parsedImages"></div>
                         <div class="parsed-text" id="parsedText"></div>
                     </div>
                 </div>
@@ -4296,7 +4359,8 @@
                             // showExtractedResult(result);
                             showToast('提取完成，正在进行AI分析...', 'success');
                             // 传递 true 表示从提取流程进入
-                            analyzeContent(result.content, result.images, true);
+                            // 优先使用纯文本进行分析，如果没有则使用HTML内容
+                            analyzeContent(result.textContent || result.content, result.images, true);
                         }
                     } else {
                         if (result.error === '提取已取消') return; // 由 cancelled 事件处理
@@ -4375,6 +4439,7 @@
             parsedTitle.textContent = title || '';
             parsedTitle.style.display = title ? 'block' : 'none';
             parsedText.innerHTML = text || ''; // Use innerHTML
+            parsedText.classList.add('is-html'); // Add class for HTML content
             
             // Render Images
             parsedImages.innerHTML = '';
@@ -4838,6 +4903,12 @@
             parsedContent.style.display = 'block';
             parsedTitle.style.display = 'none'; 
             
+            if (isHtml) {
+                parsedText.classList.add('is-html');
+            } else {
+                parsedText.classList.remove('is-html');
+            }
+
             // Highlight fake parts
             let displayText = originalText;
             if ((result.type === 2 || result.type === 3) && result.fake_parts) {
@@ -4885,13 +4956,27 @@
                  imagesToRender = limitedImages.map(img => typeof img === 'string' ? {url: img, name: 'Image'} : img);
             }
             
-            imagesToRender.forEach(img => {
-                const item = document.createElement('div');
-                item.className = 'parsed-image-item';
-                item.innerHTML = `<img src="${img.url}" alt="${img.name}">`;
-                item.addEventListener('click', () => showImageModal(img.url));
-                parsedImages.appendChild(item);
-            });
+            if (imagesToRender.length > 0) {
+                // 添加标题
+                const title = document.createElement('div');
+                title.className = 'parsed-images-title';
+                title.textContent = '引用的图片';
+                parsedImages.appendChild(title);
+                
+                // 创建图片容器
+                const container = document.createElement('div');
+                container.className = 'parsed-images';
+                
+                imagesToRender.forEach(img => {
+                    const item = document.createElement('div');
+                    item.className = 'parsed-image-item';
+                    item.innerHTML = `<img src="${img.url}" alt="${img.name}">`;
+                    item.addEventListener('click', () => showImageModal(img.url));
+                    container.appendChild(item);
+                });
+                
+                parsedImages.appendChild(container);
+            }
             
             resultItem.classList.add('active');
         }
