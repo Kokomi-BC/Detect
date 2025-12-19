@@ -56,13 +56,15 @@
   "build": {
     "appId": "com.detectfake.app",
     "productName": "假新闻检测应用",
+    "icon": "ico/Detect.ico",
     "electronDownload": {
       "mirror": "https://npmmirror.com/mirrors/electron/"
     },
     "files": [
       "dist/**/*",
       "src/main/**/*",
-      "package.json"
+      "package.json",
+      "ico/**/*"
     ],
     "directories": {
       "output": "release",

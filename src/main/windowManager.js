@@ -173,6 +173,7 @@ class WindowManager {
       minWidth: 800,
       minHeight: 530,
       frame: true, // 恢复原生标题栏
+      icon: path.join(__dirname, '../../ico/Detect.ico'),
       backgroundColor: '#FFFFFF',
       webPreferences: {
         preload: path.join(__dirname, 'preload.js'),
@@ -256,6 +257,7 @@ class WindowManager {
       width: 1200,
       height: 800,
       show: true,
+      icon: path.join(__dirname, '../../ico/Detect.ico'),
       webPreferences: {
         nodeIntegration: false,
         contextIsolation: true,
@@ -297,6 +299,7 @@ class WindowManager {
     const navigationWindow = new BrowserWindow({
       width: 1200,
       height: 800,
+      icon: path.join(__dirname, '../../ico/Detect.ico'),
       show: true,
       webPreferences: {
         nodeIntegration: false,
