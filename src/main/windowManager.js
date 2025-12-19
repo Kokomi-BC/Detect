@@ -209,11 +209,11 @@ class WindowManager {
 
     // 在开发模式下加载webpack开发服务器
     if (process.env.NODE_ENV === 'development') {
-      mainWindow.loadURL('http://localhost:8080')
+      mainWindow.loadURL('http://localhost:8080/Welcome.html')
         .catch((error) => {
           console.error('加载开发服务器失败:', error);
           // 如果开发服务器失败，加载本地HTML文件
-          mainWindow.loadFile(path.join(__dirname, '../../public/Main.html'))
+          mainWindow.loadFile(path.join(__dirname, '../../public/Welcome.html'))
             .catch((localError) => {
               console.error('加载本地HTML文件也失败:', localError);
               throw localError;
@@ -221,7 +221,7 @@ class WindowManager {
         });
     } else {
       // 生产模式加载构建后的文件
-      mainWindow.loadFile(path.join(__dirname, '../../dist/Main.html'))
+      mainWindow.loadFile(path.join(__dirname, '../../dist/Welcome.html'))
         .catch((error) => {
           console.error('加载生产版本失败:', error);
           throw error;

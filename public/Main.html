@@ -77,6 +77,12 @@
             user-select: none; /* 禁止选中 */
             -webkit-user-select: none;
             transition: background-color var(--transition-fast), color var(--transition-fast);
+            animation: fadeIn 0.6s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: scale(0.98); }
+            to { opacity: 1; transform: scale(1); }
         }
         
         html {
@@ -2394,6 +2400,16 @@
                 })();
 
                 // 全屏显示功能
+                const __fullScreenBtnEl = document.getElementById('fullScreenBtn');
+                const __fullScreenLabelEl = __fullScreenBtnEl ? __fullScreenBtnEl.querySelector('span') : null;
+                const __updateFullScreenLabel = () => {
+                    if (!__fullScreenLabelEl) return;
+                    __fullScreenLabelEl.textContent = document.fullscreenElement ? '退出全屏' : '全屏显示';
+                };
+                // 初始化与状态变更监听（ESC/系统触发退出时也能更新）
+                document.addEventListener('fullscreenchange', __updateFullScreenLabel);
+                __updateFullScreenLabel();
+
                 document.getElementById('fullScreenBtn').addEventListener('click', function() {
                     if (!document.fullscreenElement) {
                         document.documentElement.requestFullscreen().catch(err => {
@@ -2404,6 +2420,8 @@
                             document.exitFullscreen();
                         }
                     }
+                    // 点击后立即刷新文案，避免部分平台事件延迟
+                    __updateFullScreenLabel();
                     // Close dropdown
                     if (window.__hideMoreDropdown) window.__hideMoreDropdown();
                 });

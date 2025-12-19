@@ -32,6 +32,12 @@ module.exports = {
       cache: false,
       minify: false,
     }),
+    new HtmlWebpackPlugin({
+      template: path.join(__dirname, 'public/Welcome.html'),
+      filename: 'Welcome.html',
+      cache: false,
+      minify: false,
+    }),
     new webpack.DefinePlugin({
       'global': 'global',
     }),
