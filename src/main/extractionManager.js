@@ -193,6 +193,7 @@ class ExtractionManager {
     await new Promise((resolve, reject) => {
       let loadTimeout;
       let globalTimeout;
+      let isLoaded = false; // 防止重复触发
       
       const cleanup = () => {
         try {
@@ -218,6 +219,9 @@ class ExtractionManager {
       };
 
       const onLoadSuccess = async () => {
+        if (isLoaded) return;
+        isLoaded = true;
+
         if (loadTimeout) {
           clearTimeout(loadTimeout);
           loadTimeout = null;
@@ -230,6 +234,34 @@ class ExtractionManager {
         }
 
         try {
+          // 检查是否是新浪访客系统 (Sina Visitor System)
+          // 微博等新浪页面可能会先加载访客系统，然后自动跳转
+          const title = await win.webContents.getTitle();
+          if (title.includes('Sina Visitor System') || title.includes('新浪访客系统')) {
+             console.log('检测到新浪访客系统，等待跳转...');
+             // 等待跳转，最多等待 10 秒
+             let retries = 0;
+             while (retries < 20) { // 增加到20秒，有时候比较慢
+                await new Promise(r => setTimeout(r, 1000));
+                if (win.isDestroyed()) {
+                    cleanup();
+                    return reject(new Error('Window destroyed during Sina Visitor wait'));
+                }
+                const newTitle = await win.webContents.getTitle();
+                // 如果标题变了，或者URL变了（不再包含 passport.weibo.com 等特征，虽然这里只看标题简单点）
+                if (!newTitle.includes('Sina Visitor System') && !newTitle.includes('新浪访客系统')) {
+                   console.log(`新浪访客系统跳转完成: ${newTitle}`);
+                   break;
+                }
+                retries++;
+             }
+          }
+
+          // 通用等待逻辑：等待页面动态渲染
+          // 替代针对微博的特定等待，对所有页面都给予一定的渲染缓冲时间
+          console.log('等待页面动态渲染...');
+          await new Promise(resolve => setTimeout(resolve, 2000));
+
           // 对于微信文章，需要等待更长时间确保内容完全加载
           if (isWechatArticle) {
             await this.imageExtractor.waitForWechatContent(win);
@@ -377,13 +409,58 @@ class ExtractionManager {
    */
   async processExtractedContent(htmlContent, url, isWechatArticle) {
     // 使用Readability提取文章内容
-    const dom = new JSDOM(htmlContent, { url });
-    const reader = new Readability(dom.window.document);
-    const article = reader.parse();
+    let dom = new JSDOM(htmlContent, { url });
+    // 降低字符阈值，以便提取短内容（如微博）
+    let reader = new Readability(dom.window.document, { charThreshold: 0 });
+    let article = reader.parse();
 
     // 检查是否成功解析文章
     if (!article) {
-      throw new Error('无法解析文章内容');
+      console.log(`Readability解析失败，尝试使用后备模式提取... (HTML长度: ${htmlContent.length})`);
+      // 重新解析DOM，因为Readability可能修改了之前的DOM
+      dom = new JSDOM(htmlContent, { url });
+      const doc = dom.window.document;
+      
+      // 移除明显的干扰元素 - 仅移除标签，避免误删内容
+      const junkTags = ['script', 'style', 'noscript', 'iframe', 'header', 'footer', 'nav', 'aside'];
+      
+      junkTags.forEach(tagName => {
+        const elements = doc.getElementsByTagName(tagName);
+        // 动态集合，从后往前删或使用while
+        while (elements.length > 0) {
+          elements[0].parentNode.removeChild(elements[0]);
+        }
+      });
+
+      let content = doc.body.innerHTML;
+      let textContent = doc.body.textContent.trim();
+      let imageCount = doc.querySelectorAll('img').length;
+      
+      console.log(`后备模式: 文本长度=${textContent.length}, 图片数量=${imageCount}`);
+
+      // 如果清理后没有内容，尝试使用原始body（不清理）
+      if (textContent.length === 0 && imageCount === 0) {
+        console.log('后备模式清理后内容为空，尝试使用原始body...');
+        const rawDom = new JSDOM(htmlContent, { url });
+        if (rawDom.window.document.body) {
+            content = rawDom.window.document.body.innerHTML;
+            textContent = rawDom.window.document.body.textContent.trim();
+            imageCount = rawDom.window.document.querySelectorAll('img').length;
+        }
+      }
+      
+      // 如果有内容或有图片，就认为提取成功
+      if (textContent.length > 0 || imageCount > 0) {
+        article = {
+          title: doc.title || '无标题',
+          content: content,
+          textContent: textContent,
+          length: textContent.length
+        };
+      } else {
+        console.error('后备模式提取失败: 无文本且无图片');
+        throw new Error('无法解析文章内容');
+      }
     }
 
     // 1. 从原始HTML中提取图片元数据（尺寸、加载状态等）
