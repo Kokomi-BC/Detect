@@ -236,6 +236,14 @@
             color: var(--accent-color);
         }
 
+        .toolbar-btn[disabled] {
+            opacity: 0.4;
+            cursor: not-allowed;
+            pointer-events: none;
+            box-shadow: none;
+            transform: none;
+        }
+
         /* Ripple Effect */
         .ripple {
             position: absolute;
@@ -3194,6 +3202,10 @@
 
             // Global context menu handler
             document.addEventListener('contextmenu', (e) => {
+                // Close result context menu if open
+                const resultContextMenu = document.getElementById('resultContextMenu');
+                if (resultContextMenu) resultContextMenu.classList.remove('active');
+
                 e.preventDefault(); // Always prevent default to block native menu
 
                 // Close any open toolbar dropdowns
@@ -3423,6 +3435,10 @@
             document.addEventListener('pointerdown', (e) => {
                 if (!contextMenu.contains(e.target)) {
                     contextMenu.classList.remove('active');
+                }
+                const resultContextMenu = document.getElementById('resultContextMenu');
+                if (resultContextMenu && !resultContextMenu.contains(e.target)) {
+                    resultContextMenu.classList.remove('active');
                 }
             });
 
@@ -4562,8 +4578,29 @@
                         e.stopPropagation(); // Stop propagation
                         
                         // Position menu
-                        const x = e.clientX;
-                        const y = e.clientY;
+                        let x = e.clientX;
+                        let y = e.clientY;
+                        
+                        // Measure height
+                        resultContextMenu.style.visibility = 'hidden';
+                        resultContextMenu.classList.add('active');
+                        const menuWidth = resultContextMenu.offsetWidth;
+                        const menuHeight = resultContextMenu.offsetHeight;
+                        resultContextMenu.classList.remove('active');
+                        resultContextMenu.style.visibility = 'visible';
+                        
+                        const winWidth = window.innerWidth;
+                        const winHeight = window.innerHeight;
+                        
+                        // Adjust X
+                        if (x + menuWidth > winWidth) {
+                            x = winWidth - menuWidth - 5;
+                        }
+                        
+                        // Adjust Y
+                        if (y + menuHeight > winHeight) {
+                            y = winHeight - menuHeight - 5;
+                        }
                         
                         resultContextMenu.style.left = `${x}px`;
                         resultContextMenu.style.top = `${y}px`;
@@ -4656,6 +4693,11 @@
             opacity: 1 !important;
             transform: none !important;
             animation: none !important;
+        }
+        .result-title {
+            font-size: 32px !important;
+            margin-bottom: 20px !important;
+            text-align: center !important;
         }
         /* Hide scrollbars in export */
         ::-webkit-scrollbar { display: none; }
