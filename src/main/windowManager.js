@@ -172,6 +172,7 @@ class WindowManager {
       height: 600,
       minWidth: 800,
       minHeight: 530,
+      show: false, // 先隐藏窗口，等待内容加载完成
       frame: true, // 恢复原生标题栏
       icon: path.join(__dirname, '../../ico/Detect.ico'),
       backgroundColor: nativeTheme.shouldUseDarkColors ? '#111315' : '#ffffff',
@@ -231,6 +232,11 @@ class WindowManager {
 
     // 设置窗口事件监听
     this.setupMainWindowEvents();
+
+    // 优雅显示窗口：等待内容加载完成再显示，避免闪烁
+    mainWindow.once('ready-to-show', () => {
+      mainWindow.show();
+    });
 
     console.log('主窗口创建完成');
     return mainWindow;

@@ -387,6 +387,9 @@ class DetectApp {
           // 设置原生主题
           nativeTheme.themeSource = isDarkMode ? 'dark' : 'light';
           
+          // 动态设置窗口背景色，防止页面切换时闪烁
+          this.mainWindow.setBackgroundColor(isDarkMode ? '#111315' : '#ffffff');
+
           // 通知渲染进程主题已更改
           this.mainWindow.webContents.send('theme-changed', {
             isDarkMode: isDarkMode,
