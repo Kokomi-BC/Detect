@@ -212,6 +212,11 @@
         // 页面加载时初始化
         initTheme();
 
+        // 屏蔽右键菜单
+        document.addEventListener('contextmenu', function(e) {
+            e.preventDefault();
+        });
+
         document.getElementById('enterBtn').addEventListener('click', () => {
             const wrapper = document.getElementById('wrapper');
             // 添加淡出效果

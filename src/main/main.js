@@ -1,5 +1,6 @@
 const { app, BrowserWindow, ipcMain, session, Menu, MenuItem, shell, nativeTheme, dialog, clipboard, nativeImage, net } = require('electron');
 const path = require('path');
+const fs = require('fs');
 const { WindowManager, WindowType } = require('./windowManager');
 const ExtractionManager = require('./extractionManager');
 const LLMService = require('./llmService');
@@ -571,6 +572,38 @@ class DetectApp {
       menu.popup({ window: win });
     });
 
+    // 显示结果区域右键菜单
+    ipcMain.on('show-result-context-menu', (event) => {
+      const menu = new Menu();
+      const win = BrowserWindow.fromWebContents(event.sender);
+
+      // 导出检测结果
+      menu.append(new MenuItem({
+        label: '导出检测结果',
+        click: () => {
+          event.sender.send('menu-action-export');
+        }
+      }));
+
+      menu.append(new MenuItem({ type: 'separator' }));
+
+      // 复制
+      menu.append(new MenuItem({
+        label: '复制',
+        role: 'copy',
+        accelerator: 'CmdOrCtrl+C'
+      }));
+
+      // 全选
+      menu.append(new MenuItem({
+        label: '全选',
+        role: 'selectAll',
+        accelerator: 'CmdOrCtrl+A'
+      }));
+
+      menu.popup({ window: win });
+    });
+
     // 提取内容事件
     ipcMain.on('extract-content', async (event, url) => {
       await this.handleExtractContent(event, url);
@@ -584,6 +617,30 @@ class DetectApp {
         return { success: true, data: result };
       } catch (error) {
         console.error('分析内容失败:', error);
+        return { success: false, error: error.message };
+      }
+    });
+
+    // 导出检测结果
+    ipcMain.handle('export-result', async (event, htmlContent) => {
+      try {
+        const mainWindow = this.getMainWindow();
+        const { canceled, filePath } = await dialog.showSaveDialog(mainWindow, {
+          title: '导出检测结果',
+          defaultPath: '检测报告.html',
+          filters: [
+            { name: 'HTML 文件', extensions: ['html'] }
+          ]
+        });
+
+        if (canceled || !filePath) {
+          return { success: false, error: '已取消导出' };
+        }
+
+        fs.writeFileSync(filePath, htmlContent, 'utf-8');
+        return { success: true, filePath };
+      } catch (error) {
+        console.error('导出失败:', error);
         return { success: false, error: error.message };
       }
     });

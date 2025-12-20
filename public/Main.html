@@ -2090,6 +2090,30 @@
             </div>
 
             <!-- Context Menu -->
+            <div class="context-menu" id="resultContextMenu">
+                <div class="context-menu-item" id="ctxResultCopy">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/>
+                    </svg>
+                    <span>复制</span>
+                    <span class="shortcut-hint">Ctrl+C</span>
+                </div>
+                <div class="context-menu-item" id="ctxResultSelectAll">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M3 5h2V3c-1.1 0-2 .9-2 2zm0 8h2v-2H3v2zm4 8h2v-2H7v2zM3 9h2V7H3v2zm10-6h-2v2h2V3zm6 0v2h2c0-1.1-.9-2-2-2zM5 21v-2H3c0 1.1.9 2 2 2zm-2-4h2v-2H3v2zM9 3H7v2h2V3zm2 18h2v-2h-2v2zm8-8h2v-2h-2v2zm0 8c1.1 0 2-.9 2-2h-2v2zm0-12h2V7h-2v2zm0 8h2v-2h-2v2zm-4 4h2v-2h-2v2zm0-16h2V3h-2v2zM7 17h10V7H7v10zm2-8h6v6H9V9z"/>
+                    </svg>
+                    <span>全选</span>
+                    <span class="shortcut-hint">Ctrl+A</span>
+                </div>
+                <div class="context-menu-separator"></div>
+                <div class="context-menu-item" id="ctxExportResult">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/>
+                    </svg>
+                    <span>导出检测结果</span>
+                </div>
+            </div>
+
             <div class="context-menu" id="editContextMenu">
                 <div class="context-menu-item" id="ctxSearch">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
@@ -2259,6 +2283,11 @@
         <div class="right-panel" id="rightPanel">
             <div class="result-header">
                 <h2 class="result-title">检测结果</h2>
+                <button class="toolbar-btn" id="exportBtn" title="导出结果" style="margin-left: auto;" disabled>
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/>
+                    </svg>
+                </button>
             </div>
             <div class="result-content">
                 <!-- 初始状态 -->
@@ -2463,6 +2492,7 @@
             initTextEditor();
             initImageUpload();
             initButtons();
+            initExport();
             initModal();
             initIPC();
             initZoomControls();
@@ -4192,6 +4222,11 @@
                     document.getElementById('resultItem').classList.remove('active');
                     document.getElementById('errorState').classList.remove('active');
                     document.getElementById('loadingState').classList.remove('active');
+                    
+                    // Disable export button
+                    const exportBtn = document.getElementById('exportBtn');
+                    if (exportBtn) exportBtn.disabled = true;
+
                     showToast('内容已清空', 'success');
                 });
             });
@@ -4294,6 +4329,10 @@
             // 显示取消按钮
             if (cancelBtn) cancelBtn.style.display = 'block';
             
+            // Disable export button
+            const exportBtn = document.getElementById('exportBtn');
+            if (exportBtn) exportBtn.disabled = true;
+
             // 初始化进度条
             progressBar.style.width = '0%';
             loadingText.textContent = isPreview ? '正在解析网页以预览...' : '正在解析网页内容...';
@@ -4462,6 +4501,11 @@
 
             // Show Content
             parsedContent.style.display = 'block';
+            
+            // Enable export button
+            const exportBtn = document.getElementById('exportBtn');
+            if (exportBtn) exportBtn.disabled = false;
+
             parsedTitle.textContent = title || '';
             parsedTitle.style.display = title ? 'block' : 'none';
             parsedText.innerHTML = text || ''; // Use innerHTML
@@ -4493,6 +4537,159 @@
             resultItem.classList.add('active');
         }
 
+        // 初始化导出功能
+        function initExport() {
+            // Export Button
+            const exportBtn = document.getElementById('exportBtn');
+            if (exportBtn) {
+                exportBtn.addEventListener('click', exportResult);
+            }
+
+            // Context Menu
+            const rightPanel = document.getElementById('rightPanel');
+            const resultContextMenu = document.getElementById('resultContextMenu');
+            const ctxExportResult = document.getElementById('ctxExportResult');
+            const ctxResultCopy = document.getElementById('ctxResultCopy');
+            const ctxResultSelectAll = document.getElementById('ctxResultSelectAll');
+
+            if (rightPanel && resultContextMenu) {
+                // Use capture phase to intercept event before it bubbles up or is handled by others
+                rightPanel.addEventListener('contextmenu', function(e) {
+                    const resultItem = document.getElementById('resultItem');
+                    // Only show if result is active and click is inside result content
+                    if (resultItem && resultItem.classList.contains('active')) {
+                        e.preventDefault();
+                        e.stopPropagation(); // Stop propagation
+                        
+                        // Position menu
+                        const x = e.clientX;
+                        const y = e.clientY;
+                        
+                        resultContextMenu.style.left = `${x}px`;
+                        resultContextMenu.style.top = `${y}px`;
+                        resultContextMenu.classList.add('active');
+                        
+                        // Close other menus
+                        const editContextMenu = document.getElementById('editContextMenu');
+                        if (editContextMenu) editContextMenu.classList.remove('active');
+                    }
+                }, true); // Capture phase
+            }
+
+            if (ctxExportResult) {
+                ctxExportResult.addEventListener('click', function() {
+                    exportResult();
+                    if (resultContextMenu) resultContextMenu.classList.remove('active');
+                });
+            }
+
+            if (ctxResultCopy) {
+                ctxResultCopy.addEventListener('click', function() {
+                    document.execCommand('copy');
+                    if (resultContextMenu) resultContextMenu.classList.remove('active');
+                });
+            }
+
+            if (ctxResultSelectAll) {
+                ctxResultSelectAll.addEventListener('click', function() {
+                    document.execCommand('selectAll');
+                    if (resultContextMenu) resultContextMenu.classList.remove('active');
+                });
+            }
+
+            // Close menu on click
+            document.addEventListener('click', function(e) {
+                if (resultContextMenu && resultContextMenu.classList.contains('active')) {
+                    resultContextMenu.classList.remove('active');
+                }
+            });
+        }
+
+        function exportResult() {
+             const resultItem = document.getElementById('resultItem');
+            if (!resultItem || !resultItem.classList.contains('active')) {
+                showToast('暂无检测结果可导出', 'warning');
+                return;
+            }
+            
+            // Clone the result item to modify it for export if needed
+            const clone = resultItem.cloneNode(true);
+            
+            // Get styles
+            let styles = '';
+            document.querySelectorAll('style').forEach(style => {
+                styles += style.outerHTML;
+            });
+            
+            // Construct HTML
+            const html = `<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>检测报告</title>
+    ${styles}
+    <style>
+        body { 
+            background: var(--bg-primary); 
+            padding: 40px; 
+            height: auto; 
+            overflow: visible;
+        }
+        .container { 
+            display: block; 
+            height: auto; 
+        }
+        .right-panel { 
+            width: 100%; 
+            max-width: 800px; 
+            margin: 0 auto; 
+            background: transparent; 
+            display: block;
+        }
+        .result-content {
+            padding: 0;
+            overflow: visible;
+        }
+        .result-item {
+            display: block !important;
+            opacity: 1 !important;
+            transform: none !important;
+            animation: none !important;
+        }
+        /* Hide scrollbars in export */
+        ::-webkit-scrollbar { display: none; }
+        html { overflow: auto !important; height: auto !important; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="right-panel">
+            <div class="result-header" style="justify-content: center; margin-bottom: 20px;">
+                <h2 class="result-title">检测结果报告</h2>
+            </div>
+            <div class="result-content">
+                ${clone.outerHTML}
+            </div>
+        </div>
+    </div>
+</body>
+</html>`;
+
+            if (window.electronAPI) {
+                window.electronAPI.invoke('export-result', html).then(res => {
+                    if (res.success) {
+                        showToast('导出成功', 'success');
+                    } else if (res.error !== '已取消导出') {
+                        showToast('导出失败: ' + res.error, 'error');
+                    }
+                });
+            } else {
+                console.log(html);
+                showToast('导出功能仅在客户端可用', 'warning');
+            }
+        }
+
         // 初始化IPC通信
         function initIPC() {
             if (window.electronAPI) {
@@ -4514,12 +4711,21 @@
                 });
                 */
 
+                // 监听导出操作
+                window.electronAPI.on('menu-action-export', function() {
+                    exportResult();
+                });
+
                 // 监听清除内容（直接清空）事件，保留以兼容旧逻辑
                 window.electronAPI.on('clear-results', function() {
                     document.getElementById('initialState').style.display = 'flex';
                     document.getElementById('resultItem').classList.remove('active');
                     document.getElementById('errorState').classList.remove('active');
                     document.getElementById('loadingState').classList.remove('active');
+                    
+                    // Disable export button
+                    const exportBtn = document.getElementById('exportBtn');
+                    if (exportBtn) exportBtn.disabled = true;
                 });
 
                 // 监听主进程请求显示清空确认弹窗（来自右键菜单）
@@ -4535,6 +4741,11 @@
                         document.getElementById('resultItem').classList.remove('active');
                         document.getElementById('errorState').classList.remove('active');
                         document.getElementById('loadingState').classList.remove('active');
+                        
+                        // Disable export button
+                        const exportBtn = document.getElementById('exportBtn');
+                        if (exportBtn) exportBtn.disabled = true;
+
                         showToast('内容已清空', 'success');
                     }, () => {
                         // 取消时不作操作
@@ -4616,6 +4827,10 @@
             
             initialState.style.display = 'none';
             resultItem.classList.add('active');
+            
+            // Enable export button
+            const exportBtn = document.getElementById('exportBtn');
+            if (exportBtn) exportBtn.disabled = false;
         }
 
         // 显示提取结果
@@ -4691,6 +4906,10 @@
             }
             
             resultItem.classList.add('active');
+            
+            // Enable export button
+            const exportBtn = document.getElementById('exportBtn');
+            if (exportBtn) exportBtn.disabled = false;
         }
 
         function showError(message) {
@@ -4699,6 +4918,10 @@
             const loadingState = document.getElementById('loadingState');
             const detectBtn = document.getElementById('detectBtn');
             
+            // Disable export button
+            const exportBtn = document.getElementById('exportBtn');
+            if (exportBtn) exportBtn.disabled = true;
+
             loadingState.classList.remove('active');
             detectBtn.classList.remove('loading');
             detectBtn.innerHTML = '开始检测';
@@ -4831,6 +5054,10 @@
                     loadingState.classList.remove('active');
                     detectBtn.classList.remove('loading');
                     detectBtn.innerHTML = '开始检测';
+                    
+                    // Enable export button
+                    const exportBtn = document.getElementById('exportBtn');
+                    if (exportBtn) exportBtn.disabled = false;
                 }, 500);
 
             } catch (error) {
