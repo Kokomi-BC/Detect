@@ -149,6 +149,25 @@
         .arrow-icon svg path {
             stroke: currentColor;
         }
+
+        /* Ripple Effect */
+        .ripple {
+            position: fixed;
+            border-radius: 50%;
+            background: var(--accent-color);
+            transform: scale(0);
+            animation: rippleExpand 0.8s ease-out forwards;
+            pointer-events: none;
+            z-index: 9999;
+            opacity: 0.4;
+        }
+
+        @keyframes rippleExpand {
+            to {
+                transform: scale(1);
+                opacity: 0;
+            }
+        }
     </style>
 </head>
 <body>
@@ -217,7 +236,27 @@
             e.preventDefault();
         });
 
-        document.getElementById('enterBtn').addEventListener('click', () => {
+        document.getElementById('enterBtn').addEventListener('click', (e) => {
+            // Create ripple
+            const ripple = document.createElement('div');
+            ripple.classList.add('ripple');
+            
+            // Position ripple at center of button
+            const rect = e.currentTarget.getBoundingClientRect();
+            const x = rect.left + rect.width / 2;
+            const y = rect.top + rect.height / 2;
+            
+            // Calculate size to cover screen
+            const maxDim = Math.max(window.innerWidth, window.innerHeight);
+            const size = maxDim * 2.5;
+            
+            ripple.style.width = `${size}px`;
+            ripple.style.height = `${size}px`;
+            ripple.style.left = `${x - size/2}px`;
+            ripple.style.top = `${y - size/2}px`;
+            
+            document.body.appendChild(ripple);
+
             const wrapper = document.getElementById('wrapper');
             // 添加淡出效果
             wrapper.classList.add('fade-out');

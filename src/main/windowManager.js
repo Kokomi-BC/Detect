@@ -1,4 +1,4 @@
-const { BrowserWindow, Menu, MenuItem, clipboard, shell } = require('electron');
+const { BrowserWindow, Menu, MenuItem, clipboard, shell, nativeTheme } = require('electron');
 const path = require('path');
 
 /**
@@ -174,7 +174,7 @@ class WindowManager {
       minHeight: 530,
       frame: true, // 恢复原生标题栏
       icon: path.join(__dirname, '../../ico/Detect.ico'),
-      backgroundColor: '#FFFFFF',
+      backgroundColor: nativeTheme.shouldUseDarkColors ? '#111315' : '#ffffff',
       webPreferences: {
         preload: path.join(__dirname, 'preload.js'),
         nodeIntegration: false,
