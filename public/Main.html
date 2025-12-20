@@ -1490,9 +1490,16 @@
 
         #parsedImages {
             display: flex;
-            flex-wrap: wrap;
+            flex-direction: column;
             gap: 10px;
             margin-top: 10px;
+        }
+
+        .parsed-images {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            width: 100%;
         }
 
         #parsedImages .parsed-image-item {
@@ -4468,13 +4475,19 @@
                  imagesToRender = limitedImages.map(img => typeof img === 'string' ? {url: img, name: 'Image'} : img);
             }
             
-            imagesToRender.forEach(img => {
-                const item = document.createElement('div');
-                item.className = 'parsed-image-item';
-                item.innerHTML = `<img src="${img.url}" alt="${img.name}">`;
-                item.addEventListener('click', () => showImageModal(img.url));
-                parsedImages.appendChild(item);
-            });
+            if (imagesToRender.length > 0) {
+                const container = document.createElement('div');
+                container.className = 'parsed-images';
+                
+                imagesToRender.forEach(img => {
+                    const item = document.createElement('div');
+                    item.className = 'parsed-image-item';
+                    item.innerHTML = `<img src="${img.url}" alt="${img.name}">`;
+                    item.addEventListener('click', () => showImageModal(img.url));
+                    container.appendChild(item);
+                });
+                parsedImages.appendChild(container);
+            }
             
             initialState.style.display = 'none';
             resultItem.classList.add('active');
@@ -4981,6 +4994,14 @@
                 title.className = 'parsed-images-title';
                 title.textContent = '引用的图片';
                 parsedImages.appendChild(title);
+
+                // 添加分隔线
+                const separator = document.createElement('div');
+                separator.style.height = '1px';
+                separator.style.backgroundColor = 'var(--border-color)';
+                separator.style.margin = '8px 0 12px 0';
+                separator.style.width = '100%';
+                parsedImages.appendChild(separator);
                 
                 // 创建图片容器
                 const container = document.createElement('div');
