@@ -624,6 +624,44 @@ class DetectApp {
       }
     });
 
+    // 将图片转换为Base64
+    ipcMain.handle('convert-image-to-base64', async (event, url) => {
+      try {
+        // 如果是本地文件
+        if (url.startsWith('file://') || /^[a-zA-Z]:\\/.test(url)) {
+           let filePath = url.startsWith('file://') ? url.slice(7) : url; // Remove file://
+           // Handle Windows paths with file:///C:/... -> /C:/... -> C:/...
+           if (process.platform === 'win32' && filePath.startsWith('/') && filePath[2] === ':') {
+               filePath = filePath.slice(1);
+           }
+           
+           const decodedPath = decodeURIComponent(filePath);
+           if (fs.existsSync(decodedPath)) {
+               const buffer = fs.readFileSync(decodedPath);
+               const base64 = buffer.toString('base64');
+               const ext = path.extname(decodedPath).substring(1).toLowerCase();
+               const mimeType = ext === 'jpg' ? 'jpeg' : (ext === 'svg' ? 'svg+xml' : ext);
+               return { success: true, data: `data:image/${mimeType};base64,${base64}` };
+           }
+        }
+        
+        // 如果是网络图片
+        if (url.startsWith('http')) {
+            const response = await fetch(url);
+            if (!response.ok) throw new Error(`Failed to fetch image: ${response.statusText}`);
+            const arrayBuffer = await response.arrayBuffer();
+            const buffer = Buffer.from(arrayBuffer);
+            const contentType = response.headers.get('content-type') || 'image/jpeg';
+            return { success: true, data: `data:${contentType};base64,${buffer.toString('base64')}` };
+        }
+
+        return { success: false, error: 'Unsupported URL format' };
+      } catch (error) {
+        console.error('图片转换失败:', error);
+        return { success: false, error: error.message };
+      }
+    });
+
     // 导出检测结果
     ipcMain.handle('export-result', async (event, htmlContent) => {
       try {

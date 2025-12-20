@@ -2115,9 +2115,7 @@
                 </div>
                 <div class="context-menu-separator"></div>
                 <div class="context-menu-item" id="ctxExportResult">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
-                        <path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/>
-                    </svg>
+                    <svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="currentColor"><path d="M480-320 280-520l56-58 104 104v-326h80v326l104-104 56 58-200 200ZM240-160q-33 0-56.5-23.5T160-240v-120h80v120h480v-120h80v120q0 33-23.5 56.5T720-160H240Z"/></svg>
                     <span>导出检测结果</span>
                 </div>
             </div>
@@ -2292,9 +2290,7 @@
             <div class="result-header">
                 <h2 class="result-title">检测结果</h2>
                 <button class="toolbar-btn" id="exportBtn" title="导出结果" style="margin-left: auto;" disabled>
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
-                        <path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/>
-                    </svg>
+                    <svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="currentColor"><path d="M480-320 280-520l56-58 104 104v-326h80v326l104-104 56 58-200 200ZM240-160q-33 0-56.5-23.5T160-240v-120h80v120h480v-120h80v120q0 33-23.5 56.5T720-160H240Z"/></svg>
                 </button>
             </div>
             <div class="result-content">
@@ -4652,15 +4648,38 @@
             });
         }
 
-        function exportResult() {
+        async function exportResult() {
              const resultItem = document.getElementById('resultItem');
             if (!resultItem || !resultItem.classList.contains('active')) {
                 showToast('暂无检测结果可导出', 'warning');
                 return;
             }
             
+            showToast('正在准备导出...', 'info');
+
             // Clone the result item to modify it for export if needed
             const clone = resultItem.cloneNode(true);
+            
+            // Convert images to Base64 to ensure they display correctly in exported file
+            if (window.electronAPI) {
+                const images = clone.querySelectorAll('img');
+                for (let img of images) {
+                    try {
+                        const src = img.src;
+                        // Skip if already base64 or empty
+                        if (src && !src.startsWith('data:')) {
+                            const response = await window.electronAPI.invoke('convert-image-to-base64', src);
+                            if (response.success) {
+                                img.src = response.data;
+                            } else {
+                                console.warn('Image conversion failed:', response.error);
+                            }
+                        }
+                    } catch (e) {
+                        console.error('Failed to convert image:', e);
+                    }
+                }
+            }
             
             // Get styles
             let styles = '';
@@ -4712,6 +4731,65 @@
         /* Hide scrollbars in export */
         ::-webkit-scrollbar { display: none; }
         html { overflow: auto !important; height: auto !important; }
+        
+        /* Ensure modal is hidden by default */
+        .image-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.8);
+            z-index: 10000;
+            align-items: center;
+            justify-content: center;
+        }
+        .image-modal.active {
+            display: flex;
+        }
+        .modal-image {
+            max-width: 90%;
+            max-height: 90%;
+            object-fit: contain;
+        }
+        .modal-close {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            color: white;
+            font-size: 30px;
+            cursor: pointer;
+            background: none;
+            border: none;
+        }
+        
+        /* Tooltip styles */
+        .custom-tooltip {
+            position: fixed;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 14px;
+            max-width: 300px;
+            z-index: 10001;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.2s;
+            display: none;
+        }
+        .custom-tooltip.active {
+            opacity: 1;
+            display: block;
+        }
+        .fake-highlight {
+            cursor: pointer;
+            position: relative;
+        }
+        .fake-highlight.active {
+            background-color: rgba(231, 29, 54, 0.3); /* Darker highlight when active */
+        }
     </style>
 </head>
 <body>
@@ -4725,6 +4803,131 @@
             </div>
         </div>
     </div>
+
+    <!-- Image Modal -->
+    <div class="image-modal" id="imageModal">
+        <button class="modal-close" id="modalClose">×</button>
+        <img class="modal-image" id="modalImage" src="" alt="预览图片">
+    </div>
+
+    <!-- Tooltip -->
+    <div id="customTooltip" class="custom-tooltip"></div>
+
+    <script>
+        // Image Modal Logic
+        const modal = document.getElementById('imageModal');
+        const modalImage = document.getElementById('modalImage');
+        const modalClose = document.getElementById('modalClose');
+
+        function showImageModal(url) {
+            modalImage.src = url;
+            modal.classList.add('active');
+        }
+
+        if (modalClose) {
+            modalClose.addEventListener('click', () => {
+                modal.classList.remove('active');
+            });
+        }
+
+        if (modal) {
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) {
+                    modal.classList.remove('active');
+                }
+            });
+        }
+
+        // Re-bind click events to images
+        document.querySelectorAll('.parsed-image-item img').forEach(img => {
+            img.style.cursor = 'pointer';
+            img.onclick = function() {
+                showImageModal(this.src);
+            };
+        });
+
+        // Tooltip Logic
+        let activeTooltipElement = null;
+        let tooltipUpdateRaf = null;
+
+        function updateTooltipPosition() {
+            const tooltip = document.getElementById('customTooltip');
+            if (!tooltip || !tooltip.classList.contains('active') || !activeTooltipElement) return;
+
+            const rect = activeTooltipElement.getBoundingClientRect();
+            const tooltipRect = tooltip.getBoundingClientRect();
+            
+            let top = rect.bottom + 10;
+            let left = rect.left + (rect.width / 2) - (tooltipRect.width / 2);
+
+            const padding = 16;
+            
+            if (left < padding) {
+                left = padding;
+            } else if (left + tooltipRect.width > window.innerWidth - padding) {
+                left = window.innerWidth - tooltipRect.width - padding;
+            }
+            
+            if (top + tooltipRect.height > window.innerHeight - padding) {
+                top = rect.top - tooltipRect.height - 10;
+            }
+
+            tooltip.style.top = top + 'px';
+            tooltip.style.left = left + 'px';
+        }
+
+        // Expose to global scope for onclick attribute
+        window.showReasonTooltip = function(event, element) {
+            event.stopPropagation();
+            
+            if (activeTooltipElement) {
+                activeTooltipElement.classList.remove('active');
+            }
+
+            const reason = element.getAttribute('data-reason');
+            if (!reason) return;
+
+            activeTooltipElement = element;
+            activeTooltipElement.classList.add('active');
+
+            const tooltip = document.getElementById('customTooltip');
+            tooltip.textContent = reason;
+            tooltip.classList.add('active');
+
+            updateTooltipPosition();
+        };
+
+        function hideTooltip() {
+            const tooltip = document.getElementById('customTooltip');
+            if (tooltip) {
+                tooltip.classList.remove('active');
+            }
+            if (activeTooltipElement) {
+                activeTooltipElement.classList.remove('active');
+                activeTooltipElement = null;
+            }
+        }
+
+        document.addEventListener('click', function(e) {
+            const tooltip = document.getElementById('customTooltip');
+            if (tooltip && tooltip.contains(e.target)) return;
+            if (e.target.classList.contains('fake-highlight')) return;
+            hideTooltip();
+        });
+
+        window.addEventListener('scroll', function() {
+            if (activeTooltipElement) {
+                if (tooltipUpdateRaf) cancelAnimationFrame(tooltipUpdateRaf);
+                tooltipUpdateRaf = requestAnimationFrame(updateTooltipPosition);
+            }
+        }, true);
+
+        window.addEventListener('resize', function() {
+            if (activeTooltipElement) {
+                updateTooltipPosition();
+            }
+        });
+    <\/script>
 </body>
 </html>`;
 
