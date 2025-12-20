@@ -100,8 +100,8 @@ class ExtractionManager {
       this.currentExtractionEvent.sender.send('extraction-cancelled');
     }
     
-    // 重置状态
-    this.resetExtractionState();
+    // 不在此处重置状态，让 extractContent 方法通过 isExtractionCancelled 标志检测到取消并处理
+    // this.resetExtractionState();
   }
 
   /**

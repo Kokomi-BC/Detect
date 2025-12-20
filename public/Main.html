@@ -4754,7 +4754,7 @@
             object-fit: contain;
         }
         .modal-close {
-            position: absolute;
+            position: fixed;
             top: 20px;
             right: 20px;
             color: white;
@@ -4762,11 +4762,12 @@
             cursor: pointer;
             background: none;
             border: none;
+            z-index: 10002;
         }
         
         /* Tooltip styles */
         .custom-tooltip {
-            position: fixed;
+            position: absolute !important;
             background: rgba(0, 0, 0, 0.8);
             color: white;
             padding: 8px 12px;
@@ -4857,19 +4858,24 @@
             const rect = activeTooltipElement.getBoundingClientRect();
             const tooltipRect = tooltip.getBoundingClientRect();
             
-            let top = rect.bottom + 10;
-            let left = rect.left + (rect.width / 2) - (tooltipRect.width / 2);
+            const scrollX = window.scrollX || window.pageXOffset;
+            const scrollY = window.scrollY || window.pageYOffset;
+
+            let top = rect.bottom + scrollY + 10;
+            let left = rect.left + scrollX + (rect.width / 2) - (tooltipRect.width / 2);
 
             const padding = 16;
+            const viewportWidth = window.innerWidth;
+            const viewportHeight = window.innerHeight;
             
-            if (left < padding) {
-                left = padding;
-            } else if (left + tooltipRect.width > window.innerWidth - padding) {
-                left = window.innerWidth - tooltipRect.width - padding;
+            if (left < scrollX + padding) {
+                left = scrollX + padding;
+            } else if (left + tooltipRect.width > scrollX + viewportWidth - padding) {
+                left = scrollX + viewportWidth - tooltipRect.width - padding;
             }
             
-            if (top + tooltipRect.height > window.innerHeight - padding) {
-                top = rect.top - tooltipRect.height - 10;
+            if (rect.bottom + 10 + tooltipRect.height > viewportHeight - padding) {
+                top = rect.top + scrollY - tooltipRect.height - 10;
             }
 
             tooltip.style.top = top + 'px';
