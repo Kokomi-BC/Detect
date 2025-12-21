@@ -484,6 +484,19 @@
             z-index: 9999;
             display: none;
             animation: menuPopup 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
+            max-height: 90vh;
+            overflow-y: auto;
+            overflow-x: hidden; /* Disable horizontal scroll */
+        }
+        .context-menu::-webkit-scrollbar {
+            width: 4px;
+        }
+        .context-menu::-webkit-scrollbar-thumb {
+            background: var(--border-color);
+            border-radius: 2px;
+        }
+        .context-menu::-webkit-scrollbar-thumb:hover {
+            background: var(--text-secondary);
         }
         .context-menu.active { display: block; }
 
@@ -524,9 +537,13 @@
         }
 
         .context-submenu {
-            position: absolute;
-            left: 100%;
-            top: -4px;
+            display: none !important; /* Hide original submenu always */
+        }
+        
+        /* Floating submenu style */
+        .floating-submenu {
+            position: fixed;
+            z-index: 10000;
             background: var(--bg-menu);
             backdrop-filter: blur(20px);
             -webkit-backdrop-filter: blur(20px);
@@ -535,11 +552,29 @@
             box-shadow: var(--shadow-lg);
             padding: 6px;
             min-width: 160px;
-            display: none;
-            margin-left: 8px;
-            z-index: 1002;
-            transform-origin: top left;
+            display: block;
+            animation: menuPopup 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
         }
+        
+        .floating-submenu .context-menu-item {
+            padding: 8px 12px;
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            color: var(--text-primary);
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: flex-start;
+            gap: 8px;
+            transition: background 0.2s;
+        }
+        
+        .floating-submenu .context-menu-item:hover {
+            background: var(--accent-light);
+            color: var(--accent-color);
+            box-shadow: var(--shadow-accent);
+        }
+
         /* Left-side submenu when near right edge */
         .context-submenu.left-side {
             left: auto;
@@ -563,8 +598,7 @@
             right: -12px;
         }
         .context-menu-item:hover .context-submenu {
-            display: block;
-            animation: menuPopup 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
+            display: none;
         }
 
         .shortcut-hint {
@@ -3247,38 +3281,93 @@
             // Context Menu Logic
             const contextMenu = document.getElementById('editContextMenu');
             
-            // Submenu positioning logic
+            // Submenu Logic (Floating)
+            let activeSubmenu = null;
+            let submenuCloseTimer = null;
+
+            function closeSubmenu() {
+                if (activeSubmenu) {
+                    activeSubmenu.remove();
+                    activeSubmenu = null;
+                }
+            }
+
             document.querySelectorAll('.context-menu-item').forEach(item => {
+                const originalSubmenu = item.querySelector('.context-submenu');
+                
                 item.addEventListener('mouseenter', () => {
-                    const submenu = item.querySelector('.context-submenu');
-                    if (submenu) {
+                    if (submenuCloseTimer) {
+                        clearTimeout(submenuCloseTimer);
+                        submenuCloseTimer = null;
+                    }
+
+                    // If hovering a different item, close existing submenu
+                    if (activeSubmenu && activeSubmenu.dataset.parent !== item.innerText) {
+                        closeSubmenu();
+                    }
+
+                    if (originalSubmenu) {
+                        if (activeSubmenu) return; // Already open
+
+                        // Create floating submenu
+                        const floating = document.createElement('div');
+                        floating.className = 'floating-submenu';
+                        floating.innerHTML = originalSubmenu.innerHTML;
+                        floating.dataset.parent = item.innerText;
+                        
+                        document.body.appendChild(floating);
+                        activeSubmenu = floating;
+
+                        // Positioning
                         const rect = item.getBoundingClientRect();
                         const winWidth = window.innerWidth;
                         const winHeight = window.innerHeight;
+                        const subRect = floating.getBoundingClientRect();
                         
-                        // Reset styles first
-                        submenu.classList.remove('left-side');
-                        submenu.style.top = '-4px';
-                        submenu.style.bottom = 'auto';
-                        
-                        // Horizontal positioning
-                        // Use a fixed width estimate or temporary display to measure
-                        const submenuWidth = submenu.offsetWidth || 180;
-                        
-                        if (rect.right + submenuWidth > winWidth) {
-                            submenu.classList.add('left-side');
+                        let left = rect.right;
+                        let top = rect.top - 4; // Align top
+
+                        // Horizontal flip
+                        if (left + subRect.width > winWidth) {
+                            left = rect.left - subRect.width;
                         }
 
-                        // Vertical positioning
-                        const submenuRect = submenu.getBoundingClientRect();
-                        if (submenuRect.bottom > winHeight) {
-                            // Calculate how much it overflows
-                            const overflow = submenuRect.bottom - winHeight + 10;
-                            // Shift up
-                            const currentTop = parseInt(getComputedStyle(submenu).top) || -4;
-                            submenu.style.top = `${currentTop - overflow}px`;
+                        // Vertical adjustment
+                        if (top + subRect.height > winHeight) {
+                            top = winHeight - subRect.height - 10;
                         }
+                        
+                        floating.style.left = left + 'px';
+                        floating.style.top = top + 'px';
+
+                        // Events for floating menu
+                        floating.addEventListener('mouseenter', () => {
+                            if (submenuCloseTimer) {
+                                clearTimeout(submenuCloseTimer);
+                                submenuCloseTimer = null;
+                            }
+                        });
+
+                        floating.addEventListener('mouseleave', () => {
+                            submenuCloseTimer = setTimeout(closeSubmenu, 200);
+                        });
+
+                        // Re-bind click events
+                        floating.querySelectorAll('[data-cmd]').forEach(subItem => {
+                            subItem.addEventListener('click', (e) => {
+                                e.stopPropagation();
+                                const cmd = subItem.dataset.cmd;
+                                const val = subItem.dataset.val || null;
+                                document.execCommand(cmd, false, val);
+                                closeSubmenu();
+                                contextMenu.classList.remove('active');
+                            });
+                        });
                     }
+                });
+
+                item.addEventListener('mouseleave', () => {
+                    submenuCloseTimer = setTimeout(closeSubmenu, 200);
                 });
             });
 
@@ -3436,6 +3525,10 @@
                 const winWidth = window.innerWidth;
                 const winHeight = window.innerHeight;
                 
+                // Reset max-height before measuring
+                contextMenu.style.maxHeight = '';
+                contextMenu.style.overflowY = '';
+
                 // Measure height
                 contextMenu.style.visibility = 'hidden';
                 contextMenu.classList.add('active');
@@ -3460,17 +3553,17 @@
                 // Avoid overlapping with custom title bar (height 32px)
                 if (top < 35) top = 35;
                 if (left < 10) left = 10;
-                // Also check bottom/right bounds again in case flipping caused issues (e.g. very tall menu)
+                
+                // Check if it still overflows bottom
                 if (top + menuHeight > winHeight) {
-                    // If it's too tall, align to bottom or top depending on which has more space, 
-                    // or just let it clip/scroll (but we don't have scroll on context menu).
-                    // For now, just pin to bottom if it goes off bottom, but respect top bound.
+                    // If it's too tall, align to bottom or top depending on which has more space
                     if (winHeight - menuHeight > 0) {
                         top = winHeight - menuHeight - 10;
+                        if (top < 35) top = 35; // Re-check top bound
                     } else {
-                        top = 10; // Too tall, pin to top
-                        // Ideally we should enable scrolling for the menu if it's too tall
-                        contextMenu.style.maxHeight = (winHeight - 20) + 'px';
+                        top = 35; // Pin to top (below title bar)
+                        // Enable scrolling
+                        contextMenu.style.maxHeight = (winHeight - 45) + 'px'; // 35px top + 10px bottom padding
                         contextMenu.style.overflowY = 'auto';
                     }
                 }
@@ -3515,14 +3608,32 @@
             });
 
             // Hide context menu on click elsewhere
-            document.addEventListener('pointerdown', (e) => {
-                if (!contextMenu.contains(e.target)) {
+            const closeMenus = (e) => {
+                // Check if click is inside context menu OR inside the active floating submenu
+                const inContextMenu = contextMenu.contains(e.target);
+                const inSubmenu = activeSubmenu && activeSubmenu.contains(e.target);
+                
+                if (!inContextMenu && !inSubmenu) {
                     contextMenu.classList.remove('active');
+                    closeSubmenu(); // Close submenu too
                 }
+                
                 const resultContextMenu = document.getElementById('resultContextMenu');
                 if (resultContextMenu && !resultContextMenu.contains(e.target)) {
                     resultContextMenu.classList.remove('active');
                 }
+            };
+
+            document.addEventListener('pointerdown', closeMenus);
+            window.addEventListener('blur', () => {
+                contextMenu.classList.remove('active');
+                const resultContextMenu = document.getElementById('resultContextMenu');
+                if (resultContextMenu) resultContextMenu.classList.remove('active');
+            });
+            window.addEventListener('resize', () => {
+                contextMenu.classList.remove('active');
+                const resultContextMenu = document.getElementById('resultContextMenu');
+                if (resultContextMenu) resultContextMenu.classList.remove('active');
             });
 
             // Context Menu Actions
