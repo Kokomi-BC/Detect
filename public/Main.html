@@ -4809,6 +4809,13 @@
                         // Avoid overlapping with custom title bar
                         if (y < 35) y = 35;
 
+                        // Check for selection to toggle Copy option
+                        const selection = window.getSelection();
+                        const hasSelection = selection.toString().length > 0;
+                        if (ctxResultCopy) {
+                            ctxResultCopy.style.display = hasSelection ? 'flex' : 'none';
+                        }
+
                         resultContextMenu.style.left = `${x}px`;
                         resultContextMenu.style.top = `${y}px`;
                         resultContextMenu.classList.add('active');
@@ -4836,7 +4843,14 @@
 
             if (ctxResultSelectAll) {
                 ctxResultSelectAll.addEventListener('click', function() {
-                    document.execCommand('selectAll');
+                    const parsedText = document.getElementById('parsedText');
+                    if (parsedText) {
+                        const range = document.createRange();
+                        range.selectNodeContents(parsedText);
+                        const selection = window.getSelection();
+                        selection.removeAllRanges();
+                        selection.addRange(range);
+                    }
                     if (resultContextMenu) resultContextMenu.classList.remove('active');
                 });
             }
