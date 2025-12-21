@@ -99,6 +99,35 @@
             -webkit-user-select: text;
         }
 
+        /* 自定义标题栏 */
+        #title-bar {
+            height: 32px;
+            background: var(--bg-primary);
+            display: flex;
+            align-items: center;
+            padding: 0 16px;
+            -webkit-app-region: drag;
+            position: relative;
+            z-index: 1000;
+            transition: background-color var(--transition-fast);
+            font-size: 12px;
+            color: var(--text-secondary);
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        #title-bar .app-icon {
+            width: 16px;
+            height: 16px;
+            margin-right: 8px;
+            background-image: url('../ico/Detect.ico'); /* 假设图标路径 */
+            background-size: contain;
+            background-repeat: no-repeat;
+        }
+
+        #title-bar .app-title {
+            font-weight: 500;
+        }
+
         /* Selection Color */
         ::selection {
             background: var(--accent-color);
@@ -125,7 +154,7 @@
 
         .container {
             display: flex;
-            height: 100vh;
+            height: calc(100vh - 32px); /* 减去标题栏高度 */
             position: relative;
         }
 
@@ -1879,6 +1908,10 @@
     </style>
 </head>
 <body>
+    <div id="title-bar">
+        <div class="app-icon"></div>
+        <div class="app-title">假新闻检测系统</div>
+    </div>
     <input type="file" id="fileInput" multiple accept="image/*" style="display: none;">
     <div class="container">
         <!-- 左侧面板 -->
@@ -3898,11 +3931,15 @@
                 }
 
                 // 进一步检查文件类型
+                let hasNonImageFile = false;
                 if (e.dataTransfer.items) {
                     for (let i = 0; i < e.dataTransfer.items.length; i++) {
-                        const t = e.dataTransfer.items[i].type || '';
+                        const item = e.dataTransfer.items[i];
+                        const t = item.type || '';
                         if (t.startsWith('image/')) {
                             isImage = true;
+                        } else if (item.kind === 'file' && t) {
+                            hasNonImageFile = true;
                         }
                     }
                 }
@@ -3916,13 +3953,13 @@
                 dragOverlay.classList.add('active');
                 dragOverlay.classList.remove('error', 'success', 'full');
                 
-                if (uploadedImages.length >= maxImages) {
+                if (!isImage && hasNonImageFile) {
+                    dragOverlay.classList.add('error');
+                    dragOverlay.textContent = '不支持的内容';
+                } else if (uploadedImages.length >= maxImages) {
                     dragOverlay.classList.add('full');
                     dragOverlay.textContent = '最多只能上传4张图片';
-                } else if (isImage || (isFile && isImage)) {
-                    dragOverlay.classList.add('success');
-                    dragOverlay.textContent = '拖入图片以添加';
-                } else if (isFile) {
+                } else if (isImage || isFile) {
                     dragOverlay.classList.add('success');
                     dragOverlay.textContent = '拖入图片以添加';
                 } else {
@@ -3946,6 +3983,12 @@
                 
                 // 优先处理文件
                 if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+                    const hasImage = Array.from(e.dataTransfer.files).some(f => f.type.startsWith('image/'));
+                    if (!hasImage) {
+                        showToast('不支持的内容', 'error');
+                        return;
+                    }
+
                     if (uploadedImages.length >= maxImages) {
                         showToast(`最多只能上传${maxImages}张图片`, 'warning');
                         return;
@@ -4076,7 +4119,7 @@
                     addedCount++;
                 });
                 if (files.length > 0 && addedCount === 0) {
-                    showToast(`最多只能上传${maxImages}张图片`, 'warning');
+                    showToast('不支持的内容', 'error');
                 }
             }
 

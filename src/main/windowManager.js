@@ -173,7 +173,13 @@ class WindowManager {
       minWidth: 800,
       minHeight: 530,
       show: false, // 先隐藏窗口，等待内容加载完成
-      frame: true, // 恢复原生标题栏
+      frame: false, // 移除原生标题栏
+      titleBarStyle: 'hidden',
+      titleBarOverlay: {
+        color: nativeTheme.shouldUseDarkColors ? '#111315' : '#ffffff',
+        symbolColor: nativeTheme.shouldUseDarkColors ? '#e9ecef' : '#1a1d20',
+        height: 32
+      },
       icon: path.join(__dirname, '../../ico/Detect.ico'),
       backgroundColor: nativeTheme.shouldUseDarkColors ? '#111315' : '#ffffff',
       webPreferences: {
@@ -189,6 +195,17 @@ class WindowManager {
     // 立即设置mainWindow引用，确保在markWindowType之前就能被识别
     this.mainWindow = mainWindow;
     console.log('mainWindow引用已设置');
+
+    // 监听系统主题变化，更新标题栏颜色
+    nativeTheme.on('updated', () => {
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.setTitleBarOverlay({
+          color: nativeTheme.shouldUseDarkColors ? '#111315' : '#ffffff',
+          symbolColor: nativeTheme.shouldUseDarkColors ? '#e9ecef' : '#1a1d20'
+        });
+        mainWindow.setBackgroundColor(nativeTheme.shouldUseDarkColors ? '#111315' : '#ffffff');
+      }
+    });
 
     // 为窗口添加类型标记
     this.markWindowType(mainWindow, WindowType.MAIN);
