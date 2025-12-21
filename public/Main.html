@@ -125,6 +125,9 @@
 
         #title-bar .app-title {
             font-weight: 500;
+            position: absolute;
+            left: 50%;
+            transform: translateX(-50%);
         }
 
         /* 全屏模式样式 */
@@ -348,7 +351,7 @@
             top: -100px; /* Hidden initially */
             left: 50%;
             transform: translateX(-50%);
-            background: var(--bg-glass);
+            background: var(--bg-secondary);
             backdrop-filter: blur(8px);
             -webkit-backdrop-filter: blur(8px);
             border: 1px solid var(--border-color);
@@ -363,11 +366,11 @@
         }
 
         [data-theme="dark"] .edit-options {
-            background: var(--bg-glass);
+            background: var(--bg-secondary);
         }
 
         body.edit-mode .edit-options {
-            top: 24px;
+            top: 48px;
         }
 
         .edit-btn {
@@ -1263,7 +1266,10 @@
         .image-modal {
             display: none;
             position: fixed;
-            top: 0; left: 0; width: 100%; height: 100%;
+            top: 32px;
+            left: 0; 
+            width: 100%; 
+            height: calc(100% - 32px);
             background: rgba(0, 0, 0, 0.85);
             z-index: 2000;
             align-items: center;
@@ -3247,12 +3253,30 @@
                     const submenu = item.querySelector('.context-submenu');
                     if (submenu) {
                         const rect = item.getBoundingClientRect();
-                        const submenuWidth = 160; // Min width from CSS
-                        // Check if there's space on the right
-                        if (rect.right + submenuWidth > window.innerWidth) {
+                        const winWidth = window.innerWidth;
+                        const winHeight = window.innerHeight;
+                        
+                        // Reset styles first
+                        submenu.classList.remove('left-side');
+                        submenu.style.top = '-4px';
+                        submenu.style.bottom = 'auto';
+                        
+                        // Horizontal positioning
+                        // Use a fixed width estimate or temporary display to measure
+                        const submenuWidth = submenu.offsetWidth || 180;
+                        
+                        if (rect.right + submenuWidth > winWidth) {
                             submenu.classList.add('left-side');
-                        } else {
-                            submenu.classList.remove('left-side');
+                        }
+
+                        // Vertical positioning
+                        const submenuRect = submenu.getBoundingClientRect();
+                        if (submenuRect.bottom > winHeight) {
+                            // Calculate how much it overflows
+                            const overflow = submenuRect.bottom - winHeight + 10;
+                            // Shift up
+                            const currentTop = parseInt(getComputedStyle(submenu).top) || -4;
+                            submenu.style.top = `${currentTop - overflow}px`;
                         }
                     }
                 });
@@ -3433,7 +3457,8 @@
                 }
 
                 // Ensure menu stays within viewport bounds
-                if (top < 10) top = 10;
+                // Avoid overlapping with custom title bar (height 32px)
+                if (top < 35) top = 35;
                 if (left < 10) left = 10;
                 // Also check bottom/right bounds again in case flipping caused issues (e.g. very tall menu)
                 if (top + menuHeight > winHeight) {
@@ -4670,6 +4695,9 @@
                             y = winHeight - menuHeight - 5;
                         }
                         
+                        // Avoid overlapping with custom title bar
+                        if (y < 35) y = 35;
+
                         resultContextMenu.style.left = `${x}px`;
                         resultContextMenu.style.top = `${y}px`;
                         resultContextMenu.classList.add('active');
