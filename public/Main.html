@@ -112,7 +112,6 @@
             transition: background-color var(--transition-fast);
             font-size: 12px;
             color: var(--text-secondary);
-            border-bottom: 1px solid var(--border-color);
         }
 
         #title-bar .app-icon {
@@ -126,6 +125,15 @@
 
         #title-bar .app-title {
             font-weight: 500;
+        }
+
+        /* 全屏模式样式 */
+        body.fullscreen-mode #title-bar {
+            display: none;
+        }
+        
+        body.fullscreen-mode .container {
+            height: 100vh;
         }
 
         /* Selection Color */
@@ -2477,8 +2485,19 @@
                 const __fullScreenBtnEl = document.getElementById('fullScreenBtn');
                 const __fullScreenLabelEl = __fullScreenBtnEl ? __fullScreenBtnEl.querySelector('span') : null;
                 const __updateFullScreenLabel = () => {
-                    if (!__fullScreenLabelEl) return;
-                    __fullScreenLabelEl.textContent = document.fullscreenElement ? '退出全屏' : '全屏显示';
+                    const isFullScreen = !!document.fullscreenElement;
+                    
+                    // 更新按钮文本
+                    if (__fullScreenLabelEl) {
+                        __fullScreenLabelEl.textContent = isFullScreen ? '退出全屏' : '全屏显示';
+                    }
+                    
+                    // 更新全屏样式类
+                    if (isFullScreen) {
+                        document.body.classList.add('fullscreen-mode');
+                    } else {
+                        document.body.classList.remove('fullscreen-mode');
+                    }
                 };
                 // 初始化与状态变更监听（ESC/系统触发退出时也能更新）
                 document.addEventListener('fullscreenchange', __updateFullScreenLabel);
@@ -4744,6 +4763,8 @@
             padding: 40px; 
             height: auto; 
             overflow: visible;
+            animation: none !important;
+            transform: none !important;
         }
         .container { 
             display: block; 
