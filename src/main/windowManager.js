@@ -214,6 +214,18 @@ class WindowManager {
     mainWindow.webContents.setWindowOpenHandler(({ url }) => {
       // 检查是否是 http/https 协议
       if (url.startsWith('http://') || url.startsWith('https://')) {
+        // 检查是否已有浏览器窗口，如果有则复用
+        if (this.browserWindows.size > 0) {
+          const existingWindow = this.browserWindows.values().next().value;
+          if (existingWindow && !existingWindow.isDestroyed()) {
+            existingWindow.loadURL(url).catch(err => console.error('加载URL失败:', err));
+            if (existingWindow.isMinimized()) existingWindow.restore();
+            existingWindow.show();
+            existingWindow.focus();
+            return { action: 'deny' };
+          }
+        }
+
         // 使用 createBrowserWindow 打开，这样新窗口会拥有正确的安全策略和右键菜单
         this.createBrowserWindow(url);
       } else {

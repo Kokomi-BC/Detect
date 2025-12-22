@@ -35,7 +35,7 @@
             --shadow-lg: 0 16px 48px rgba(0,0,0,0.12);
             
             /* Transitions */
-            --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            --transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
             --transition-fast: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
             --transition-bounce: 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
             
@@ -175,10 +175,11 @@
             display: flex;
             flex-direction: column;
             background: var(--bg-secondary);
-            min-width: 300px;
-            max-width: 70%;
-            transition: background-color 0.3s;
+            min-width: 0 !important; /* Force min-width 0 to allow full collapse */
+            max-width: none; /* Removed max-width limit */
+            transition: background-color 0.3s, flex 0.4s cubic-bezier(0.4, 0, 0.2, 1);
             position: relative;
+            overflow: hidden; /* Ensure content doesn't force width */
         }
 
         /* 拖拽遮罩层 */
@@ -348,25 +349,46 @@
         /* Edit Options - Refactored for Edit Mode */
         .edit-options {
             position: fixed;
-            top: -100px; /* Hidden initially */
+            top: 48px; /* Anchor position; avoid layout thrash */
             left: 50%;
-            transform: translateX(-50%);
-            background: var(--bg-secondary);
+            transform: translate(-50%, -50px); /* Default hidden state */
+            opacity: 0;
+            pointer-events: none;
+            background: var(--bg-glass);
             backdrop-filter: blur(8px);
             -webkit-backdrop-filter: blur(8px);
             border: 1px solid var(--border-color);
-            border-radius: 20px;
+            border-radius: var(--radius-md);
             padding: 8px 12px;
             gap: 4px;
             box-shadow: var(--shadow-lg);
             z-index: 1000;
-            transition: top 0.5s cubic-bezier(0.34, 1.56, 0.64, 1); /* Bouncy/Android-like */
             display: flex;
             align-items: center;
+            will-change: transform, opacity;
+            transition: opacity 0.4s cubic-bezier(0.2, 0.8, 0.2, 1), transform 0.4s cubic-bezier(0.2, 0.8, 0.2, 1);
+        }
+
+        body.edit-mode .edit-options {
+            opacity: 1;
+            transform: translate(-50%, 0);
+            pointer-events: auto;
+            /* 丝滑回弹动画：0.6s 配合过冲贝塞尔曲线 */
+            animation: editOptionsPop 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
         }
 
         [data-theme="dark"] .edit-options {
-            background: var(--bg-secondary);
+            background: var(--bg-glass);
+        }
+
+        @keyframes editOptionsPop {
+            0% { opacity: 0; transform: translate(-50%, -50px); }
+            100% { opacity: 1; transform: translate(-50%, 0); }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .edit-options { transition: none; }
+            body.edit-mode .edit-options { animation: none; }
         }
 
         body.edit-mode .edit-options {
@@ -458,16 +480,27 @@
         }
         
         body.edit-mode .image-preview-container {
-            display: grid; /* Show in edit mode */
-            margin-top: 0;
+            display: flex;
+            justify-content: flex-start; /* Left align images */
+            flex-wrap: wrap;
+            gap: 16px;
+            margin-top: 20px; /* Space between text and images */
             padding-top: 0;
             border-top: none;
+            margin-bottom: 0;
+        }
+        
+        body.edit-mode .image-preview-item {
+            width: 120px;
+            height: 120px;
+            flex: 0 0 auto;
         }
         
         body.edit-mode .image-preview-container:empty {
             display: none;
             margin-top: 0;
             padding-top: 0;
+            margin-bottom: 0;
         }
 
         /* Context Menu */
@@ -515,6 +548,9 @@
         }
         .context-menu-item .shortcut-hint {
             margin-left: auto;
+        }
+        #ctxSearchText, #ctxGoToUrl {
+            margin-left: 8px;
         }
         /* Target the arrow icon for submenus */
         .context-menu-item > svg:not(:first-child) {
@@ -793,25 +829,11 @@
             from { opacity: 0; transform: scale(0.95); }
             to { opacity: 1; transform: scale(1); }
         }
-        body.edit-mode .content-area {
-            padding: 0 4% 7px 4%; /* Reduced bottom padding */
-            height: 100vh;
-            /* Add mask to fade out text at the very top */
-            mask-image: linear-gradient(to bottom, transparent 0px, black 80px, black 100%);
-            -webkit-mask-image: linear-gradient(to bottom, transparent 0px, black 80px, black 100%);
-        }
-        
-        body.edit-mode .text-input {
-            height: auto;
-            min-height: 200px;
-            flex: 0 0 auto;
-            border: none;
-            box-shadow: none;
-            background: transparent; /* Transparent in edit mode to use body bg */
-            font-size: 18px;
-            line-height: 2;
-            padding-top: 120px; /* Push text down initially */
-            padding-bottom: 20px;
+
+        /* Edit mode text entrance — light lift without layout shift */
+        @keyframes editModeTextIn {
+            0% { opacity: 0.92; transform: translateY(8px) scale(0.995); }
+            100% { opacity: 1; transform: translateY(0) scale(1); }
         }
 
         /* Content Area */
@@ -820,8 +842,9 @@
             display: flex;
             flex-direction: column;
             padding: 12px 12px 10px 12px; /* 增加底部内边距，避免状态栏过低 */
-            overflow-y: auto;
+            overflow: hidden; /* Prevent outer scroll */
             gap: 12px;
+            transition: padding 0.4s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
         .editor-status-bar {
@@ -841,39 +864,88 @@
             opacity: 0.5;
         }
 
-        .text-input {
+        /* Text Container - The visual box */
+        .text-container {
             flex: 1;
-            min-height: 200px;
-            padding: 24px; /* Increased padding */
-            padding-top: 32px; /* Extra top padding */
-            border: 1px solid rgba(0,0,0,0.05); /* Subtle border */
-            border-radius: var(--radius-lg);
-            background: var(--bg-glass); /* Glass background */
+            display: flex;
+            flex-direction: column;
+            background: var(--bg-glass);
             backdrop-filter: blur(8px);
             -webkit-backdrop-filter: blur(8px);
-            color: var(--text-primary);
-            font-size: 16px;
-            line-height: 1.8;
+            border: 1px solid rgba(0,0,0,0.05);
+            border-radius: var(--radius-lg);
             box-shadow: var(--shadow-sm);
-            transition: var(--transition);
-            outline: none;
-            overflow-y: auto;
-            word-wrap: break-word;
-            overflow-wrap: break-word;
-            white-space: pre-wrap;
+            overflow: hidden; /* Clip children */
+            position: relative;
+            transition: border-color 0.3s, box-shadow 0.3s, background-color 0.3s;
         }
 
-        [data-theme="dark"] .text-input {
+        [data-theme="dark"] .text-container {
             border-color: rgba(255,255,255,0.05);
         }
 
-        .text-input:focus {
+        .text-container:focus-within {
             border-color: var(--accent-color);
             box-shadow: var(--shadow-md);
-            background: var(--bg-primary); /* Solid background on focus for better readability? Or keep glass? User asked for glass. Let's keep glass but maybe slightly more opaque or just shadow change. */
             background: var(--bg-glass);
         }
-        
+
+        /* Text Input - The scrollable content */
+        .text-input {
+            flex: 1;
+            width: 100%;
+            height: 100%;
+            padding: 24px;
+            padding-top: 32px;
+            border: none;
+            background: transparent;
+            color: var(--text-primary);
+            font-size: 16px;
+            line-height: 1.8;
+            outline: none;
+            overflow-y: auto; /* Scroll inside */
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+            white-space: pre-wrap;
+            transition: font-size 0.4s cubic-bezier(0.4, 0, 0.2, 1), line-height 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        /* Edit Mode Overrides */
+        body.edit-mode .content-area {
+            overflow-y: auto; /* Enable scroll on container */
+            display: flex; /* Use flex layout to allow order property */
+            flex-direction: column;
+            padding: 100px 4% 7px 4%;
+            /* Add mask to fade out text at the very top */
+            mask-image: linear-gradient(to bottom, transparent 0px, black 80px, black 100%);
+            -webkit-mask-image: linear-gradient(to bottom, transparent 0px, black 80px, black 100%);
+            transition: padding 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        body.edit-mode .text-container {
+            background: transparent;
+            border: none;
+            box-shadow: none;
+            overflow: visible; /* Allow expansion */
+            flex: 1;
+            animation: editModeTextIn 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        body.edit-mode .text-input {
+            height: 100%;
+            min-height: 200px;
+            border: none;
+            box-shadow: none;
+            background: transparent; /* Transparent in edit mode to use body bg */
+            font-size: 18px;
+            line-height: 2;
+            padding-top: 20px; /* Reduced padding as images now push text down */
+            padding-bottom: 20px;
+            overflow: visible; /* No internal scroll */
+            transition: font-size 0.4s cubic-bezier(0.4, 0, 0.2, 1), line-height 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            animation: editModeTextIn 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
         .text-input:empty:before {
             content: attr(placeholder);
             color: var(--text-secondary);
@@ -882,26 +954,31 @@
 
         /* Image Preview */
         .image-preview-container {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+            display: flex;
+            flex-wrap: wrap;
             gap: 16px;
             padding: 4px;
+            margin-bottom: 0;
+            transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.35s ease, height 0.35s ease, margin 0.35s ease;
         }
 
         .image-preview-item {
             position: relative;
-            aspect-ratio: 1;
+            width: 100px;
+            height: 100px;
+            flex: 0 0 auto;
             border-radius: var(--radius-md);
             overflow: hidden;
             background: var(--bg-tertiary);
             cursor: pointer;
-            transition: var(--transition-bounce);
             box-shadow: var(--shadow-sm);
+            transition: width 0.35s ease, height 0.35s ease, transform 0.3s ease, box-shadow 0.3s ease;
         }
 
         .image-preview-item:hover {
             transform: translateY(-4px) scale(1.02);
             box-shadow: var(--shadow-md);
+            transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.3s; /* Only animate on hover */
         }
 
         .image-preview-item.selected {
@@ -1057,12 +1134,19 @@
             border-bottom: 1px solid var(--border-color);
             transition: background-color var(--transition-fast), border-color var(--transition-fast);
             z-index: 20;
+            position: relative; /* For absolute positioning of exit button */
         }
 
         .result-title {
             font-size: 18px;
             font-weight: 600;
             color: var(--text-primary);
+            transition: transform 0.3s ease;
+            margin: 0;
+        }
+
+        body.detection-fullscreen .result-title {
+            transform: translateX(40px); /* Make space for exit button */
         }
 
         .result-content {
@@ -1895,7 +1979,7 @@
         /* Toast Notification */
         .toast {
             position: fixed;
-            top: 32px;
+            top: 48px; /* Moved down to avoid title bar overlap */
             left: 50%;
             transform: translateX(-50%) translateY(-20px);
             background: var(--bg-primary);
@@ -1953,6 +2037,136 @@
                 transition: none;
             }
         }
+
+        /* Detection Fullscreen Mode */
+        body.detection-fullscreen .left-panel {
+            flex: 0 0 0 !important;
+            min-width: 0 !important;
+            opacity: 0;
+            overflow: hidden;
+            transform: translateX(-20px);
+        }
+
+        body.detection-fullscreen .right-panel {
+            flex: 1 0 100% !important;
+            max-width: 100%;
+        }
+
+        body.detection-fullscreen .resizer {
+            display: none;
+        }
+
+        /* Exit Button for Detection Fullscreen */
+        .exit-detection-btn {
+            position: absolute;
+            top: 50%; /* Center vertically */
+            left: 16px;
+            width: 40px;
+            height: 40px;
+            border-radius: var(--radius-sm);
+            background: transparent;
+            border: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            z-index: 100;
+            opacity: 0;
+            pointer-events: none;
+            transform: translate(-10px, -50%);
+            transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+            color: var(--text-secondary);
+        }
+
+        body.detection-fullscreen .exit-detection-btn {
+            opacity: 1;
+            pointer-events: auto;
+            transform: translate(0, -50%);
+        }
+
+        .exit-detection-btn:hover {
+            background: var(--accent-light);
+            color: var(--accent-color);
+            box-shadow: var(--shadow-accent);
+            transform: translate(0, calc(-50% - 1px));
+        }
+
+        /* Squeeze Masks */
+        .squeeze-mask {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: var(--bg-glass);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            z-index: 50;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* Prevent icon compression */
+        .toolbar {
+            flex-wrap: nowrap;
+            overflow: visible; /* Changed from hidden to allow dropdowns */
+            gap: var(--toolbar-gap, 12px); /* Dynamic gap */
+        }
+        .toolbar-btn {
+            flex-shrink: 0;
+        }
+        
+        /* Ensure toolbar is above mask */
+        .toolbar {
+            z-index: 60; /* Higher than squeeze-mask (50) */
+            transition: opacity 0.2s ease, transform 0.2s ease;
+            padding-right: 48px; /* Increased gap from divider to prevent overlap */
+            box-sizing: border-box;
+            width: 100%;
+        }
+
+        .toolbar.hidden {
+            opacity: 0;
+            pointer-events: none;
+            transform: translateY(-10px);
+        }
+
+        /* Collapsed Indicator (Three Dots) */
+        .collapsed-indicator {
+            position: absolute;
+            top: 16px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 40px;
+            height: 40px;
+            border-radius: var(--radius-sm);
+            background: transparent;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            z-index: 70;
+            opacity: 0;
+            pointer-events: none;
+            transition: var(--transition-fast);
+            color: var(--text-secondary);
+        }
+
+        .collapsed-indicator.visible {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .collapsed-indicator:hover {
+            background: var(--accent-light);
+            color: var(--accent-color);
+            box-shadow: var(--shadow-accent);
+            transform: translateX(-50%) translateY(-1px);
+        }
     </style>
 </head>
 <body>
@@ -1964,7 +2178,16 @@
     <div class="container">
         <!-- 左侧面板 -->
         <div class="left-panel" id="leftPanel">
-                        <div class="drag-overlay" id="dragOverlay">拖入图片以添加</div>
+            <div class="squeeze-mask" id="leftMask"></div>
+            <div class="drag-overlay" id="dragOverlay">拖入图片以添加</div>
+            
+            <!-- Collapsed Indicator -->
+            <div class="collapsed-indicator" id="collapsedIndicator" title="恢复默认视图">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M6 10c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm12 0c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm-6 0c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/>
+                </svg>
+            </div>
+
             <!-- 工具栏 -->
             <div class="toolbar">
                 <button class="toolbar-btn" id="imageBtn" title="添加图片">
@@ -1977,7 +2200,6 @@
                         <path d="M19 2h-4.18C14.4.84 13.3 0 12 0c-1.3 0-2.4.84-2.82 2H5c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-7 0c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zm7 18H5V4h2v3h10V4h2v16z"/>
                     </svg>
                 </button>
-                <div class="toolbar-separator"></div>
                 <button class="toolbar-btn" id="editBtn" title="编辑">
                     <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
                         <path d="M14.06 9.02l.92.92L5.92 19H5v-.92l9.06-9.06M17.66 3c-.25 0-.51.1-.7.29l-1.83 1.83 3.75 3.75 1.83-1.83c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.2-.2-.45-.29-.71-.29zm-3.6 3.19L3 17.25V21h3.75L17.81 9.94l-3.75-3.75z"/>
@@ -2003,7 +2225,6 @@
                         <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM8 9h8v10H8V9zm7.5-5l-1-1h-5l-1 1H5v2h14V4z"/>
                     </svg>
                 </button>
-                <div class="toolbar-separator"></div>
                 <div class="toolbar-btn more-menu" id="moreBtn" title="更多操作" tabindex="0">
                     <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
                         <path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/>
@@ -2178,41 +2399,20 @@
                 </button>
             </div>
 
-            <!-- Context Menu -->
-            <div class="context-menu" id="resultContextMenu">
-                <div class="context-menu-item" id="ctxResultCopy">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
-                        <path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/>
-                    </svg>
-                    <span>复制</span>
-                    <span class="shortcut-hint">Ctrl+C</span>
-                </div>
-                <div class="context-menu-item" id="ctxResultSelectAll">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
-                        <path d="M3 5h2V3c-1.1 0-2 .9-2 2zm0 8h2v-2H3v2zm4 8h2v-2H7v2zM3 9h2V7H3v2zm10-6h-2v2h2V3zm6 0v2h2c0-1.1-.9-2-2-2zM5 21v-2H3c0 1.1.9 2 2 2zm-2-4h2v-2H3v2zM9 3H7v2h2V3zm2 18h2v-2h-2v2zm8-8h2v-2h-2v2zm0 8c1.1 0 2-.9 2-2h-2v2zm0-12h2V7h-2v2zm0 8h2v-2h-2v2zm-4 4h2v-2h-2v2zm0-16h2V3h-2v2zM7 17h10V7H7v10zm2-8h6v6H9V9z"/>
-                    </svg>
-                    <span>全选</span>
-                    <span class="shortcut-hint">Ctrl+A</span>
-                </div>
-                <div class="context-menu-separator"></div>
-                <div class="context-menu-item" id="ctxExportResult">
-                    <svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="currentColor"><path d="M480-320 280-520l56-58 104 104v-326h80v326l104-104 56 58-200 200ZM240-160q-33 0-56.5-23.5T160-240v-120h80v120h480v-120h80v120q0 33-23.5 56.5T720-160H240Z"/></svg>
-                    <span>导出检测结果</span>
-                </div>
-            </div>
-
             <div class="context-menu" id="editContextMenu">
                 <div class="context-menu-item" id="ctxSearch">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
                         <path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>
                     </svg>
                     <span>搜索</span>
+                    <span class="shortcut-hint" id="ctxSearchText"></span>
                 </div>
                 <div class="context-menu-item" id="ctxGoTo">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
                         <path d="M19 19H5V5h7V3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2v-7h-2v7zM14 3v2h3.59l-9.83 9.83 1.41 1.41L19 6.41V10h2V3h-7z"/>
                     </svg>
                     <span>转到</span>
+                    <span class="shortcut-hint" id="ctxGoToUrl"></span>
                 </div>
                 <div class="context-menu-separator" id="ctxSearchSep"></div>
                 <div class="context-menu-item" id="ctxCut">
@@ -2343,8 +2543,11 @@
 
             <!-- 内容区域 -->
             <div class="content-area">
-                <!-- 文本输入 -->
-                <div contenteditable="true" class="text-input" id="textInput" placeholder="请输入要检测的新闻内容..."></div>
+                <!-- 文本容器（视觉矩形框） -->
+                <div class="text-container">
+                    <!-- 文本输入 -->
+                    <div contenteditable="true" class="text-input" id="textInput" placeholder="请输入要检测的新闻内容..."></div>
+                </div>
                 <!-- 图片预览 -->
                 <div class="image-preview-container" id="imagePreview"></div>
                 
@@ -2368,7 +2571,13 @@
 
         <!-- 右侧面板 -->
         <div class="right-panel" id="rightPanel">
+            <div class="squeeze-mask" id="rightMask"></div>
             <div class="result-header">
+                <button class="exit-detection-btn" id="exitDetectionBtn" title="退出全屏">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"/>
+                    </svg>
+                </button>
                 <h2 class="result-title">检测结果</h2>
                 <button class="toolbar-btn" id="exportBtn" title="导出结果" style="margin-left: auto;" disabled>
                     <svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="currentColor"><path d="M480-320 280-520l56-58 104 104v-326h80v326l104-104 56 58-200 200ZM240-160q-33 0-56.5-23.5T160-240v-120h80v120h480v-120h80v120q0 33-23.5 56.5T720-160H240Z"/></svg>
@@ -2457,6 +2666,44 @@
                     <div class="error-detail" id="errorDetail">无法获取网页内容，请检查链接是否有效</div>
                 </div>
             </div>
+        </div>
+    </div>
+
+    <!-- Context Menu for Result (Moved to body level) -->
+    <div class="context-menu" id="resultContextMenu">
+        <div class="context-menu-item" id="ctxResultSearch">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>
+            </svg>
+            <span>搜索</span>
+            <span class="shortcut-hint" id="ctxResultSearchText"></span>
+        </div>
+        <div class="context-menu-item" id="ctxResultGoTo">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M19 19H5V5h7V3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2v-7h-2v7zM14 3v2h3.59l-9.83 9.83 1.41 1.41L19 6.41V10h2V3h-7z"/>
+            </svg>
+            <span>转到</span>
+            <span class="shortcut-hint" id="ctxResultGoToUrl"></span>
+        </div>
+        <div class="context-menu-separator" id="ctxResultSearchSep"></div>
+        <div class="context-menu-item" id="ctxResultCopy">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/>
+            </svg>
+            <span>复制</span>
+            <span class="shortcut-hint">Ctrl+C</span>
+        </div>
+        <div class="context-menu-item" id="ctxResultSelectAll">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M3 5h2V3c-1.1 0-2 .9-2 2zm0 8h2v-2H3v2zm4 8h2v-2H7v2zM3 9h2V7H3v2zm10-6h-2v2h2V3zm6 0v2h2c0-1.1-.9-2-2-2zM5 21v-2H3c0 1.1.9 2 2 2zm-2-4h2v-2H3v2zM9 3H7v2h2V3zm2 18h2v-2h-2v2zm8-8h2v-2h-2v2zm0 8c1.1 0 2-.9 2-2h-2v2zm0-12h2V7h-2v2zm0 8h2v-2h-2v2zm-4 4h2v-2h-2v2zm0-16h2V3h-2v2zM7 17h10V7H7v10zm2-8h6v6H9V9z"/>
+            </svg>
+            <span>全选</span>
+            <span class="shortcut-hint">Ctrl+A</span>
+        </div>
+        <div class="context-menu-separator"></div>
+        <div class="context-menu-item" id="ctxExportResult">
+            <svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="currentColor"><path d="M480-320 280-520l56-58 104 104v-326h80v326l104-104 56 58-200 200ZM240-160q-33 0-56.5-23.5T160-240v-120h80v120h480v-120h80v120q0 33-23.5 56.5T720-160H240Z"/></svg>
+            <span>导出检测结果</span>
         </div>
     </div>
 
@@ -2608,6 +2855,7 @@
             let currentZoom = 100;
             let currentFontSize = 16;
             const textInput = document.getElementById('textInput');
+            const contentArea = document.querySelector('.content-area');
             
             // Font Size
             const updateFontDisplay = () => {
@@ -2728,7 +2976,13 @@
                     let node = sel.anchorNode;
                     if (node.nodeType === 3) node = node.parentNode;
                     
-                    if (textInput.contains(node)) {
+                    // Fix: Ensure we are checking against the textInput element correctly
+                    // Use closest to find if the node is inside textInput
+                    if (node.nodeType === 1 && node.closest('#textInput')) {
+                         isDisabled = false;
+                    } else if (node.parentNode && node.parentNode.closest && node.parentNode.closest('#textInput')) {
+                         isDisabled = false;
+                    } else if (textInput.contains(node)) {
                         isDisabled = false;
                     }
                 }
@@ -2921,29 +3175,126 @@
             const leftPanel = document.getElementById('leftPanel');
             const rightPanel = document.getElementById('rightPanel');
             const container = document.querySelector('.container');
+            const leftMask = document.getElementById('leftMask');
+            const rightMask = document.getElementById('rightMask');
+            const exitDetectionBtn = document.getElementById('exitDetectionBtn');
+            const toolbar = document.querySelector('.toolbar');
+            const collapsedIndicator = document.getElementById('collapsedIndicator');
+            let isResizing = false;
+            let lastClientX = 0;
+            let resizeDirection = 0; // -1: left, 1: right, 0: none
+            let currentPercentage = 50;
+
+            // Exit Detection Fullscreen
+            if (exitDetectionBtn) {
+                exitDetectionBtn.addEventListener('click', () => {
+                    // Smooth transition back
+                    // First, ensure flex is set to 50% so transition can happen
+                    leftPanel.style.flex = `0 0 50%`;
+                    rightPanel.style.flex = `0 0 50%`;
+                    
+                    // Use requestAnimationFrame to allow the flex change to register before removing the class
+                    // This helps with the transition from opacity:0/transform to normal
+                    requestAnimationFrame(() => {
+                        document.body.classList.remove('detection-fullscreen');
+                    });
+                    
+                    currentPercentage = 50;
+                    updateToolbarGap(50);
+                    if (toolbar) toolbar.classList.remove('hidden');
+                    if (collapsedIndicator) collapsedIndicator.classList.remove('visible');
+                });
+            }
+
+            // Collapsed Indicator Click
+            if (collapsedIndicator) {
+                collapsedIndicator.addEventListener('click', () => {
+                    leftPanel.style.flex = `0 0 50%`;
+                    rightPanel.style.flex = `0 0 50%`;
+                    currentPercentage = 50;
+                    updateToolbarGap(50);
+                    if (toolbar) toolbar.classList.remove('hidden');
+                    collapsedIndicator.classList.remove('visible');
+                    if (leftMask) leftMask.style.opacity = 0;
+                });
+            }
+
+            function updateToolbarGap(percentage) {
+                if (!toolbar) return;
+                // Map percentage (e.g. 30% to 65%) to gap (e.g. 0px to 12px)
+                const minGap = 0;
+                const maxGap = 12;
+                const minP = 30;
+                const maxP = 65;
+                
+                let gap = maxGap;
+                if (percentage < maxP) {
+                    gap = minGap + (percentage - minP) * (maxGap - minGap) / (maxP - minP);
+                    gap = Math.max(minGap, Math.min(maxGap, gap));
+                }
+                toolbar.style.setProperty('--toolbar-gap', `${gap}px`);
+            }
 
             function handleResizeMove(clientX) {
                 const containerRect = container.getBoundingClientRect();
-                const percentage = ((clientX - containerRect.left) / containerRect.width) * 100;
+                let percentage = ((clientX - containerRect.left) / containerRect.width) * 100;
+                percentage = Math.max(0, Math.min(100, percentage)); // Clamp to 0-100
+                currentPercentage = percentage;
                 
-                const minPercent = 30;
-                const maxPercent = 65;
-                
-                if (percentage > minPercent && percentage < maxPercent) {
-                    leftPanel.style.flex = `0 0 ${percentage}%`;
-                    rightPanel.style.flex = `0 0 ${100 - percentage}%`;
-                } else if (percentage <= minPercent) {
-                    leftPanel.style.flex = `0 0 ${minPercent}%`;
-                    rightPanel.style.flex = `0 0 ${100 - minPercent}%`;
-                } else if (percentage >= maxPercent) {
-                    leftPanel.style.flex = `0 0 ${maxPercent}%`;
-                    rightPanel.style.flex = `0 0 ${100 - maxPercent}%`;
+                // Determine direction
+                if (clientX < lastClientX) resizeDirection = -1;
+                else if (clientX > lastClientX) resizeDirection = 1;
+                else resizeDirection = 0;
+                lastClientX = clientX;
+
+                // Update Toolbar Gap
+                updateToolbarGap(percentage);
+
+                // Toolbar Visibility & Collapsed Indicator
+                // If percentage < 40% (Increased range), hide toolbar and show indicator
+                if (percentage < 40) {
+                    if (toolbar && !toolbar.classList.contains('hidden')) {
+                        toolbar.classList.add('hidden');
+                    }
+                    if (collapsedIndicator && !collapsedIndicator.classList.contains('visible')) {
+                        collapsedIndicator.classList.add('visible');
+                    }
+                } else {
+                    if (toolbar && toolbar.classList.contains('hidden')) {
+                        toolbar.classList.remove('hidden');
+                    }
+                    if (collapsedIndicator && collapsedIndicator.classList.contains('visible')) {
+                        collapsedIndicator.classList.remove('visible');
+                    }
                 }
+
+                // Mask Opacity Logic
+                // Left mask shows when dragging left (percentage < 40)
+                if (percentage < 40) {
+                    const opacity = (40 - percentage) / 10; // 0 to 1 as it goes from 40 to 30
+                    if (leftMask) leftMask.style.opacity = Math.min(Math.max(opacity, 0), 1);
+                } else {
+                    if (leftMask) leftMask.style.opacity = 0;
+                }
+
+                // Right mask shows when dragging right (percentage > 55)
+                if (percentage > 55) {
+                    const opacity = (percentage - 55) / 10; // 0 to 1 as it goes from 55 to 65
+                    if (rightMask) rightMask.style.opacity = Math.min(Math.max(opacity, 0), 1);
+                } else {
+                    if (rightMask) rightMask.style.opacity = 0;
+                }
+
+                // Unrestricted resizing (Requirement 1)
+                // We allow dragging anywhere.
+                leftPanel.style.flex = `0 0 ${percentage}%`;
+                rightPanel.style.flex = `0 0 ${100 - percentage}%`;
             }
 
             // Mouse Events
             resizer.addEventListener('mousedown', function(e) {
                 isResizing = true;
+                lastClientX = e.clientX;
                 document.body.classList.add('resizing');
                 document.body.style.cursor = 'col-resize';
             });
@@ -2959,12 +3310,35 @@
                     isResizing = false;
                     document.body.classList.remove('resizing');
                     document.body.style.cursor = 'default';
+                    
+                    const minPercent = 30;
+                    const maxPercent = 65;
+
+                    // Trigger Logic on Release
+                    if (currentPercentage <= minPercent) {
+                        // Trigger Detection Fullscreen
+                        document.body.classList.add('detection-fullscreen');
+                        if (leftMask) leftMask.style.opacity = 0;
+                    } else if (currentPercentage >= maxPercent) {
+                        // Trigger Edit Mode
+                        const editBtn = document.getElementById('editBtn');
+                        if (editBtn && !document.body.classList.contains('edit-mode')) {
+                            editBtn.click();
+                        }
+                        if (rightMask) rightMask.style.opacity = 0;
+                    } else {
+                        // Snap back if needed? Or just leave it.
+                        // If we are in the valid range, just ensure masks are hidden
+                        if (leftMask) leftMask.style.opacity = 0;
+                        if (rightMask) rightMask.style.opacity = 0;
+                    }
                 }
             });
 
             // Touch Events (复用逻辑)
             resizer.addEventListener('touchstart', function(e) {
                 isResizing = true;
+                lastClientX = e.touches[0].clientX;
                 document.body.classList.add('resizing');
                 document.body.style.cursor = 'col-resize';
                 e.preventDefault();
@@ -2981,6 +3355,23 @@
                     isResizing = false;
                     document.body.classList.remove('resizing');
                     document.body.style.cursor = 'default';
+                    
+                    const minPercent = 30;
+                    const maxPercent = 65;
+
+                    if (currentPercentage <= minPercent) {
+                        document.body.classList.add('detection-fullscreen');
+                        if (leftMask) leftMask.style.opacity = 0;
+                    } else if (currentPercentage >= maxPercent) {
+                        const editBtn = document.getElementById('editBtn');
+                        if (editBtn && !document.body.classList.contains('edit-mode')) {
+                            editBtn.click();
+                        }
+                        if (rightMask) rightMask.style.opacity = 0;
+                    } else {
+                        if (leftMask) leftMask.style.opacity = 0;
+                        if (rightMask) rightMask.style.opacity = 0;
+                    }
                 }
             });
         }
@@ -3006,6 +3397,7 @@
         // 文本编辑器
         function initTextEditor() {
             const textInput = document.getElementById('textInput');
+            const contentArea = document.querySelector('.content-area');
             const editBtn = document.getElementById('editBtn');
             const closeEditBtn = document.getElementById('closeEditBtn');
             // const editOptions = document.getElementById('editOptions'); // Controlled via CSS now
@@ -3080,15 +3472,63 @@
                 }
             });
 
+            // Preserve scroll position when toggling edit mode
+            const editScrollState = { content: 0, text: 0 };
+            const captureEditScrollState = () => {
+                if (contentArea) editScrollState.content = contentArea.scrollTop;
+                if (textInput) editScrollState.text = textInput.scrollTop;
+            };
+            const restoreEditScrollState = () => {
+                requestAnimationFrame(() => {
+                    requestAnimationFrame(() => {
+                        if (contentArea) contentArea.scrollTop = editScrollState.content;
+                        if (textInput) textInput.scrollTop = editScrollState.text;
+                    });
+                });
+            };
+
             // Toggle Edit Mode
             function toggleEditMode(active) {
+                // Preserve scroll positions
+                const textScrollBefore = textInput.scrollTop;
+                const contentScrollBefore = contentArea.scrollTop;
+                const leftPanel = document.getElementById('leftPanel');
+                const rightPanel = document.getElementById('rightPanel');
+                const toolbar = document.querySelector('.toolbar');
+                const collapsedIndicator = document.getElementById('collapsedIndicator');
+
                 if (active) {
                     document.body.classList.add('edit-mode');
                     editBtn.classList.add('active');
                     textInput.focus();
+                    
+                    // In edit mode the container scrolls; align it with the previous text scroll
+                    requestAnimationFrame(() => {
+                        contentArea.scrollTop = textScrollBefore;
+                        textInput.scrollTop = textScrollBefore;
+                    });
                 } else {
                     document.body.classList.remove('edit-mode');
                     editBtn.classList.remove('active');
+                    
+                    // Reset divider to middle
+                    if (leftPanel && rightPanel) {
+                        leftPanel.style.flex = '0 0 50%';
+                        rightPanel.style.flex = '0 0 50%';
+                        // Reset internal state if accessible, or just rely on UI update
+                        // We need to update the toolbar gap and visibility too
+                        if (toolbar) {
+                            toolbar.classList.remove('hidden');
+                            toolbar.style.setProperty('--toolbar-gap', '12px'); // Reset gap
+                        }
+                        if (collapsedIndicator) collapsedIndicator.classList.remove('visible');
+                    }
+
+                    // Restore the original text scroll after leaving edit mode
+                    requestAnimationFrame(() => {
+                        textInput.scrollTop = contentScrollBefore;
+                        contentArea.scrollTop = 0;
+                    });
                 }
             }
 
@@ -3396,6 +3836,11 @@
                     if (!resultItem.classList.contains('active')) return;
                 }
 
+                // If right clicking an image, clear any text selection
+                if (isImage) {
+                    window.getSelection().removeAllRanges();
+                }
+
                 // Selection Logic for Right Panel (Text only)
                 if (isRightPanel && !isImage) {
                     // Clear left panel selection to avoid confusion
@@ -3470,17 +3915,23 @@
                     // Text Context
                     // Search & GoTo
                     if (selectedText) {
-                        const searchItem = document.getElementById('ctxSearch');
-                        const searchText = selectedText.length > 8 ? selectedText.substring(0, 8) + '...' : selectedText;
-                        searchItem.querySelector('span').textContent = `搜索: ${searchText}`;
+                        const displayContent = selectedText.length > 16 ? selectedText.substring(0, 16) + '...' : selectedText;
+                        document.getElementById('ctxSearchText').textContent = displayContent;
+                        
+                        if (isUrl) {
+                            document.getElementById('ctxGoToUrl').textContent = displayContent;
+                            setDisplay('ctxGoTo', true);
+                        } else {
+                            setDisplay('ctxGoTo', false);
+                        }
+                        
                         setDisplay('ctxSearch', true);
                         setDisplay('ctxSearchSep', true);
                     } else {
                         setDisplay('ctxSearch', false);
+                        setDisplay('ctxGoTo', false);
                         setDisplay('ctxSearchSep', false);
                     }
-                    
-                    setDisplay('ctxGoTo', isUrl);
 
                     // Cut/Delete: Only in Input AND when text is selected
                     setDisplay('ctxCut', isInput && !!selectedText);
@@ -3729,8 +4180,9 @@
             document.getElementById('ctxSelectAll').addEventListener('click', () => {
                 const targetType = contextMenu.dataset.targetType;
                 if (targetType === 'input') {
+                    const textInput = document.getElementById('textInput');
                     const range = document.createRange();
-                    range.selectNodeContents(document.getElementById('textInput'));
+                    range.selectNodeContents(textInput);
                     const sel = window.getSelection();
                     sel.removeAllRanges();
                     sel.addRange(range);
@@ -4771,13 +5223,19 @@
             const ctxExportResult = document.getElementById('ctxExportResult');
             const ctxResultCopy = document.getElementById('ctxResultCopy');
             const ctxResultSelectAll = document.getElementById('ctxResultSelectAll');
+            const ctxResultSearch = document.getElementById('ctxResultSearch');
+            const ctxResultGoTo = document.getElementById('ctxResultGoTo');
+            const ctxResultSearchSep = document.getElementById('ctxResultSearchSep');
 
             if (rightPanel && resultContextMenu) {
                 // Use capture phase to intercept event before it bubbles up or is handled by others
                 rightPanel.addEventListener('contextmenu', function(e) {
                     const resultItem = document.getElementById('resultItem');
-                    // Only show if result is active and click is inside result content
-                    if (resultItem && resultItem.classList.contains('active')) {
+                    const isResultActive = resultItem && resultItem.classList.contains('active');
+                    const isFullscreen = document.body.classList.contains('detection-fullscreen');
+                    
+                    // Show menu if result is active OR if in fullscreen mode (even if showing initial state)
+                    if (isResultActive || isFullscreen) {
                         e.preventDefault();
                         e.stopPropagation(); // Stop propagation
                         
@@ -4809,11 +5267,40 @@
                         // Avoid overlapping with custom title bar
                         if (y < 35) y = 35;
 
-                        // Check for selection to toggle Copy option
+                        // Check for selection to toggle Copy/Search/GoTo options
                         const selection = window.getSelection();
-                        const hasSelection = selection.toString().length > 0;
+                        const selectedText = selection.toString().trim();
+                        const hasSelection = selectedText.length > 0;
+                        const isUrl = selectedText && /^(http|https):\/\/[^ "]+$/.test(selectedText);
+
                         if (ctxResultCopy) {
                             ctxResultCopy.style.display = hasSelection ? 'flex' : 'none';
+                        }
+
+                        // Search & GoTo Logic
+
+                        if (hasSelection) {
+                            // 最多显示8个字，超出用省略号
+                            const displayContent = selectedText.length > 8 ? selectedText.substring(0, 8) + '...' : selectedText;
+                            if (ctxResultSearch) {
+                                ctxResultSearch.style.display = 'flex';
+                                const hint = document.getElementById('ctxResultSearchText');
+                                if (hint) hint.textContent = displayContent;
+                            }
+                            if (ctxResultGoTo) {
+                                if (isUrl) {
+                                    ctxResultGoTo.style.display = 'flex';
+                                    const hint = document.getElementById('ctxResultGoToUrl');
+                                    if (hint) hint.textContent = displayContent;
+                                } else {
+                                    ctxResultGoTo.style.display = 'none';
+                                }
+                            }
+                            if (ctxResultSearchSep) ctxResultSearchSep.style.display = 'block';
+                        } else {
+                            if (ctxResultSearch) ctxResultSearch.style.display = 'none';
+                            if (ctxResultGoTo) ctxResultGoTo.style.display = 'none';
+                            if (ctxResultSearchSep) ctxResultSearchSep.style.display = 'none';
                         }
 
                         resultContextMenu.style.left = `${x}px`;
@@ -4825,6 +5312,38 @@
                         if (editContextMenu) editContextMenu.classList.remove('active');
                     }
                 }, true); // Capture phase
+            }
+
+            if (ctxResultSearch) {
+                ctxResultSearch.addEventListener('click', () => {
+                    const text = window.getSelection().toString().trim();
+                    if (text) {
+                        const url = `https://www.bing.com/search?q=${encodeURIComponent(text)}`;
+                        const useSystemBrowser = localStorage.getItem('useSystemBrowser') === 'true';
+                        
+                        if (useSystemBrowser && window.electronAPI && window.electronAPI.openExternal) {
+                            window.electronAPI.openExternal(url);
+                        } else {
+                            window.open(url, '_blank');
+                        }
+                    }
+                    if (resultContextMenu) resultContextMenu.classList.remove('active');
+                });
+            }
+
+            if (ctxResultGoTo) {
+                ctxResultGoTo.addEventListener('click', () => {
+                    const text = window.getSelection().toString().trim();
+                    if (text) {
+                        const useSystemBrowser = localStorage.getItem('useSystemBrowser') === 'true';
+                        if (useSystemBrowser && window.electronAPI && window.electronAPI.openExternal) {
+                            window.electronAPI.openExternal(text);
+                        } else {
+                            window.open(text, '_blank');
+                        }
+                    }
+                    if (resultContextMenu) resultContextMenu.classList.remove('active');
+                });
             }
 
             if (ctxExportResult) {
