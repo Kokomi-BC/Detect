@@ -255,6 +255,52 @@
             transition-delay: 0s; /* No delay when manually expanded */
         }
 
+        .sidebar-header {
+            display: none; /* Hidden by default */
+            align-items: center;
+            justify-content: space-between;
+            width: 100%;
+            padding-bottom: 16px;
+            margin-bottom: 16px;
+            border-bottom: 1px solid var(--border-color);
+            flex-shrink: 0;
+        }
+
+        .left-sidebar.expanded .sidebar-header {
+            display: flex;
+        }
+
+        .sidebar-header h3 {
+            font-size: 16px;
+            font-weight: 600;
+            margin: 0;
+            color: var(--text-primary);
+        }
+
+        .sidebar-actions {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .icon-btn {
+            background: transparent;
+            border: none;
+            color: var(--text-secondary);
+            cursor: pointer;
+            padding: 4px;
+            border-radius: var(--radius-sm);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+        }
+
+        .icon-btn:hover {
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+        }
+
         .left-content {
             flex: 1;
             display: flex;
@@ -2388,7 +2434,7 @@
         .left-sidebar.expanded .btn-label {
             display: inline-block;
             opacity: 1;
-            transition-delay: 0s;
+            transition-delay: 0.4s;
         }
 
         .left-sidebar.expanded .toolbar-btn {
@@ -2436,24 +2482,23 @@
                 <path d="M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zM4 18V6h6v12H4z"/>
             </svg>
         </button>
+        <button class="sidebar-toggle-btn" id="previewBtn" title="页面预览" style="margin-left: 4px;">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/>
+            </svg>
+        </button>
+        <button class="sidebar-toggle-btn" id="themeBtn" title="切换主题" style="margin-left: 4px;">
+            <span id="themeIconWrapper">
+                <svg id="themeIconLight" width="20" height="20" viewBox="0 -960 960 960" fill="currentColor" style="display: none;">
+                    <path d="M480-360q50 0 85-35t35-85q0-50-35-85t-85-35q-50 0-85 35t-35 85q0 50 35 85t85 35Zm0 80q-83 0-141.5-58.5T280-480q0-83 58.5-141.5T480-680q83 0 141.5 58.5T680-480q0 83-58.5 141.5T480-280ZM200-440H40v-80h160v80Zm720 0H760v-80h160v80ZM440-760v-160h80v160h-80Zm0 720v-160h80v160h-80ZM256-650l-101-97 57-59 96 100-52 56Zm492 496-97-101 53-55 101 97-57 59Zm-98-550 97-101 59 57-100 96-56-52ZM154-212l101-97 55 53-97 101-59-57Zm326-268Z"/>
+                </svg>
+                <svg id="themeIconDark" width="20" height="20" viewBox="0 -960 960 960" fill="currentColor" style="display: none;">
+                    <path d="M480-120q-150 0-255-105T120-480q0-150 105-255t255-105q14 0 27.5 1t26.5 3q-41 29-65.5 75.5T444-660q0 90 63 153t153 63q55 0 101-24.5t75-65.5q2 13 3 26.5t1 27.5q0 150-105 255T480-120Zm0-80q88 0 158-48.5T740-375q-20 5-40 8t-40 3q-123 0-209.5-86.5T364-660q0-20 3-40t8-40q-78 32-126.5 102T200-480q0 116 82 198t198 82Zm-10-270Z"/>
+                </svg>
+            </span>
+        </button>
         <div class="app-title">假新闻检测系统</div>
         <div class="title-bar-actions">
-            <button class="toolbar-btn" id="clearBtn" title="清空内容">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM8 9h8v10H8V9zm7.5-5l-1-1h-5l-1 1H5v2h14V4z"/>
-                </svg>
-            </button>
-            <button class="toolbar-btn" id="themeBtn" title="切换主题">
-                <span id="themeIconWrapper">
-                    <svg id="themeIconLight" width="20" height="20" viewBox="0 -960 960 960" fill="currentColor" style="display: none;">
-                        <path d="M480-360q50 0 85-35t35-85q0-50-35-85t-85-35q-50 0-85 35t-35 85q0 50 35 85t85 35Zm0 80q-83 0-141.5-58.5T280-480q0-83 58.5-141.5T480-680q83 0 141.5 58.5T680-480q0 83-58.5 141.5T480-280ZM200-440H40v-80h160v80Zm720 0H760v-80h160v80ZM440-760v-160h80v160h-80Zm0 720v-160h80v160h-80ZM256-650l-101-97 57-59 96 100-52 56Zm492 496-97-101 53-55 101 97-57 59Zm-98-550 97-101 59 57-100 96-56-52ZM154-212l101-97 55 53-97 101-59-57Zm326-268Z"/>
-                    </svg>
-                    <svg id="themeIconDark" width="20" height="20" viewBox="0 -960 960 960" fill="currentColor" style="display: none;">
-                        <path d="M480-120q-150 0-255-105T120-480q0-150 105-255t255-105q14 0 27.5 1t26.5 3q-41 29-65.5 75.5T444-660q0 90 63 153t153 63q55 0 101-24.5t75-65.5q2 13 3 26.5t1 27.5q0 150-105 255T480-120Zm0-80q88 0 158-48.5T740-375q-20 5-40 8t-40 3q-123 0-209.5-86.5T364-660q0-20 3-40t8-40q-78 32-126.5 102T200-480q0 116 82 198t198 82Zm-10-270Z"/>
-                    </svg>
-                </span>
-            </button>
-
             <div class="toolbar-btn more-menu" id="moreBtn" title="更多操作" tabindex="0">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
                     <path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/>
@@ -2527,17 +2572,17 @@
                     </svg>
                     <span class="btn-label">编辑模式</span>
                 </button>
-                 <button class="toolbar-btn" id="previewBtn" title="页面预览">
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
-                        <path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/>
-                    </svg>
-                    <span class="btn-label">页面预览</span>
-                </button>
                 <button class="toolbar-btn" id="imageBtn" title="添加图片">
                     <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
                         <path d="M19 5v14H5V5h14m0-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-4.86 8.86l-3 3.87L9 13.14 6 17h12l-3.86-5.14z"/>
                     </svg>
                     <span class="btn-label">添加图片</span>
+                </button>
+                <button class="toolbar-btn" id="clearBtn" title="清空内容">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM8 9h8v10H8V9zm7.5-5l-1-1h-5l-1 1H5v2h14V4z"/>
+                    </svg>
+                    <span class="btn-label">清空内容</span>
                 </button>
                     <button class="toolbar-btn" id="historyBtn" title="历史记录">
                     <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
@@ -2547,7 +2592,19 @@
                 </button>
             </div>
             <div class="history-section">
-                <div class="history-title">历史记录</div>
+                <div class="history-header" style="display: flex; justify-content: space-between; align-items: center; padding-right: 8px; margin-bottom: 12px;">
+                    <div class="history-title" style="margin-bottom: 0; display: flex; align-items: center; gap: 6px;">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" style="opacity: 0.8;">
+                            <path d="M13 3c-4.97 0-9 4.03-9 9H1l3.89 3.89.07.14L9 12H6c0-3.87 3.13-7 7-7s7 3.13 7 7-3.13 7-7 7c-1.93 0-3.68-.79-4.94-2.06l-1.42 1.42C8.27 19.99 10.51 21 13 21c4.97 0 9-4.03 9-9s-4.03-9-9-9zm-1 5v5l4.28 2.54.72-1.21-3.5-2.08V8H12z"/>
+                        </svg>
+                        <span>历史记录</span>
+                    </div>
+                    <button class="icon-btn" id="clearHistoryBtn" title="清空历史" style="width: 24px; height: 24px;">
+                        <svg viewBox="0 0 24 24" width="14" height="14">
+                            <path fill="currentColor" d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/>
+                        </svg>
+                    </button>
+                </div>
                 <div class="history-list" id="historyList">
                     <!-- 历史记录项将在这里动态生成 -->
                 </div>
@@ -3022,7 +3079,7 @@
     <div class="custom-modal" id="customModal">
         <div class="custom-modal-content">
             <div class="custom-modal-title">清空内容</div>
-            <div class="custom-modal-message">确定要清空所有内容吗？</div>
+            <div class="custom-modal-message">确定要清空页面吗？</div>
             <div class="custom-modal-actions">
                 <button class="custom-modal-btn" id="modalConfirm">确定</button>
                 <button class="custom-modal-btn" id="modalCancel">取消</button>
@@ -3623,6 +3680,36 @@
             
             if (imageCountEl) {
                 imageCountEl.textContent = `${uploadedImages.length} 图片`;
+            }
+            
+            updateClearButtonState();
+        }
+
+        // Update Clear Button State
+        function updateClearButtonState() {
+            const clearBtn = document.getElementById('clearBtn');
+            if (!clearBtn) return;
+
+            const textInput = document.getElementById('textInput');
+            const hasText = textInput && textInput.innerText.trim().length > 0;
+            const hasImages = typeof uploadedImages !== 'undefined' && uploadedImages.length > 0;
+            
+            // Check if right panel is in initial state (ready)
+            const initialState = document.getElementById('initialState');
+            const isInitialState = initialState && getComputedStyle(initialState).display !== 'none';
+
+            // Disable if (No Text AND No Images AND Is Initial State)
+            const shouldDisable = (!hasText && !hasImages) && isInitialState;
+            
+            clearBtn.disabled = shouldDisable;
+            if (shouldDisable) {
+                clearBtn.classList.add('disabled');
+                clearBtn.style.opacity = '0.4';
+                clearBtn.style.pointerEvents = 'none';
+            } else {
+                clearBtn.classList.remove('disabled');
+                clearBtn.style.opacity = '1';
+                clearBtn.style.pointerEvents = 'auto';
             }
         }
 
@@ -5098,12 +5185,18 @@
 
             // 页面预览功能
             document.getElementById('previewBtn').addEventListener('click', function() {
+                const btn = this;
                 const text = document.getElementById('textInput').innerHTML; // Use innerHTML to preserve formatting
                 
                 if (!document.getElementById('textInput').innerText.trim() && uploadedImages.length === 0) {
                     showToast('没有可预览的内容', 'warning');
                     return;
                 }
+
+                // Disable button to prevent multiple clicks
+                btn.disabled = true;
+                btn.style.opacity = '0.5';
+                btn.style.pointerEvents = 'none';
 
                 if (isURL(document.getElementById('textInput').innerText.trim())) {
                     // URL Preview
@@ -5112,6 +5205,13 @@
                     // Local Preview
                     renderPreview(text, uploadedImages);
                     showToast('已生成本地预览', 'success');
+                    
+                    // Re-enable after a short delay for local preview
+                    setTimeout(() => {
+                        btn.disabled = false;
+                        btn.style.opacity = '1';
+                        btn.style.pointerEvents = 'auto';
+                    }, 500);
                 }
             });
 
@@ -5230,6 +5330,7 @@
             // 重置状态
             initialState.style.display = 'none';
             resultItem.classList.remove('active');
+            resultItem.style.display = 'none'; // Ensure hidden during loading
             errorState.classList.remove('active');
             loadingState.classList.add('active');
             
@@ -5270,6 +5371,14 @@
                 detectBtn.classList.remove('loading');
                 detectBtn.innerHTML = '开始检测';
                 if (cancelBtn) cancelBtn.style.display = 'none';
+                
+                // Re-enable preview button
+                const previewBtn = document.getElementById('previewBtn');
+                if (previewBtn) {
+                    previewBtn.disabled = false;
+                    previewBtn.style.opacity = '1';
+                    previewBtn.style.pointerEvents = 'auto';
+                }
                 
                 // 恢复初始状态
                 initialState.style.display = 'flex';
@@ -5314,6 +5423,14 @@
                     clearTimeout(timeoutId);
                     clearInterval(progressInterval);
                     if (cancelBtn) cancelBtn.style.display = 'none';
+                    
+                    // Re-enable preview button if it was a preview
+                    const previewBtn = document.getElementById('previewBtn');
+                    if (previewBtn) {
+                        previewBtn.disabled = false;
+                        previewBtn.style.opacity = '1';
+                        previewBtn.style.pointerEvents = 'auto';
+                    }
                     
                     if (result.success) {
                         if (isPreview) {
@@ -5363,6 +5480,14 @@
                     clearTimeout(timeoutId);
                     clearInterval(progressInterval);
                     if (cancelBtn) cancelBtn.style.display = 'none';
+                    
+                    // Re-enable preview button
+                    const previewBtn = document.getElementById('previewBtn');
+                    if (previewBtn) {
+                        previewBtn.disabled = false;
+                        previewBtn.style.opacity = '1';
+                        previewBtn.style.pointerEvents = 'auto';
+                    }
                     
                     // 模拟数据
                     const mockResult = {
@@ -6166,12 +6291,16 @@
             const errorState = document.getElementById('errorState');
             const errorDetail = document.getElementById('errorDetail');
             const loadingState = document.getElementById('loadingState');
+            const resultItem = document.getElementById('resultItem');
+            const initialState = document.getElementById('initialState');
             const detectBtn = document.getElementById('detectBtn');
             
             // Disable export button
             const exportBtn = document.getElementById('exportBtn');
             if (exportBtn) exportBtn.disabled = true;
 
+            if (initialState) initialState.style.display = 'none';
+            if (resultItem) resultItem.style.display = 'none';
             loadingState.classList.remove('active');
             detectBtn.classList.remove('loading');
             detectBtn.innerHTML = '开始检测';
@@ -6865,6 +6994,30 @@
                 // Trigger input event to update word count etc.
                 textInput.dispatchEvent(new Event('input'));
             }
+
+            // Restore images in left panel
+            if (item.images && item.images.length > 0) {
+                // Normalize images to match uploadedImages structure
+                uploadedImages = item.images.map(img => {
+                    if (typeof img === 'string') {
+                        return {
+                            id: Date.now() + Math.random(),
+                            url: img,
+                            name: 'Restored Image'
+                        };
+                    } else {
+                        return {
+                            ...img,
+                            // Ensure ID is unique if needed, or keep it
+                            id: img.id || (Date.now() + Math.random())
+                        };
+                    }
+                });
+                renderImages();
+            } else {
+                uploadedImages = [];
+                renderImages();
+            }
             
             // Hide Initial State & Show Result Item
             const initialState = document.getElementById('initialState');
@@ -6923,6 +7076,36 @@
 
 
 
+        // Clear History Button Logic
+        const clearHistoryBtn = document.getElementById('clearHistoryBtn');
+        if (clearHistoryBtn) {
+            clearHistoryBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                showCustomModal({
+                    title: '清空历史记录',
+                    message: '确定要删除所有历史记录吗？此操作不可恢复。',
+                    confirmText: '清空',
+                    cancelText: '取消',
+                    onConfirm: async () => {
+                        if (window.electronAPI) {
+                            try {
+                                const res = await window.electronAPI.invoke('clear-history');
+                                if (res.success) {
+                                    showToast('历史记录已清空', 'success');
+                                    loadHistory();
+                                } else {
+                                    showError('清空失败: ' + res.error);
+                                }
+                            } catch (err) {
+                                console.error(err);
+                                showError('清空失败');
+                            }
+                        }
+                    }
+                });
+            });
+        }
+
         // Initial load
         loadHistory();
 
@@ -6935,6 +7118,9 @@
                 const updateBtnState = () => {
                     const isVisible = getComputedStyle(initialState).display !== 'none';
                     newChatBtn.disabled = isVisible;
+                    if (typeof updateClearButtonState === 'function') {
+                        updateClearButtonState();
+                    }
                 };
 
                 const observer = new MutationObserver((mutations) => {

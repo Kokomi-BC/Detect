@@ -743,6 +743,47 @@ class DetectApp {
           fs.mkdirSync(historyDir, { recursive: true });
         }
         
+        // 处理图片保存
+        if (historyItem.images && historyItem.images.length > 0) {
+          const timestamp = historyItem.timestamp;
+          const imagesDir = path.join(historyDir, 'images', timestamp.toString());
+          
+          // 确保图片目录存在
+          if (!fs.existsSync(imagesDir)) {
+            fs.mkdirSync(imagesDir, { recursive: true });
+          }
+
+          // 遍历并保存图片
+          historyItem.images = historyItem.images.map((img, index) => {
+            if (img.url && img.url.startsWith('data:image')) {
+              try {
+                // 解析 Base64 数据
+                const matches = img.url.match(/^data:image\/([a-zA-Z0-9]+);base64,(.+)$/);
+                if (matches) {
+                  const ext = matches[1];
+                  const data = matches[2];
+                  const buffer = Buffer.from(data, 'base64');
+                  const fileName = `image_${index}.${ext}`;
+                  const filePath = path.join(imagesDir, fileName);
+                  
+                  fs.writeFileSync(filePath, buffer);
+                  
+                  // 更新 URL 为本地文件路径 (使用 file:// 协议)
+                  // 注意：webSecurity: false 允许加载本地资源
+                  return {
+                    ...img,
+                    url: `file://${filePath.replace(/\\/g, '/')}`,
+                    originalUrl: img.url // 保留原始 URL (如果是 Base64 则可能太长，可视情况决定是否保留)
+                  };
+                }
+              } catch (err) {
+                console.error('保存图片失败:', err);
+              }
+            }
+            return img;
+          });
+        }
+
         const historyFile = path.join(historyDir, 'history.json');
         let history = [];
         if (fs.existsSync(historyFile)) {
@@ -755,6 +796,19 @@ class DetectApp {
         
         // 限制数量，比如最多50条
         if (history.length > 50) {
+          // 删除超出的历史记录对应的图片文件夹
+          const removedItems = history.slice(50);
+          removedItems.forEach(item => {
+            const itemImagesDir = path.join(historyDir, 'images', item.timestamp.toString());
+            if (fs.existsSync(itemImagesDir)) {
+              try {
+                fs.rmSync(itemImagesDir, { recursive: true, force: true });
+              } catch (e) {
+                console.error('清理旧图片失败:', e);
+              }
+            }
+          });
+          
           history = history.slice(0, 50);
         }
         
@@ -782,7 +836,9 @@ class DetectApp {
 
     ipcMain.handle('delete-history', async (event, timestamp) => {
       try {
-        const historyFile = path.join(app.getPath('userData'), 'history', 'history.json');
+        const historyDir = path.join(app.getPath('userData'), 'history');
+        const historyFile = path.join(historyDir, 'history.json');
+        
         if (fs.existsSync(historyFile)) {
           const content = fs.readFileSync(historyFile, 'utf8');
           let history = JSON.parse(content);
@@ -790,12 +846,37 @@ class DetectApp {
           // Filter out the item with the matching timestamp
           const newHistory = history.filter(item => item.timestamp !== timestamp);
           
+          // 删除对应的图片文件夹
+          const imagesDir = path.join(historyDir, 'images', timestamp.toString());
+          if (fs.existsSync(imagesDir)) {
+            try {
+              fs.rmSync(imagesDir, { recursive: true, force: true });
+            } catch (e) {
+              console.error('删除图片文件夹失败:', e);
+            }
+          }
+          
           fs.writeFileSync(historyFile, JSON.stringify(newHistory, null, 2), 'utf8');
           return { success: true, data: newHistory };
         }
         return { success: false, error: 'History file not found' };
       } catch (error) {
         console.error('删除历史记录失败:', error);
+        return { success: false, error: error.message };
+      }
+    });
+
+    ipcMain.handle('clear-history', async () => {
+      try {
+        const historyDir = path.join(app.getPath('userData'), 'history');
+        if (fs.existsSync(historyDir)) {
+          // 删除整个 history 目录并重新创建
+          fs.rmSync(historyDir, { recursive: true, force: true });
+          fs.mkdirSync(historyDir, { recursive: true });
+        }
+        return { success: true };
+      } catch (error) {
+        console.error('清空历史记录失败:', error);
         return { success: false, error: error.message };
       }
     });
