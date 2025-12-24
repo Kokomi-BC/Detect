@@ -1109,8 +1109,7 @@
             flex: 1;
             width: 100%;
             height: 100%;
-            padding: 24px;
-            padding-top: 32px;
+            padding: 32px 24px 24px;
             border: none;
             background: transparent;
             color: var(--text-primary);
@@ -6996,7 +6995,8 @@
             }
 
             // Restore images in left panel
-            if (item.images && item.images.length > 0) {
+            const restoredText = textInput ? textInput.innerText.trim() : '';
+            if (item.images && item.images.length > 0 && !isURL(restoredText)) {
                 // Normalize images to match uploadedImages structure
                 uploadedImages = item.images.map(img => {
                     if (typeof img === 'string') {
