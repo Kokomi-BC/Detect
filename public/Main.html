@@ -2511,7 +2511,7 @@
                         <span>字体缩放</span>
                         <div class="zoom-controls">
                             <button class="zoom-btn" id="fontDec">-</button>
-                            <span class="zoom-val" id="fontVal">16px</span>
+                            <span class="zoom-val" id="fontVal">1.0</span>
                             <button class="zoom-btn" id="fontInc">+</button>
                         </div>
                     </div>
@@ -3208,69 +3208,71 @@
         // Zoom & Font Size Logic
         function initZoomControls() {
             let currentZoom = 100;
-            let currentFontSize = 16;
+            // Use scale multiplier based on 16px base
+            let currentFontScale = 1.0; // multiplier: 0.8,0.9,1.0,1.1...
+            const BASE_FONT_PX = 16;
             const textInput = document.getElementById('textInput');
             const contentArea = document.querySelector('.content-area');
-            
-            // Font Size
+
+            // Font Size (scale-based)
             const updateFontDisplay = () => {
-                const val = `${currentFontSize}px`;
-                // Update More Menu display
+                const pxVal = (BASE_FONT_PX * currentFontScale);
+                const pxStr = pxVal + 'px';
+                const scaleStr = currentFontScale.toFixed(1);
+
+                // Update More Menu display (show only multiplier)
                 const fontVal = document.getElementById('fontVal');
-                if (fontVal) fontVal.textContent = val;
-                
-                // Update Edit Toolbar display
+                if (fontVal) fontVal.textContent = scaleStr;
+
+                // Update Edit Toolbar display if present (show multiplier)
                 const editFontVal = document.getElementById('editFontVal');
-                if (editFontVal) editFontVal.textContent = val;
+                if (editFontVal) editFontVal.textContent = scaleStr;
 
-                // Update Editor Font
-                textInput.style.fontSize = val;
-                
-                // Update Right Panel Font (Parsed Text)
+                // Apply computed pixel size to editor and parsed content
+                if (textInput) textInput.style.fontSize = pxStr;
                 const parsedText = document.getElementById('parsedText');
-                if (parsedText) parsedText.style.fontSize = val;
-                
-                // Update Parsed Content container to ensure inherited styles work
+                if (parsedText) parsedText.style.fontSize = pxStr;
                 const parsedContent = document.getElementById('parsedContent');
-                if (parsedContent) parsedContent.style.fontSize = val;
+                if (parsedContent) parsedContent.style.fontSize = pxStr;
 
-                localStorage.setItem('editorFontSize', currentFontSize);
+                localStorage.setItem('editorFontScale', currentFontScale);
             };
 
-            // Load saved font size
-            const savedFont = localStorage.getItem('editorFontSize');
-            if (savedFont) {
-                currentFontSize = parseInt(savedFont);
+            // Load saved font scale
+            const savedScale = localStorage.getItem('editorFontScale');
+            if (savedScale) {
+                const s = parseFloat(savedScale);
+                if (!isNaN(s)) currentFontScale = s;
+                updateFontDisplay();
+            } else {
                 updateFontDisplay();
             }
 
-            // More Menu Controls
-            document.getElementById('fontInc').addEventListener('click', (e) => {
+            // More Menu Controls: step by 0.1, show only multiplier
+            const incBtn = document.getElementById('fontInc');
+            const decBtn = document.getElementById('fontDec');
+            if (incBtn) incBtn.addEventListener('click', (e) => {
                 e.stopPropagation();
-                if (currentFontSize < 48) { // Increased max size range
-                    currentFontSize += 2;
+                if (currentFontScale < 2.0) {
+                    currentFontScale = Math.round((currentFontScale + 0.1) * 10) / 10;
+                    updateFontDisplay();
+                }
+            });
+            if (decBtn) decBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                if (currentFontScale > 0.8) {
+                    currentFontScale = Math.round((currentFontScale - 0.1) * 10) / 10;
                     updateFontDisplay();
                 }
             });
 
-            document.getElementById('fontDec').addEventListener('click', (e) => {
-                e.stopPropagation();
-                if (currentFontSize > 12) {
-                    currentFontSize -= 2;
-                    updateFontDisplay();
-                }
-            });
-            
             // Edit Toolbar Controls - Local Selection
-            // const editFontVal = document.getElementById('editFontVal'); // Removed
-
             function getSelectionFontSize() {
                 const selection = window.getSelection();
                 if (selection.rangeCount > 0) {
                     const range = selection.getRangeAt(0);
                     let node = range.commonAncestorContainer;
-                    
-                    // Fix: Check if selection wraps a single element (e.g. span created by us)
+
                     if (node.nodeType === 1 && range.startContainer === node && range.endContainer === node) {
                         const child = node.childNodes[range.startOffset];
                         if (child && child.nodeType === 1 && range.endOffset - range.startOffset === 1) {
@@ -3283,7 +3285,8 @@
                         return parseFloat(window.getComputedStyle(node).fontSize);
                     }
                 }
-                return currentFontSize; 
+                // return current global font in px
+                return BASE_FONT_PX * currentFontScale;
             }
 
             function applySelectionFontSize(newSize) {
@@ -5229,10 +5232,6 @@
                     document.getElementById('errorState').classList.remove('active');
                     document.getElementById('loadingState').classList.remove('active');
                     
-                    // Disable export button
-                    const exportBtn = document.getElementById('exportBtn');
-                    if (exportBtn) exportBtn.disabled = true;
-
                     showToast('内容已清空', 'success');
                 });
             });
@@ -5336,10 +5335,6 @@
             // 显示取消按钮
             if (cancelBtn) cancelBtn.style.display = 'block';
             
-            // Disable export button
-            const exportBtn = document.getElementById('exportBtn');
-            if (exportBtn) exportBtn.disabled = true;
-
             // 初始化进度条
             progressBar.style.width = '0%';
             loadingText.textContent = isPreview ? '正在解析网页以预览...' : '正在解析网页内容...';
@@ -5533,10 +5528,6 @@
             // Show Content
             parsedContent.style.display = 'block';
             
-            // Enable export button
-            const exportBtn = document.getElementById('exportBtn');
-            if (exportBtn) exportBtn.disabled = false;
-
             parsedTitle.textContent = title || '';
             parsedTitle.style.display = title ? 'block' : 'none';
             parsedText.innerHTML = text || ''; // Use innerHTML
@@ -6095,10 +6086,6 @@
                     document.getElementById('resultItem').classList.remove('active');
                     document.getElementById('errorState').classList.remove('active');
                     document.getElementById('loadingState').classList.remove('active');
-                    
-                    // Disable export button
-                    const exportBtn = document.getElementById('exportBtn');
-                    if (exportBtn) exportBtn.disabled = true;
                 });
 
                 // 监听主进程请求显示清空确认弹窗（来自右键菜单）
@@ -6115,10 +6102,6 @@
                         document.getElementById('errorState').classList.remove('active');
                         document.getElementById('loadingState').classList.remove('active');
                         
-                        // Disable export button
-                        const exportBtn = document.getElementById('exportBtn');
-                        if (exportBtn) exportBtn.disabled = true;
-
                         showToast('内容已清空', 'success');
                     }, () => {
                         // 取消时不作操作
@@ -6200,10 +6183,6 @@
             
             initialState.style.display = 'none';
             resultItem.classList.add('active');
-            
-            // Enable export button
-            const exportBtn = document.getElementById('exportBtn');
-            if (exportBtn) exportBtn.disabled = false;
         }
 
         // 显示提取结果
@@ -6280,10 +6259,6 @@
             
             resultItem.classList.add('active');
             resultItem.style.display = 'block'; // Ensure visible
-            
-            // Enable export button
-            const exportBtn = document.getElementById('exportBtn');
-            if (exportBtn) exportBtn.disabled = false;
         }
 
         function showError(message) {
@@ -6294,10 +6269,6 @@
             const initialState = document.getElementById('initialState');
             const detectBtn = document.getElementById('detectBtn');
             
-            // Disable export button
-            const exportBtn = document.getElementById('exportBtn');
-            if (exportBtn) exportBtn.disabled = true;
-
             if (initialState) initialState.style.display = 'none';
             if (resultItem) resultItem.style.display = 'none';
             loadingState.classList.remove('active');
@@ -6436,10 +6407,6 @@
                     
                     // 保存到历史记录
                     saveToHistory(htmlContent || text, result, images, !!htmlContent);
-
-                    // Enable export button
-                    const exportBtn = document.getElementById('exportBtn');
-                    if (exportBtn) exportBtn.disabled = false;
                 }, 500);
 
             } catch (error) {
