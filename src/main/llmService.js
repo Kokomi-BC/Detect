@@ -6,7 +6,7 @@ class LLMService {
       apiKey: '914b3c31-1b7b-4053-81e2-ea7546afae5a',
       baseURL: 'https://ark.cn-beijing.volces.com/api/v3',
     });
-    this.model = 'doubao-seed-1-6-flash-250828';
+    this.model = 'doubao-seed-1-6-lite-251015';
   }
 
   /**
@@ -22,6 +22,7 @@ class LLMService {
 请分析用户提供的文本和图片${sourceUrl ? `（来源链接：${sourceUrl}）` : ''}。
 请判断该新闻的真假，并返回严格的JSON格式响应（不要包含markdown代码块标记），包含以下字段：
 
+0. title: (字符串) 为该新闻生成一个简短、客观的标题（不超过20个字）。
 1. probability: (0-1之间的浮点数) 新闻为真的概率。
 2. type: (整数) 
    - 1: 大概率为真 (Probability >= 0.8)

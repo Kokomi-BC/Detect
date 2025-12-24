@@ -2,62 +2,77 @@
 
 目标：帮助 AI 代码代理快速上手本仓库并在不破坏现有结构的前提下做出安全、可验证的改动。
 
-要点速览
-- 主进程（Node/Electron）代码在 `src/main/`；渲染进程是单文件、非框架的 `public/Main.html`。
-- 切勿把渲染端重构为 React/框架，除非得到明确要求。
-- 与 LLM 的交互通过 `src/main/llmService.js`，该模块期待并返回严格的 JSON 输出。
+## 核心架构与关键文件
 
-架构与关键文件
-- `src/main/main.js`：应用入口，管理窗口、IPC 路由和启动逻辑。
-- `src/main/llmService.js`：封装对 Volcengine（Doubao）或其它 LLM 的调用；提示语必须要求“strict JSON”以避免解析失败。
-- `src/main/extractionManager.js`、`imageExtractor.js`、`urlProcessor.js`：负责网页内容与图片提取、预处理逻辑。
-- `src/main/preload.js`：用 `contextBridge` 暴露 `electronAPI` 给渲染进程；检视此处可以了解渲染端可用的 IPC 接口名与用法。
-- `public/Main.html`：单页 UI（HTML + 内联 CSS 变量 + 原生 JS）——所有前端逻辑均集中在此文件。
+### 主进程 (Node.js/Electron) - `src/main/`
+- **入口流程**：`src/main/index.js` (启动脚本) -> `src/main/main.js` (`DetectApp` 类，核心逻辑)。
+- **`src/main/main.js`**：应用的主控制器，负责窗口管理、IPC 路由注册、应用生命周期。
+- **`src/main/llmService.js`**：LLM 服务层。
+    - **关键点**：使用 `openai` SDK 连接 Volcengine (Doubao)。
+    - **协议**：必须请求并解析 **Strict JSON**。提示词中必须包含 `JSON格式响应` 和 `不要包含markdown代码块标记` 的指令。
+- **`src/main/extractionManager.js`**：内容提取编排器，协调 `imageExtractor.js` 和 `urlProcessor.js`。
+- **`src/main/preload.js`**：安全桥梁。通过 `contextBridge` 暴露 `electronAPI`。**新增 IPC 必须在此处注册**。
 
-IPC / 通信模式（必须遵循）
-- 请求/响应（同步语义）：渲染端 `await window.electronAPI.invoke('channel', data)` ⇄ 主端 `ipcMain.handle('channel', async (evt, data) => { ... })`。
-    - 常见 channel：`analyze-content`、`open-image-dialog`、`set-theme`。
-- 事件推送（fire-and-forget）：渲染端 `window.electronAPI.send('channel', data)` ⇄ 主端 `ipcMain.on('channel', ...)`。
-    - 示例：`extract-content`（主进程异步处理并通过事件回传结果）。
-- 主到渲染：主窗口使用 `mainWindow.webContents.send('channel', data)`，渲染端通过 `window.electronAPI.on('channel', handler)` 监听。
-    - 示例：`extract-content-result`、`theme-changed`。
+### 渲染进程 (Frontend) - `public/`
+- **`public/Main.html`**：**单文件架构**。
+    - 包含所有 HTML 结构、内联 CSS 变量定义、以及所有前端 JavaScript 逻辑。
+    - **严禁**引入 React/Vue 等框架。保持原生 JS (Vanilla JS) + DOM 操作。
+    - **导航建议**：文件巨大 (~7000行)，修改时请搜索特定的 DOM ID 或事件监听器（如 `document.getElementById('btn-analyze')`）。
 
-错误处理约定
-- 所有 `ipcMain.handle` 的實現应捕获异常并返回结构化对象，例如：
+## IPC 通信模式（必须遵循）
 
-    {
-        success: false,
-        error: '错误信息'
-    }
+1.  **请求/响应 (双向)**：
+    - **渲染端**：`const result = await window.electronAPI.invoke('channel-name', data)`
+    - **主进程**：`ipcMain.handle('channel-name', async (event, data) => { ... })`
+    - **用途**：耗时操作、需要返回结果的操作（如：分析内容、打开文件对话框）。
 
-    这样渲染端统一检查 `success` 字段而不是抛原始异常。
+2.  **单向通知 (渲染 -> 主)**：
+    - **渲染端**：`window.electronAPI.send('channel-name', data)`
+    - **主进程**：`ipcMain.on('channel-name', (event, data) => { ... })`
+    - **用途**：触发无返回值的动作（如：打开外部链接）。
 
-开发与调试
-- 启动（开发模式）：`npm run dev` — 启动 webpack-dev-server（渲染）并并行运行 `electron .`。
-- 构建渲染：`npm run build:renderer`。
-- 构建 Electron 应用：`npm run build:electron`（使用 electron-builder，见 `package.json`）。
-- 在开发时打开主/渲染端控制台调试：渲染端直接在 `public/Main.html` 中使用 `console.log`，主进程日志输出到终端。
+3.  **主进程推送 (主 -> 渲染)**：
+    - **主进程**：`mainWindow.webContents.send('channel-name', data)`
+    - **渲染端**：`window.electronAPI.on('channel-name', (event, data) => { ... })`
+    - **用途**：异步任务完成通知、状态更新。
 
-项目惯例与注意事项（针对 AI 代理）
-- 渲染端：坚持 Vanilla JS + DOM 操作；不要把现有 UI 拆分为组件或引入框架。
-- LLM 输出必须为严格 JSON。修改 `llmService.js` 时，始终把提示语写成明确的“Return only JSON” 格式，并在接收端做稳健的 JSON.parse 异常处理。
-- 任何新增 IPC channel：
-    - 若需要返回结果，使用 `ipcMain.handle` + `window.electronAPI.invoke`。
-    - 若仅触发侧效应，使用 `ipcMain.on` + `window.electronAPI.send`。
-    - 主端通知渲染端使用 `mainWindow.webContents.send`。
-- 主题与样式使用 `public/Main.html` 中的 CSS 变量（`:root` 与 `[data-theme="dark"]`）。修改主题时请更新这两个位置。
+## 开发与构建工作流
 
-快速定位示例
-- 查看入口与 IPC：[src/main/main.js](src/main/main.js#L1)
-- LLM 提示与 API：[src/main/llmService.js](src/main/llmService.js#L1)
-- 内容提取：[src/main/extractionManager.js](src/main/extractionManager.js#L1)
-- 渲染端完整 UI：[public/Main.html](public/Main.html#L1)
+- **启动开发环境**：
+    ```bash
+    npm run dev
+    ```
+    - 此命令并发运行 `webpack --watch` (构建渲染端) 和 `electron .` (启动主进程)。
+    - 注意：修改 `Main.html` 后通常需要刷新 Electron 窗口 (Ctrl+R)。修改主进程代码需要重启 Electron。
 
-如何提交变更（建议）
-- 小范围改动：在本地分支提交并推 PR；在 PR 描述里注明为何不重构渲染端（若改动涉及 `Main.html`）。
-- 涉及 LLM 提示或解析的改动：提供示例输入/输出并在单元或集成测试里验证 JSON 可解析性。
+- **构建发布**：
+    - `npm run build:renderer`：仅构建前端资源。
+    - `npm run build`：完整构建（前端 + Electron Builder 打包）。
 
-反馈与迭代
-- 如果你需要我补充：明确想要更详细的 `llmService` 提示模板、常见错误示例或为 `Main.html` 编写小型重构指南。
+## 项目特定惯例
+
+1.  **错误处理**：
+    - IPC Handler 必须捕获所有异常，并返回 `{ success: false, error: 'msg' }` 结构，避免主进程崩溃或渲染端 Promise 永远挂起。
+    - 渲染端接收结果后，先检查 `if (!res.success)`。
+
+2.  **样式系统**：
+    - 样式定义在 `public/Main.html` 的 `<style>` 标签中。
+    - 使用 CSS 变量 (`:root`) 管理主题。
+    - 暗色模式通过 `[data-theme="dark"]` 选择器覆盖变量实现。
+
+3.  **LLM 交互**：
+    - 修改 `analyzeContent` 提示词时，务必保留 JSON 格式约束。
+    - 解析 LLM 返回值时，使用 `try-catch` 包裹 `JSON.parse`，并处理可能的 Markdown 代码块标记（如 LLM 错误地返回了 ```json ... ```）。
+
+## 常见任务指南
+
+- **添加新功能**：
+    1. 在 `src/main/preload.js` 添加 API 定义。
+    2. 在 `src/main/main.js` 或相关 Service 中添加 `ipcMain.handle` 实现。
+    3. 在 `public/Main.html` 中添加 UI 元素和调用逻辑。
+
+- **调试**：
+    - **渲染端**：在 Electron 窗口中打开 DevTools (Ctrl+Shift+I)，使用 `console.log`。
+    - **主进程**：查看启动终端的输出日志。
 
 —— 结束 ——

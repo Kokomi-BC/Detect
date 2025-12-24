@@ -1,6 +1,6 @@
 {
   "name": "fake-news-detector",
-  "version": "1.2.1",
+  "version": "2.0.1",
   "description": "假新闻检测应用",
   "main": "src/main/index.js",
   "scripts": {

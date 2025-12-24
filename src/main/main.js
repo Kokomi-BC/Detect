@@ -734,6 +734,71 @@ class DetectApp {
         });
       });
     });
+
+    // 历史记录相关
+    ipcMain.handle('save-history', async (event, historyItem) => {
+      try {
+        const historyDir = path.join(app.getPath('userData'), 'history');
+        if (!fs.existsSync(historyDir)) {
+          fs.mkdirSync(historyDir, { recursive: true });
+        }
+        
+        const historyFile = path.join(historyDir, 'history.json');
+        let history = [];
+        if (fs.existsSync(historyFile)) {
+          const content = fs.readFileSync(historyFile, 'utf8');
+          history = JSON.parse(content);
+        }
+        
+        // 添加到开头
+        history.unshift(historyItem);
+        
+        // 限制数量，比如最多50条
+        if (history.length > 50) {
+          history = history.slice(0, 50);
+        }
+        
+        fs.writeFileSync(historyFile, JSON.stringify(history, null, 2), 'utf8');
+        return { success: true };
+      } catch (error) {
+        console.error('保存历史记录失败:', error);
+        return { success: false, error: error.message };
+      }
+    });
+
+    ipcMain.handle('get-history', async () => {
+      try {
+        const historyFile = path.join(app.getPath('userData'), 'history', 'history.json');
+        if (fs.existsSync(historyFile)) {
+          const content = fs.readFileSync(historyFile, 'utf8');
+          return JSON.parse(content);
+        }
+        return [];
+      } catch (error) {
+        console.error('获取历史记录失败:', error);
+        return [];
+      }
+    });
+
+    ipcMain.handle('delete-history', async (event, timestamp) => {
+      try {
+        const historyFile = path.join(app.getPath('userData'), 'history', 'history.json');
+        if (fs.existsSync(historyFile)) {
+          const content = fs.readFileSync(historyFile, 'utf8');
+          let history = JSON.parse(content);
+          
+          // Filter out the item with the matching timestamp
+          const newHistory = history.filter(item => item.timestamp !== timestamp);
+          
+          fs.writeFileSync(historyFile, JSON.stringify(newHistory, null, 2), 'utf8');
+          return { success: true, data: newHistory };
+        }
+        return { success: false, error: 'History file not found' };
+      } catch (error) {
+        console.error('删除历史记录失败:', error);
+        return { success: false, error: error.message };
+      }
+    });
   }
 
   /**
