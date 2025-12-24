@@ -6795,6 +6795,8 @@
                 // Reset UI to initial state without clearing text input
                 const resultItem = document.getElementById('resultItem');
                 const initialState = document.getElementById('initialState');
+                const loadingState = document.getElementById('loadingState');
+                const errorState = document.getElementById('errorState');
                 const progressBar = document.getElementById('progressBar');
                 const statusText = document.getElementById('statusText');
                 const imagePreview = document.getElementById('imagePreview');
@@ -6802,17 +6804,27 @@
                 
                 if (resultItem) resultItem.style.display = 'none';
                 if (initialState) initialState.style.display = 'flex';
+                if (loadingState) loadingState.classList.remove('active');
+                if (errorState) errorState.classList.remove('active');
                 
                 if (progressBar) {
                     progressBar.style.width = '0%';
-                    progressBar.parentElement.style.display = 'none';
+                    // 不要隐藏 parentElement，否则下次加载时进度条会丢失
+                    // progressBar.parentElement.style.display = 'none'; 
                 }
                 
                 if (statusText) statusText.textContent = '';
                 
                 if (imagePreview) {
-                    imagePreview.style.display = 'none';
-                    imagePreview.src = '';
+                    // 修正：不要隐藏容器，而是清空内容
+                    imagePreview.innerHTML = '';
+                    // 重置上传图片数组
+                    uploadedImages = [];
+                    selectedImages.clear();
+                    updateEditorStats();
+                    // 清除文件输入框的值
+                    const fileInput = document.getElementById('fileInput');
+                    if (fileInput) fileInput.value = '';
                 }
                 
                 if (urlInput) urlInput.value = '';
