@@ -1,0 +1,24 @@
+# 忽略开发配置文件
+.vscode/
+.github/
+.git/
+
+# 忽略构建输出
+dist/
+release/
+node_modules/
+
+# 忽略日志和临时文件
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.eslintcache
+
+# 忽略源码（如果只发布构建后的文件，但通常 Electron 项目会包含源码）
+# src/
+
+# 忽略配置文件
+webpack.config.js
+run.bat
+1.md
+old/

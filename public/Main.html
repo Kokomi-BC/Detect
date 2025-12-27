@@ -213,7 +213,7 @@
             flex: 1;
             display: flex;
             flex-direction: column;
-            background: var(--bg-secondary);
+            background: var(--bg-primary);
             min-width: 0 !important; /* Force min-width 0 to allow full collapse */
             max-width: none; /* Removed max-width limit */
             transition: background-color 0.3s, flex 0.4s cubic-bezier(0.4, 0, 0.2, 1);
@@ -226,9 +226,9 @@
             width: 48px; /* Reduced width for collapsed state */
             display: flex;
             flex-direction: column;
-            background: var(--bg-glass);
-            backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
+            background: var(--bg-primary);
+            /* backdrop-filter: blur(12px); Removed for solid background */
+            /* -webkit-backdrop-filter: blur(12px); */
             border: 1px solid var(--border-color);
             /* Half rounded rectangle: flat on left, rounded on right */
             border-radius: 0 var(--radius-lg) var(--radius-lg) 0;
@@ -274,7 +274,7 @@
             font-size: 16px;
             font-weight: 600;
             margin: 0;
-            color: var(--text-primary);
+            color: var(--text-secondary);
         }
 
         .sidebar-actions {
@@ -1083,10 +1083,10 @@
             min-height: 0; /* Allow shrinking */
             display: flex;
             flex-direction: column;
-            background: var(--bg-glass);
-            backdrop-filter: blur(8px);
-            -webkit-backdrop-filter: blur(8px);
-            border: 1px solid rgba(0,0,0,0.05);
+            background: var(--bg-primary);
+            /* backdrop-filter: blur(8px); */
+            /* -webkit-backdrop-filter: blur(8px); */
+            border: 1px solid var(--border-color); /* Use standard border color */
             border-radius: var(--radius-lg);
             box-shadow: var(--shadow-sm);
             overflow: hidden; /* Clip children */
@@ -1095,13 +1095,13 @@
         }
 
         [data-theme="dark"] .text-container {
-            border-color: rgba(255,255,255,0.05);
+            border-color: var(--border-color);
         }
 
         .text-container:focus-within {
             border-color: var(--accent-color);
             box-shadow: var(--shadow-md);
-            background: var(--bg-glass);
+            background: var(--bg-primary);
         }
 
         /* Text Input - The scrollable content */
@@ -6809,7 +6809,13 @@
             const isInsideSidebar = leftSidebar.contains(e.target);
             const isToggleButton = sidebarToggleBtn && sidebarToggleBtn.contains(e.target);
             
-            if (!isInsideSidebar && !isToggleButton) {
+            // Check if click is inside context menu or modal
+            const historyContextMenu = document.getElementById('historyContextMenu');
+            const isInsideContextMenu = historyContextMenu && historyContextMenu.contains(e.target);
+            const customModal = document.getElementById('customModal');
+            const isInsideModal = customModal && customModal.classList.contains('active') && customModal.contains(e.target);
+            
+            if (!isInsideSidebar && !isToggleButton && !isInsideContextMenu && !isInsideModal) {
                 toggleSidebar(false);
             }
         }
@@ -6913,8 +6919,20 @@
         });
 
         document.getElementById('ctxHistoryDelete')?.addEventListener('click', () => {
-            if (currentHistoryItem) deleteHistoryItem(currentHistoryItem);
-            document.getElementById('historyContextMenu').classList.remove('active');
+            if (currentHistoryItem) {
+                // Hide context menu first
+                document.getElementById('historyContextMenu').classList.remove('active');
+                
+                showCustomModal({
+                    title: '删除历史记录',
+                    message: '确定要删除这条历史记录吗？此操作不可恢复。',
+                    confirmText: '删除',
+                    cancelText: '取消',
+                    onConfirm: () => {
+                        deleteHistoryItem(currentHistoryItem);
+                    }
+                });
+            }
         });
 
         // Close context menu on click outside

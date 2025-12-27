@@ -11,20 +11,6 @@ module.exports = {
     filename: 'bundle.js',
   },
   cache: false,
-  resolve: {
-    extensions: ['.js'],
-  },
-  module: {
-    rules: [
-      {
-        test: /\.js$/,
-        exclude: /node_modules/,
-        use: {
-          loader: 'ts-loader',
-        },
-      },
-    ],
-  },
   plugins: [
     new HtmlWebpackPlugin({
       template: path.join(__dirname, 'public/Main.html'),

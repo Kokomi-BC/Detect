@@ -8,7 +8,7 @@
     "build:renderer": "webpack --mode production",
     "build:dev": "webpack --mode development",
     "build": "npm run build:renderer && electron-builder",
-    "dev": "concurrently \"npm run build:dev -- --watch\" \"wait-on dist/index.html && electron .\"",
+    "dev": "concurrently \"npm run build:dev -- --watch\" \"wait-on dist/Welcome.html && electron .\"",
     "package": "electron-builder --dir",
     "make": "electron-builder --win",
     "make:portable": "electron-builder --win --x64 --config.portable.target=portable",
@@ -34,24 +34,20 @@
     "node": ">=16.0.0"
   },
   "devDependencies": {
-    "concurrently": "^8.2.2",
-    "css-loader": "^7.1.2",
+    "concurrently": "^9.2.1",
     "electron": "^39.2.7",
-    "electron-builder": "^24.6.4",
+    "electron-builder": "^26.0.12",
     "html-webpack-plugin": "^5.6.5",
-    "style-loader": "^4.0.0",
-    "ts-loader": "^9.5.4",
-    "typescript": "^5.9.3",
-    "wait-on": "^7.2.0",
-    "webpack": "^5.102.1",
+    "wait-on": "^9.0.3",
+    "webpack": "^5.104.1",
     "webpack-cli": "^6.0.1"
   },
   "dependencies": {
     "@mozilla/readability": "^0.6.0",
     "cheerio": "^1.1.2",
     "electron-squirrel-startup": "^1.0.1",
-    "jsdom": "22.1.0",
-    "openai": "^6.9.1"
+    "jsdom": "^27.3.0",
+    "openai": "^6.15.0"
   },
   "build": {
     "appId": "com.detectfake.app",
