@@ -5317,6 +5317,7 @@
         // 内容提取功能
         function extractContent(url, isPreview = false) {
             const detectBtn = document.getElementById('detectBtn');
+            const previewBtn = document.getElementById('previewBtn');
             const initialState = document.getElementById('initialState');
             const resultItem = document.getElementById('resultItem');
             const loadingState = document.getElementById('loadingState');
@@ -5324,6 +5325,18 @@
             const progressBar = document.getElementById('progressBar');
             const loadingText = document.getElementById('loadingText');
             const cancelBtn = document.getElementById('cancelExtractBtn');
+
+            // 禁用按钮防止重复点击
+            if (detectBtn) {
+                detectBtn.disabled = true;
+                detectBtn.style.opacity = '0.5';
+                detectBtn.style.pointerEvents = 'none';
+            }
+            if (previewBtn) {
+                previewBtn.disabled = true;
+                previewBtn.style.opacity = '0.5';
+                previewBtn.style.pointerEvents = 'none';
+            }
 
             // 重置状态
             initialState.style.display = 'none';
@@ -5366,8 +5379,12 @@
                 detectBtn.innerHTML = '开始检测';
                 if (cancelBtn) cancelBtn.style.display = 'none';
                 
-                // Re-enable preview button
-                const previewBtn = document.getElementById('previewBtn');
+                // Re-enable buttons
+                if (detectBtn) {
+                    detectBtn.disabled = false;
+                    detectBtn.style.opacity = '1';
+                    detectBtn.style.pointerEvents = 'auto';
+                }
                 if (previewBtn) {
                     previewBtn.disabled = false;
                     previewBtn.style.opacity = '1';
@@ -5401,6 +5418,19 @@
                 detectBtn.classList.remove('loading');
                 detectBtn.innerHTML = '开始检测';
                 if (cancelBtn) cancelBtn.style.display = 'none';
+
+                // Re-enable buttons
+                if (detectBtn) {
+                    detectBtn.disabled = false;
+                    detectBtn.style.opacity = '1';
+                    detectBtn.style.pointerEvents = 'auto';
+                }
+                if (previewBtn) {
+                    previewBtn.disabled = false;
+                    previewBtn.style.opacity = '1';
+                    previewBtn.style.pointerEvents = 'auto';
+                }
+
                 showError('网页内容提取超时，请稍后重试');
                 showToast('提取失败：超时', 'error');
             }
@@ -5418,8 +5448,12 @@
                     clearInterval(progressInterval);
                     if (cancelBtn) cancelBtn.style.display = 'none';
                     
-                    // Re-enable preview button if it was a preview
-                    const previewBtn = document.getElementById('previewBtn');
+                    // Re-enable buttons
+                    if (detectBtn) {
+                        detectBtn.disabled = false;
+                        detectBtn.style.opacity = '1';
+                        detectBtn.style.pointerEvents = 'auto';
+                    }
                     if (previewBtn) {
                         previewBtn.disabled = false;
                         previewBtn.style.opacity = '1';
@@ -6322,12 +6356,25 @@
         // AI分析功能
         async function analyzeContent(text, images, fromExtraction = false, htmlContent = null) {
             const detectBtn = document.getElementById('detectBtn');
+            const previewBtn = document.getElementById('previewBtn');
             const loadingState = document.getElementById('loadingState');
             const initialState = document.getElementById('initialState');
             const resultItem = document.getElementById('resultItem');
             const errorState = document.getElementById('errorState');
             const progressBar = document.getElementById('progressBar');
             const loadingText = document.getElementById('loadingText');
+
+            // 禁用按钮防止重复点击
+            if (detectBtn) {
+                detectBtn.disabled = true;
+                detectBtn.style.opacity = '0.5';
+                detectBtn.style.pointerEvents = 'none';
+            }
+            if (previewBtn) {
+                previewBtn.disabled = true;
+                previewBtn.style.opacity = '0.5';
+                previewBtn.style.pointerEvents = 'none';
+            }
 
             // UI Loading State
             initialState.style.display = 'none';
@@ -6405,6 +6452,18 @@
                     detectBtn.classList.remove('loading');
                     detectBtn.innerHTML = '开始检测';
                     
+                    // Re-enable buttons
+                    if (detectBtn) {
+                        detectBtn.disabled = false;
+                        detectBtn.style.opacity = '1';
+                        detectBtn.style.pointerEvents = 'auto';
+                    }
+                    if (previewBtn) {
+                        previewBtn.disabled = false;
+                        previewBtn.style.opacity = '1';
+                        previewBtn.style.pointerEvents = 'auto';
+                    }
+
                     // 保存到历史记录
                     saveToHistory(htmlContent || text, result, images, !!htmlContent);
                 }, 500);
@@ -6417,6 +6476,18 @@
                 loadingState.classList.remove('active');
                 detectBtn.classList.remove('loading');
                 detectBtn.innerHTML = '开始检测';
+
+                // Re-enable buttons
+                if (detectBtn) {
+                    detectBtn.disabled = false;
+                    detectBtn.style.opacity = '1';
+                    detectBtn.style.pointerEvents = 'auto';
+                }
+                if (previewBtn) {
+                    previewBtn.disabled = false;
+                    previewBtn.style.opacity = '1';
+                    previewBtn.style.pointerEvents = 'auto';
+                }
             }
         }
 

@@ -263,14 +263,18 @@ class ExtractionManager {
           await new Promise(resolve => setTimeout(resolve, 2000));
 
           // 对于微信文章，需要等待更长时间确保内容完全加载
-          if (isWechatArticle) {
+          if (isWechatArticle && !this.isExtractionCancelled && !win.isDestroyed()) {
             await this.imageExtractor.waitForWechatContent(win);
           }
           
           // 等待DOM完全加载并获取图片真实尺寸
-          await this.imageExtractor.waitForImagesLoad(win);
+          if (!this.isExtractionCancelled && !win.isDestroyed()) {
+            await this.imageExtractor.waitForImagesLoad(win);
+          }
         } catch (error) {
-          console.error(`等待内容加载时出错:`, error.message);
+          if (!this.isExtractionCancelled) {
+            console.error(`等待内容加载时出错:`, error.message);
+          }
         }
         
         cleanup();
@@ -355,6 +359,11 @@ class ExtractionManager {
     let jsRetryAttempts = 0;
     
     while (jsRetryAttempts < maxJSReruns) {
+      // 检查是否已取消
+      if (this.isExtractionCancelled || !win || win.isDestroyed()) {
+        throw new Error('提取已取消');
+      }
+
       try {
         const htmlContent = await win.webContents.executeJavaScript(`
           (function() {
@@ -408,6 +417,11 @@ class ExtractionManager {
    * @returns {Promise<Object>}
    */
   async processExtractedContent(htmlContent, url, isWechatArticle) {
+    // 检查是否已取消
+    if (this.isExtractionCancelled) {
+      throw new Error('提取已取消');
+    }
+
     // 使用Readability提取文章内容
     let dom = new JSDOM(htmlContent, { url });
     // 降低字符阈值，以便提取短内容（如微博）

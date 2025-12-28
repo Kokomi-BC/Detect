@@ -261,6 +261,9 @@ class ImageExtractor {
      */
   async waitForImagesLoad(window) {
     try {
+      if (!window || window.isDestroyed()) {
+        return false;
+      }
       await window.webContents.executeJavaScript(`
         (async () => {
           // 等待所有图片加载
@@ -297,6 +300,9 @@ class ImageExtractor {
    */
   async waitForWechatContent(window) {
     try {
+      if (!window || window.isDestroyed()) {
+        return false;
+      }
       await window.webContents.executeJavaScript(`
         (async () => {
           // 简单的滚动以触发懒加载
