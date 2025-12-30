@@ -8317,6 +8317,7 @@
                         analysisResult = response;
                     }
                     
+
                     clearInterval(progressInterval);
                     
                     if (analysisResult.success) {
@@ -8344,7 +8345,6 @@
                 
                 processedItems++;
                 renderBatchList();
-                
                 // Update total progress on button
                 detectBtn.innerHTML = `批量检测中 (${processedItems}/${totalItems})`;
             }
