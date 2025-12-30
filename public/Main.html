@@ -123,6 +123,70 @@
             background-repeat: no-repeat;
         }
 
+        /* Batch Mode Toggle */
+        .batch-mode-toggle {
+            display: flex;
+            align-items: center;
+            margin-left: 8px;
+            gap: 6px;
+            -webkit-app-region: no-drag;
+        }
+        
+        .batch-icon {
+            width: 16px;
+            height: 16px;
+            color: var(--text-secondary);
+            opacity: 0.7;
+            transition: all 0.3s;
+        }
+        
+        .batch-mode-active .batch-icon {
+            color: var(--accent-color);
+            opacity: 1;
+        }
+
+        .toggle-switch {
+            position: relative;
+            width: 32px;
+            height: 18px;
+            background: var(--border-color);
+            border-radius: 9px;
+            cursor: pointer;
+            transition: background 0.3s;
+            display: flex;
+            align-items: center;
+        }
+        
+        .toggle-switch::after {
+            content: '';
+            position: absolute;
+            left: 2px;
+            width: 14px;
+            height: 14px;
+            background: white;
+            border-radius: 50%;
+            transition: transform 0.3s cubic-bezier(0.4, 0.0, 0.2, 1);
+            box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+        }
+        
+        /* Scoped to batch mode toggle only */
+        .batch-mode-active .batch-mode-toggle .toggle-switch {
+            background: var(--accent-color);
+        }
+        
+        .batch-mode-active .batch-mode-toggle .toggle-switch::after {
+            transform: translateX(14px);
+        }
+
+        /* Generic active state for other toggles (like settings) */
+        .toggle-switch.active {
+            background: var(--accent-color);
+        }
+        
+        .toggle-switch.active::after {
+            transform: translateX(14px);
+        }
+
         #title-bar .app-title {
             font-weight: 500;
             position: absolute;
@@ -166,6 +230,299 @@
         
         body.fullscreen-mode .container {
             height: calc(100vh - 32px); /* Keep title bar space */
+        }
+
+        /* Batch Mode Styles */
+        .batch-list-container {
+            display: none;
+            flex-direction: column;
+            flex: 1;
+            padding: 16px;
+            overflow-y: auto;
+            gap: 12px;
+            /* background: var(--bg-secondary); Removed to match toolbar/sidebar */
+            animation: fadeIn 0.3s ease;
+        }
+        
+        .batch-mode-active .batch-list-container {
+            display: flex;
+        }
+
+        .batch-toolbar {
+            display: none;
+            padding: 16px 16px 0 16px;
+            gap: 12px;
+            flex-shrink: 0;
+        }
+        
+        .batch-mode-active .batch-toolbar {
+            display: flex;
+        }
+        
+        /* Hide batch toolbar in batch edit mode */
+        .batch-edit-mode .batch-toolbar {
+            display: none !important;
+        }
+
+        .batch-tool-btn {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            
+            /* Frosted Glass Style (Same as detect-btn) */
+            background: rgba(67, 97, 238, 0.15);
+            color: var(--accent-color);
+            border: 1px solid rgba(67, 97, 238, 0.3);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+        }
+        
+        .batch-tool-btn:hover {
+            background: rgba(67, 97, 238, 0.25);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(67, 97, 238, 0.3);
+            border-color: var(--accent-color);
+        }
+        
+        .batch-tool-btn:active {
+            transform: translateY(0);
+        }
+        
+        /* Ensure background consistency in dark mode */
+        [data-theme="dark"] .batch-tool-btn {
+            background: rgba(67, 97, 238, 0.2);
+            border-color: rgba(67, 97, 238, 0.4);
+        }
+        [data-theme="dark"] .batch-tool-btn:hover {
+            background: rgba(67, 97, 238, 0.3);
+        }
+        
+        .batch-mode-active .content-area,
+        .batch-mode-active .left-sidebar {
+            display: none !important;
+        }
+        
+        /* Hide other title bar buttons in batch mode - REMOVED per user request */
+        /*
+        .batch-mode-active #sidebarToggleBtn,
+        .batch-mode-active #previewBtn,
+        .batch-mode-active #themeBtn {
+            display: none !important;
+        }
+        */
+
+        /* Special Edit Mode: Show content area but keep batch context */
+        .batch-edit-mode .batch-list-container {
+            display: none;
+        }
+        
+        .batch-edit-mode .content-area {
+            display: flex !important;
+        }
+        
+        .batch-edit-mode .left-sidebar {
+            display: flex !important;
+        }
+
+        .batch-item {
+            background: var(--bg-primary);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            padding: 16px;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            cursor: pointer;
+            transition: all 0.2s;
+            position: relative;
+            user-select: none;
+        }
+        
+        .batch-item:hover {
+            border-color: var(--accent-color);
+            box-shadow: var(--shadow-sm);
+            transform: translateY(-2px);
+        }
+        
+        .batch-item.active {
+            border-color: var(--accent-color);
+            background: var(--accent-light);
+        }
+
+        .batch-item.skipped {
+            opacity: 0.6;
+            background: var(--bg-secondary);
+            border-style: dashed;
+        }
+
+        .batch-item-index {
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--text-secondary);
+            min-width: 32px;
+            opacity: 0.5;
+            flex-shrink: 0;
+        }
+        
+        .batch-item.active .batch-item-index {
+            color: var(--accent-color);
+            opacity: 1;
+        }
+
+        .batch-item-content {
+            flex: 1;
+            min-width: 0;
+        }
+        
+        .batch-item-preview {
+            font-size: 14px;
+            color: var(--text-primary);
+            margin-bottom: 4px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            font-weight: 500;
+        }
+        
+        .batch-item-meta {
+            font-size: 12px;
+            color: var(--text-secondary);
+            display: flex;
+            gap: 8px;
+        }
+
+        .batch-progress {
+            width: 40px;
+            height: 40px;
+            position: relative;
+            flex-shrink: 0;
+        }
+        
+        .batch-progress svg {
+            transform: rotate(-90deg);
+            width: 100%;
+            height: 100%;
+        }
+
+        @keyframes spinner-rotate {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .batch-progress.loading::after {
+            content: '';
+            position: absolute;
+            top: 4px;
+            left: 4px;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            border: 3px solid rgba(111, 130, 255, 0.2);
+            border-top-color: var(--accent-color);
+            animation: spinner-rotate 0.9s linear infinite;
+            box-sizing: border-box;
+        }
+
+        .batch-progress.loading svg {
+            opacity: 0;
+        }
+
+        .batch-progress.loading .batch-progress-text {
+            opacity: 0;
+        }
+
+        .batch-progress circle {
+            fill: none;
+            stroke-width: 4;
+            stroke-linecap: round;
+        }
+        
+        .batch-progress-bg {
+            stroke: var(--border-color);
+        }
+        
+        .batch-progress-value {
+            stroke: var(--accent-color);
+            stroke-dasharray: 100.53px; /* 2 * PI * 16 */
+            stroke-dashoffset: 100.53px;
+            transition: stroke-dashoffset 0.5s ease;
+        }
+        
+        .batch-progress-text {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 10px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .batch-exit-btn {
+            display: none;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 12px;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-sm);
+            color: var(--text-primary);
+            font-size: 12px;
+            cursor: pointer;
+            margin-left: auto; /* Push to right in title bar or toolbar */
+            transition: all 0.2s;
+        }
+        
+        .batch-exit-btn:hover {
+            background: var(--accent-light);
+            color: var(--accent-color);
+            border-color: var(--accent-color);
+        }
+
+        .batch-edit-mode .batch-exit-btn {
+            display: flex;
+        }
+        
+        .batch-edit-mode #batchExitBtn {
+            display: inline-flex !important;
+            color: var(--accent-color);
+            background: var(--accent-light);
+        }
+
+        .batch-add-btn {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            background: var(--bg-glass);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid var(--border-color);
+            color: var(--accent-color);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            margin: 16px auto 0; /* Center horizontally, margin top */
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: var(--shadow-md);
+            flex-shrink: 0;
+        }
+
+        .batch-add-btn:hover {
+            transform: scale(1.1);
+            background: var(--accent-color);
+            color: white;
+            box-shadow: var(--shadow-lg);
+            border-color: transparent;
+        }
+        
+        .batch-add-btn:active {
+            transform: scale(0.95);
         }
 
         /* Selection Color */
@@ -2496,6 +2853,15 @@
                 </svg>
             </span>
         </button>
+        
+        <!-- Batch Mode Toggle -->
+        <div class="batch-mode-toggle" id="batchModeToggle" title="切换批量处理模式">
+            <svg class="batch-icon" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M4 6h16v2H4zm0 5h16v2H4zm0 5h16v2H4z"/>
+            </svg>
+            <div class="toggle-switch"></div>
+        </div>
+
         <div class="app-title">假新闻检测系统</div>
         <div class="title-bar-actions">
             <div class="toolbar-btn more-menu" id="moreBtn" title="更多操作" tabindex="0">
@@ -2538,9 +2904,7 @@
                             <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/>
                         </svg>
                         <span>使用系统浏览器</span>
-                        <div class="toggle-switch" id="browserToggle">
-                            <div class="toggle-knob"></div>
-                        </div>
+                        <div class="toggle-switch" id="browserToggle"></div>
                     </div>
                 </div>
             </div>
@@ -2559,6 +2923,14 @@
         <div class="left-sidebar" id="leftSidebar">
             <!-- 工具栏 -->
             <div class="toolbar">
+                <!-- Exit Batch Edit Button -->
+                <button class="toolbar-btn" id="batchExitBtn" title="返回批量列表" style="display: none;">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/>
+                    </svg>
+                    <span class="btn-label">返回列表</span>
+                </button>
+
                 <button class="toolbar-btn" id="newChatBtn" title="新对话">
                     <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
                         <path d="M12 2c5.523 0 10 4.477 10 10s-4.477 10-10 10S2 17.523 2 12 6.477 2 12 2Zm0 1.5a8.5 8.5 0 1 0 0 17 8.5 8.5 0 0 0 0-17ZM12 7a.75.75 0 0 1 .75.75v3.5h3.5a.75.75 0 0 1 0 1.5h-3.5v3.5a.75.75 0 0 1-1.5 0v-3.5h-3.5a.75.75 0 0 1 0-1.5h3.5v-3.5A.75.75 0 0 1 12 7Z"/>
@@ -2576,6 +2948,12 @@
                         <path d="M18.75 4A3.25 3.25 0 0 1 22 7.25v11.5A3.25 3.25 0 0 1 18.75 22H7.25A3.25 3.25 0 0 1 4 18.75v-6.248c.474.198.977.34 1.5.422v5.826c0 .208.036.408.103.594l5.823-5.701a2.25 2.25 0 0 1 3.02-.116l.128.116 5.822 5.702c.067-.186.104-.386.104-.595V7.25a1.75 1.75 0 0 0-1.75-1.75h-5.826a6.457 6.457 0 0 0-.422-1.5h6.248Zm-6.191 10.644-.084.07-5.807 5.687c.182.064.378.099.582.099h11.5c.203 0 .399-.035.58-.099l-5.805-5.686a.75.75 0 0 0-.966-.071ZM16.252 7.5a2.252 2.252 0 1 1 0 4.504 2.252 2.252 0 0 1 0-4.504ZM6.5 1a5.5 5.5 0 1 1 0 11 5.5 5.5 0 0 1 0-11Zm9.752 8a.752.752 0 1 0 0 1.504.752.752 0 0 0 0-1.504ZM6.5 3l-.09.007a.5.5 0 0 0-.402.402L6 3.5V6L3.498 6l-.09.008a.5.5 0 0 0-.402.402l-.008.09.008.09a.5.5 0 0 0 .402.402l.09.008H6v2.503l.008.09a.5.5 0 0 0 .402.402l.09.009.09-.009a.5.5 0 0 0 .402-.402l.008-.09V7L9.505 7l.09-.008a.5.5 0 0 0 .402-.402l.008-.09-.008-.09a.5.5 0 0 0-.403-.402L9.504 6H7V3.5l-.008-.09a.5.5 0 0 0-.402-.403L6.5 3Z"/>
                     </svg>
                     <span class="btn-label">添加图片</span>
+                </button>
+                <button class="toolbar-btn" id="importFileBtn" title="导入文件">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M18.5 20a.5.5 0 0 1-.5.5h-5.732A6.518 6.518 0 0 1 11.19 22H18a2 2 0 0 0 2-2V9.828a2 2 0 0 0-.586-1.414l-5.829-5.828a.491.491 0 0 0-.049-.04.63.63 0 0 1-.036-.03 2.072 2.072 0 0 0-.219-.18.652.652 0 0 0-.08-.044l-.048-.024-.05-.029c-.054-.031-.109-.063-.166-.087a1.977 1.977 0 0 0-.624-.138c-.02-.001-.04-.004-.059-.007A.605.605 0 0 0 12.172 2H6a2 2 0 0 0-2 2v7.498a6.451 6.451 0 0 1 1.5-.422V4a.5.5 0 0 1 .5-.5h6V8a2 2 0 0 0 2 2h4.5v10Zm-5-15.379L17.378 8.5H14a.5.5 0 0 1-.5-.5V4.621Z"/><path d="M12 17.5a5.5 5.5 0 1 0-11 0 5.5 5.5 0 0 0 11 0ZM7 18l.001 2.503a.5.5 0 1 1-1 0V18H3.496a.5.5 0 0 1 0-1H6v-2.5a.5.5 0 1 1 1 0V17h2.497a.5.5 0 0 1 0 1H7Z"/>
+                    </svg>
+                    <span class="btn-label">导入文件</span>
                 </button>
                 <button class="toolbar-btn" id="clearBtn" title="清空内容">
                     <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
@@ -2617,6 +2995,25 @@
                 <div class="squeeze-mask" id="leftMask"></div>
                 <div class="drag-overlay" id="dragOverlay">拖入图片以添加</div>
                 
+                <!-- Batch Toolbar (Top Left) -->
+                <div class="batch-toolbar" id="batchToolbar">
+                    <button class="batch-tool-btn" id="batchAddBtn" title="新建检测项">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>
+                        </svg>
+                    </button>
+                    <button class="batch-tool-btn" id="batchFileBtn" title="文件">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/>
+                        </svg>
+                    </button>
+                </div>
+
+                <!-- Batch List Container -->
+                <div class="batch-list-container" id="batchListContainer">
+                    <!-- Items will be injected here -->
+                </div>
+
                 <!-- 编辑选项 -->
                 <div class="edit-options" id="editOptions">
                 <button class="edit-btn" id="editCutBtn" title="剪切" disabled>
@@ -2875,6 +3272,28 @@
                         <path d="M17.75 3A3.25 3.25 0 0 1 21 6.25v11.5A3.25 3.25 0 0 1 17.75 21H6.25A3.25 3.25 0 0 1 3 17.75V6.25A3.25 3.25 0 0 1 6.25 3h11.5Zm.58 16.401-5.805-5.686a.75.75 0 0 0-.966-.071l-.084.07-5.807 5.687c.182.064.378.099.582.099h11.5c.203 0 .399-.035.58-.099l-5.805-5.686L18.33 19.4ZM17.75 4.5H6.25A1.75 1.75 0 0 0 4.5 6.25v11.5c0 .208.036.408.103.594l5.823-5.701a2.25 2.25 0 0 1 3.02-.116l.128.116 5.822 5.702c.067-.186.104-.386.104-.595V6.25a1.75 1.75 0 0 0-1.75-1.75Zm-2.498 2a2.252 2.252 0 1 1 0 4.504 2.252 2.252 0 0 1 0-4.504Zm0 1.5a.752.752 0 1 0 0 1.504.752.752 0 0 0 0-1.504Z"/>
                     </svg>
                     <span>添加图片</span>
+                </div>
+            </div>
+
+            <div class="context-menu" id="batchContextMenu">
+                <div class="context-menu-item" id="ctxBatchEdit">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/>
+                    </svg>
+                    <span>编辑内容</span>
+                </div>
+                <div class="context-menu-item" id="ctxBatchView">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/>
+                    </svg>
+                    <span>查看结果</span>
+                </div>
+                <div class="context-menu-separator"></div>
+                <div class="context-menu-item" id="ctxBatchDelete">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/>
+                    </svg>
+                    <span>删除</span>
                 </div>
             </div>
 
@@ -3557,6 +3976,15 @@
             function handleResizeMove(clientX) {
                 const containerRect = container.getBoundingClientRect();
                 let leftWidth = clientX - containerRect.left;
+                
+                // Batch Mode Constraint: Limit left panel to 60% max
+                if (typeof isBatchMode !== 'undefined' && isBatchMode) {
+                    const maxLeftWidth = containerRect.width * 0.6;
+                    if (leftWidth > maxLeftWidth) {
+                        leftWidth = maxLeftWidth;
+                    }
+                }
+
                 leftWidth = Math.max(0, Math.min(containerRect.width, leftWidth));
                 currentPercentage = (leftWidth / containerRect.width) * 100;
                 
@@ -5216,6 +5644,111 @@
                 }
             });
 
+            // 导入文件按钮
+            const importFileBtn = document.getElementById('importFileBtn');
+            if (importFileBtn) {
+                importFileBtn.addEventListener('click', async () => {
+                    try {
+                        const result = await window.electronAPI.invoke('select-file');
+                        if (result.canceled || !result.filePaths || result.filePaths.length === 0) return;
+
+                        const filePath = result.filePaths[0];
+                        const ext = filePath.split('.').pop().toLowerCase();
+
+                        if (ext === 'xlsx' || ext === 'xls') {
+                            // Excel: Ask for batch mode
+                            showCustomModal({
+                                title: '导入Excel文件',
+                                message: '检测到Excel文件，是否进入批量模式进行处理？',
+                                confirmText: '进入批量模式',
+                                cancelText: '仅导入内容',
+                                onConfirm: async () => {
+                                    if (!isBatchMode) enterBatchMode();
+                                    // Process Excel
+                                    const fileResult = await window.electronAPI.invoke('read-file-content', filePath);
+                                    if (fileResult.success && fileResult.type === 'excel') {
+                                        fileResult.data.forEach(item => {
+                                            addBatchItem(item.content, item.images);
+                                        });
+                                        renderBatchList();
+                                        showToast(`已导入 ${fileResult.data.length} 条数据`, 'success');
+                                    } else {
+                                        showToast('读取Excel失败: ' + (fileResult.error || '未知错误'), 'error');
+                                    }
+                                },
+                                onCancel: () => {
+                                    showToast('Excel文件通常包含多条数据，建议使用批量模式', 'info');
+                                }
+                            });
+                        } else if (ext === 'pdf') {
+                            const fileResult = await window.electronAPI.invoke('read-file-content', filePath);
+                            if (fileResult.success && fileResult.type === 'pdf') {
+                                const { text, images } = fileResult.data;
+                                
+                                if (isBatchMode) {
+                                    // Add to batch
+                                    const MAX_CHUNK_SIZE = 15000;
+                                    if (text.length > MAX_CHUNK_SIZE) {
+                                        const chunks = [];
+                                        let currentText = text;
+                                        while (currentText.length > 0) {
+                                            let chunk = currentText.substring(0, MAX_CHUNK_SIZE);
+                                            if (currentText.length > MAX_CHUNK_SIZE) {
+                                                const lastNewline = chunk.lastIndexOf('\n');
+                                                const lastPeriod = chunk.lastIndexOf('。');
+                                                const splitIndex = Math.max(lastNewline, lastPeriod);
+                                                if (splitIndex > MAX_CHUNK_SIZE * 0.8) {
+                                                    chunk = currentText.substring(0, splitIndex + 1);
+                                                }
+                                            }
+                                            chunks.push(chunk);
+                                            currentText = currentText.substring(chunk.length);
+                                        }
+                                        chunks.forEach((chunk, index) => {
+                                            const chunkImages = index === 0 ? images : [];
+                                            addBatchItem(chunk, chunkImages);
+                                        });
+                                    } else {
+                                        addBatchItem(text, images);
+                                    }
+                                    renderBatchList();
+                                    showToast('PDF已添加到批量列表', 'success');
+                                } else {
+                                    // Import to main input
+                                    const textInput = document.getElementById('textInput');
+                                    if (textInput) {
+                                        textInput.innerText = text;
+                                        updateEditorStats();
+                                    }
+                                    
+                                    // Handle images
+                                    if (images && images.length > 0) {
+                                        images.forEach(imgStr => {
+                                            if (uploadedImages.length < maxImages) {
+                                                uploadedImages.push({
+                                                    id: Date.now() + Math.random(),
+                                                    url: imgStr,
+                                                    name: 'PDF Image',
+                                                    file: null
+                                                });
+                                            }
+                                        });
+                                        renderImages();
+                                        updateBtnState();
+                                    }
+                                    showToast('PDF内容已导入', 'success');
+                                }
+                            } else {
+                                showToast('读取PDF失败: ' + (fileResult.error || '未知错误'), 'error');
+                            }
+                        }
+                    } catch (error) {
+                        console.error('Import failed:', error);
+                        showToast('导入失败', 'error');
+                    }
+                });
+            }
+
             // 清空按钮
             document.getElementById('clearBtn').addEventListener('click', function() {
                 showCustomModal(() => {
@@ -5239,6 +5772,12 @@
             let lastTextContent = '';
             let lastImages = [];
             document.getElementById('detectBtn').addEventListener('click', function() {
+                // Batch Mode Interception
+                if (typeof isBatchMode !== 'undefined' && isBatchMode) {
+                    startBatchDetection();
+                    return;
+                }
+
                 const textContent = document.getElementById('textInput').innerText.trim();
                 const htmlContent = document.getElementById('textInput').innerHTML; // Get HTML content
                 // 优先判断内容是否为空
@@ -5571,7 +6110,11 @@
             let imagesToRender = [];
             if (images && images.length > 0) {
                  const limitedImages = images.slice(0, 4);
-                 imagesToRender = limitedImages.map(img => typeof img === 'string' ? {url: img, name: 'Image'} : img);
+                 imagesToRender = limitedImages.map(img => {
+                     if (typeof img === 'string') return {url: img, name: 'Image'};
+                     if (img && typeof img === 'object' && img.url) return img;
+                     return {url: '', name: 'Invalid Image'};
+                 }).filter(img => img.url);
             }
             
             if (imagesToRender.length > 0) {
@@ -6640,7 +7183,11 @@
             if (originalImages && originalImages.length > 0) {
                  // 限制最多显示4张图片
                  const limitedImages = originalImages.slice(0, 4);
-                 imagesToRender = limitedImages.map(img => typeof img === 'string' ? {url: img, name: 'Image'} : img);
+                 imagesToRender = limitedImages.map(img => {
+                     if (typeof img === 'string') return {url: img, name: 'Image'};
+                     if (img && typeof img === 'object' && img.url) return img;
+                     return {url: '', name: 'Invalid Image'};
+                 }).filter(img => img.url);
             }
             
             if (imagesToRender.length > 0) {
@@ -6829,6 +7376,14 @@
             newChatBtn.addEventListener('click', (e) => {
                 e.stopPropagation();
                 
+                if (isBatchMode) {
+                    // In Batch Mode: Add new item and jump to it
+                    const newId = addBatchItem('', []);
+                    renderBatchList();
+                    enterBatchEditMode(newId);
+                    return;
+                }
+
                 // Reset UI to initial state without clearing text input
                 const resultItem = document.getElementById('resultItem');
                 const initialState = document.getElementById('initialState');
@@ -6881,11 +7436,15 @@
             
             // Check if click is inside context menu or modal
             const historyContextMenu = document.getElementById('historyContextMenu');
-            const isInsideContextMenu = historyContextMenu && historyContextMenu.contains(e.target);
+            const isInsideHistoryMenu = historyContextMenu && historyContextMenu.contains(e.target);
+            
+            const batchContextMenu = document.getElementById('batchContextMenu');
+            const isInsideBatchMenu = batchContextMenu && batchContextMenu.contains(e.target);
+            
             const customModal = document.getElementById('customModal');
             const isInsideModal = customModal && customModal.classList.contains('active') && customModal.contains(e.target);
             
-            if (!isInsideSidebar && !isToggleButton && !isInsideContextMenu && !isInsideModal) {
+            if (!isInsideSidebar && !isToggleButton && !isInsideHistoryMenu && !isInsideBatchMenu && !isInsideModal) {
                 toggleSidebar(false);
             }
         }
@@ -7007,21 +7566,32 @@
 
         // Close context menu on click outside
         document.addEventListener('pointerdown', (e) => {
-            const menu = document.getElementById('historyContextMenu');
-            if (menu && menu.classList.contains('active') && !menu.contains(e.target)) {
-                menu.classList.remove('active');
+            const historyMenu = document.getElementById('historyContextMenu');
+            if (historyMenu && historyMenu.classList.contains('active') && !historyMenu.contains(e.target)) {
+                historyMenu.classList.remove('active');
+            }
+            
+            const batchMenu = document.getElementById('batchContextMenu');
+            if (batchMenu && batchMenu.classList.contains('active') && !batchMenu.contains(e.target)) {
+                batchMenu.classList.remove('active');
             }
         });
 
         // Close on blur/resize like other menus
         window.addEventListener('blur', () => {
-            const menu = document.getElementById('historyContextMenu');
-            if (menu) menu.classList.remove('active');
+            const historyMenu = document.getElementById('historyContextMenu');
+            if (historyMenu) historyMenu.classList.remove('active');
+            
+            const batchMenu = document.getElementById('batchContextMenu');
+            if (batchMenu) batchMenu.classList.remove('active');
         });
         
         window.addEventListener('resize', () => {
-            const menu = document.getElementById('historyContextMenu');
-            if (menu) menu.classList.remove('active');
+            const historyMenu = document.getElementById('historyContextMenu');
+            if (historyMenu) historyMenu.classList.remove('active');
+            
+            const batchMenu = document.getElementById('batchContextMenu');
+            if (batchMenu) batchMenu.classList.remove('active');
         });
 
         async function deleteHistoryItem(item) {
@@ -7206,6 +7776,584 @@
                 updateBtnState();
             }
         })();
+
+        // --- Batch Mode Logic ---
+        let isBatchMode = false;
+        let batchItems = []; // { id, content, images, result, progress, score }
+        let isBatchEditMode = false;
+        let currentBatchEditId = null;
+        let batchCounter = 1;
+
+        const batchModeToggle = document.getElementById('batchModeToggle');
+        const batchListContainer = document.getElementById('batchListContainer');
+        const batchExitBtn = document.getElementById('batchExitBtn');
+        const batchContextMenu = document.getElementById('batchContextMenu');
+        let currentBatchContextId = null;
+
+        // Toggle Batch Mode
+        if (batchModeToggle) {
+            batchModeToggle.addEventListener('click', () => {
+                if (isBatchMode) {
+                    // Exit Batch Mode
+                    showCustomModal({
+                        title: '退出批量模式',
+                        message: '退出将清空当前批量列表中的所有内容，确定要退出吗？',
+                        confirmText: '退出',
+                        cancelText: '取消',
+                        onConfirm: () => {
+                            exitBatchMode();
+                        }
+                    });
+                } else {
+                    // Enter Batch Mode
+                    enterBatchMode();
+                }
+            });
+        }
+
+        // Batch Toolbar Buttons
+        const batchAddBtn = document.getElementById('batchAddBtn');
+        if (batchAddBtn) {
+            batchAddBtn.addEventListener('click', () => {
+                const newId = addBatchItem('', []);
+                renderBatchList();
+                enterBatchEditMode(newId);
+            });
+        }
+
+        const batchFileBtn = document.getElementById('batchFileBtn');
+        if (batchFileBtn) {
+            batchFileBtn.addEventListener('click', async () => {
+                try {
+                    const result = await window.electronAPI.invoke('select-file');
+                    if (result.canceled || !result.filePaths || result.filePaths.length === 0) return;
+
+                    for (const filePath of result.filePaths) {
+                        const fileResult = await window.electronAPI.invoke('read-file-content', filePath);
+                        if (fileResult.success) {
+                            if (fileResult.type === 'pdf') {
+                                const { text, images } = fileResult.data;
+                                
+                                // Handle Word Count Limit (Split if > 15000 chars)
+                                const MAX_CHUNK_SIZE = 15000;
+                                if (text.length > MAX_CHUNK_SIZE) {
+                                    const chunks = [];
+                                    let currentText = text;
+                                    while (currentText.length > 0) {
+                                        let chunk = currentText.substring(0, MAX_CHUNK_SIZE);
+                                        // Try to split at a newline or period to be cleaner
+                                        if (currentText.length > MAX_CHUNK_SIZE) {
+                                            const lastNewline = chunk.lastIndexOf('\n');
+                                            const lastPeriod = chunk.lastIndexOf('。');
+                                            const splitIndex = Math.max(lastNewline, lastPeriod);
+                                            
+                                            if (splitIndex > MAX_CHUNK_SIZE * 0.8) { // Only if split point is near the end
+                                                chunk = currentText.substring(0, splitIndex + 1);
+                                            }
+                                        }
+                                        chunks.push(chunk);
+                                        currentText = currentText.substring(chunk.length);
+                                    }
+                                    
+                                    // Add chunks as separate items
+                                    chunks.forEach((chunk, index) => {
+                                        // Attach images only to the first chunk to avoid duplication
+                                        const chunkImages = index === 0 ? images : [];
+                                        addBatchItem(chunk, chunkImages);
+                                    });
+                                    showToast(`PDF内容过长，已自动拆分为 ${chunks.length} 个检测项`, 'info');
+                                } else {
+                                    addBatchItem(text, images);
+                                }
+                            } else if (fileResult.type === 'excel') {
+                                const items = fileResult.data;
+                                if (items && items.length > 0) {
+                                    items.forEach(item => {
+                                        addBatchItem(item.content, item.images);
+                                    });
+                                }
+                            }
+                        } else {
+                            console.error('Error reading file:', fileResult.error);
+                            alert('读取文件失败: ' + fileResult.error);
+                        }
+                    }
+                    renderBatchList();
+                } catch (error) {
+                    console.error('File selection error:', error);
+                }
+            });
+        }
+
+        function enterBatchMode() {
+            isBatchMode = true;
+            document.body.classList.add('batch-mode-active');
+            
+            // Check for existing content
+            const textInput = document.getElementById('textInput');
+            const content = textInput.innerText.trim();
+            const hasImages = uploadedImages.length > 0;
+            
+            batchItems = [];
+            batchCounter = 1;
+            
+            if (content || hasImages) {
+                addBatchItem(content, [...uploadedImages]);
+                // Clear editor
+                textInput.innerHTML = '';
+                uploadedImages = [];
+                renderImages();
+                updateEditorStats();
+            }
+            
+            renderBatchList();
+            
+            // Hide sidebar
+            toggleSidebar(false);
+        }
+
+        function exitBatchMode() {
+            isBatchMode = false;
+            isBatchEditMode = false;
+            currentBatchEditId = null;
+            batchItems = [];
+            
+            document.body.classList.remove('batch-mode-active');
+            document.body.classList.remove('batch-edit-mode');
+            
+            // Reset Editor
+            const textInput = document.getElementById('textInput');
+            textInput.innerHTML = '';
+            uploadedImages = [];
+            renderImages();
+            updateEditorStats();
+            
+            // Show sidebar
+            // toggleSidebar(true); // Optional, maybe keep collapsed
+        }
+
+        function addBatchItem(content, images) {
+            const id = Date.now() + Math.random();
+            batchItems.push({
+                id,
+                content: content || '',
+                images: images || [],
+                result: null,
+                progress: 0,
+                score: 0,
+                status: 'idle' // idle, analyzing, done, error
+            });
+            return id;
+        }
+
+        function renderBatchList() {
+            if (!batchListContainer) return;
+            
+            // 1. Mark all existing items as stale
+            const existingItems = new Map();
+            Array.from(batchListContainer.children).forEach(el => {
+                if (el.dataset.id) existingItems.set(el.dataset.id, el);
+            });
+            
+            batchItems.forEach((item, index) => {
+                let div = existingItems.get(String(item.id));
+                const isNew = !div;
+                
+                if (isNew) {
+                    div = document.createElement('div');
+                    div.className = 'batch-item';
+                    div.dataset.id = item.id;
+                    
+                    // Events (only attach once)
+                    div.addEventListener('click', () => {
+                        if (item.result) {
+                            const displayContent = item.parsedContent || item.content;
+                            const displayImages = item.parsedImages || item.images;
+                            showAnalysisResult(item.result, displayContent, displayImages, false);
+                        } else {
+                             const resultItem = document.getElementById('resultItem');
+                             const initialState = document.getElementById('initialState');
+                             if(resultItem) resultItem.style.display = 'none';
+                             if(initialState) initialState.style.display = 'flex';
+                        }
+                    });
+                    
+                    div.addEventListener('dblclick', () => {
+                        enterBatchEditMode(item.id);
+                    });
+                    
+                    div.addEventListener('contextmenu', (e) => {
+                        e.preventDefault();
+                        currentBatchContextId = item.id;
+                        showBatchContextMenu(e);
+                    });
+                    
+                    // Initial HTML structure
+                    div.innerHTML = `
+                        <div class="batch-item-index"></div>
+                        <div class="batch-item-content">
+                            <div class="batch-item-preview"></div>
+                            <div class="batch-item-meta"></div>
+                        </div>
+                        <div class="batch-progress">
+                            <svg viewBox="0 0 40 40">
+                                <circle class="batch-progress-bg" cx="20" cy="20" r="16"></circle>
+                                <circle class="batch-progress-value" cx="20" cy="20" r="16"></circle>
+                            </svg>
+                            <div class="batch-progress-text"></div>
+                        </div>
+                    `;
+                    
+                    batchListContainer.appendChild(div);
+                } else {
+                    // Remove from stale map so we don't delete it
+                    existingItems.delete(String(item.id));
+                }
+                
+                // Update Content (Diffing)
+                
+                // Classes
+                if (item.id === currentBatchEditId) div.classList.add('active');
+                else div.classList.remove('active');
+                
+                if (item.status === 'skipped') div.classList.add('skipped');
+                else div.classList.remove('skipped');
+                
+                // Text Content
+                const contentToDisplay = item.parsedContent || item.content;
+                const previewText = contentToDisplay 
+                    ? contentToDisplay.substring(0, 20) + (contentToDisplay.length > 20 ? '...' : '')
+                    : ((item.images && item.images.length > 0) ? '[图片]' : '无内容');
+                
+                const indexEl = div.querySelector('.batch-item-index');
+                if (indexEl.textContent !== `#${index + 1}`) indexEl.textContent = `#${index + 1}`;
+
+                const previewEl = div.querySelector('.batch-item-preview');
+                if (previewEl.textContent !== previewText) previewEl.textContent = previewText;
+                
+                let statusText = '未检测';
+                if (item.status === 'done') statusText = `评分: ${item.score}%`;
+                else if (item.status === 'analyzing') statusText = '检测中...';
+                else if (item.status === 'skipped') statusText = '已跳过';
+                else if (item.status === 'error') statusText = '错误';
+                
+                const metaEl = div.querySelector('.batch-item-meta');
+                if (metaEl.textContent !== statusText) metaEl.textContent = statusText;
+                
+                // Progress Ring
+                const radius = 16;
+                const circumference = 2 * Math.PI * radius;
+                
+                let progressValue = 0;
+                if (item.status === 'done') {
+                    progressValue = item.score;
+                } else if (item.status === 'analyzing') {
+                    // Handled by CSS animation
+                    progressValue = 0; 
+                } else {
+                    progressValue = item.progress;
+                }
+                
+                const offset = circumference - (progressValue / 100) * circumference;
+                const isAnalyzing = item.status === 'analyzing';
+
+                const progressContainer = div.querySelector('.batch-progress');
+                const svg = div.querySelector('svg');
+
+                if (svg.classList.contains('rotating')) svg.classList.remove('rotating');
+                if (svg.classList.contains('analyzing')) svg.classList.remove('analyzing');
+
+                if (isAnalyzing) {
+                    progressContainer.classList.add('loading');
+                } else {
+                    progressContainer.classList.remove('loading');
+                }
+
+                const progressCircle = div.querySelector('.batch-progress-value');
+                
+                // Only update styles via JS if NOT analyzing (CSS handles analyzing state)
+                if (!isAnalyzing) {
+                    // Use cached state to prevent DOM thrashing
+                    const lastState = div._lastState || {};
+                    const newState = {
+                        dashArray: circumference,
+                        dashOffset: offset,
+                        stroke: getScoreColor(item.score)
+                    };
+                    
+                    // Only update DOM if values actually changed
+                    if (lastState.dashArray !== newState.dashArray) {
+                        progressCircle.style.strokeDasharray = `${newState.dashArray}`;
+                    }
+                    if (lastState.dashOffset !== newState.dashOffset) {
+                        progressCircle.style.strokeDashoffset = `${newState.dashOffset}`;
+                    }
+                    if (lastState.stroke !== newState.stroke) {
+                        progressCircle.style.stroke = newState.stroke;
+                    }
+                    
+                    // Update cache
+                    div._lastState = newState;
+                }
+                
+                const progressText = div.querySelector('.batch-progress-text');
+                if (isAnalyzing) {
+                    if (progressText.textContent !== '') progressText.textContent = '';
+                } else if (progressText.textContent !== String(item.score)) {
+                    progressText.textContent = item.score;
+                }
+            });
+            
+            // Remove stale items
+            existingItems.forEach(el => el.remove());
+        }
+        
+        function getScoreColor(score) {
+            if (score >= 80) return 'var(--success-color)';
+            if (score >= 60) return 'var(--warning-color)';
+            return 'var(--danger-color)';
+        }
+
+        function showBatchContextMenu(e) {
+            const menu = document.getElementById('batchContextMenu');
+            if (!menu) return;
+            
+            menu.style.visibility = 'hidden';
+            menu.classList.add('active');
+            const menuWidth = menu.offsetWidth;
+            const menuHeight = menu.offsetHeight;
+            menu.classList.remove('active');
+            menu.style.visibility = 'visible';
+            
+            let x = e.clientX;
+            let y = e.clientY;
+            
+            const winWidth = window.innerWidth;
+            const winHeight = window.innerHeight;
+            
+            if (x + menuWidth > winWidth) x = winWidth - menuWidth - 5;
+            if (y + menuHeight > winHeight) y = winHeight - menuHeight - 5;
+            
+            menu.style.left = x + 'px';
+            menu.style.top = y + 'px';
+            menu.classList.add('active');
+            
+            // Close other menus
+            document.querySelectorAll('.context-menu.active').forEach(m => {
+                if (m !== menu) m.classList.remove('active');
+            });
+        }
+        
+        // Batch Context Menu Actions
+        document.getElementById('ctxBatchEdit')?.addEventListener('click', () => {
+            if (currentBatchContextId) enterBatchEditMode(currentBatchContextId);
+            document.getElementById('batchContextMenu').classList.remove('active');
+        });
+        
+        document.getElementById('ctxBatchView')?.addEventListener('click', () => {
+            const item = batchItems.find(i => i.id === currentBatchContextId);
+            if (item && item.result) {
+                const displayContent = item.parsedContent || item.content;
+                const displayImages = item.parsedImages || item.images;
+                showAnalysisResult(item.result, displayContent, displayImages, false);
+            }
+            document.getElementById('batchContextMenu').classList.remove('active');
+        });
+        
+        document.getElementById('ctxBatchDelete')?.addEventListener('click', () => {
+            if (currentBatchContextId) {
+                batchItems = batchItems.filter(i => i.id !== currentBatchContextId);
+                renderBatchList();
+            }
+            document.getElementById('batchContextMenu').classList.remove('active');
+        });
+
+        function enterBatchEditMode(id) {
+            const item = batchItems.find(i => i.id === id);
+            if (!item) return;
+            
+            currentBatchEditId = id;
+            isBatchEditMode = true;
+            document.body.classList.add('batch-edit-mode');
+            
+            // Restore content to editor
+            const textInput = document.getElementById('textInput');
+            textInput.innerText = item.content; // Or innerHTML if we support rich text
+            uploadedImages = [...item.images];
+            renderImages();
+            updateEditorStats();
+            
+            // Show sidebar
+            // toggleSidebar(true); // Disabled per request
+        }
+        
+        // Exit Batch Edit Button Logic
+        if (batchExitBtn) {
+            batchExitBtn.addEventListener('click', () => {
+                saveBatchItem();
+                
+                // Cleanup empty items: Keep at most one empty item
+                const newBatchItems = [];
+                let hasEmpty = false;
+                
+                for (const item of batchItems) {
+                    const isEmpty = !item.content && (!item.images || item.images.length === 0);
+                    if (isEmpty) {
+                        if (!hasEmpty) {
+                            newBatchItems.push(item);
+                            hasEmpty = true;
+                        }
+                        // else skip subsequent empty items
+                    } else {
+                        newBatchItems.push(item);
+                    }
+                }
+                batchItems = newBatchItems;
+
+                isBatchEditMode = false;
+                currentBatchEditId = null;
+                document.body.classList.remove('batch-edit-mode');
+                toggleSidebar(false); // Hide sidebar when returning to list
+                renderBatchList();
+            });
+        }
+
+        function saveBatchItem() {
+            if (!currentBatchEditId) return;
+            const item = batchItems.find(i => i.id === currentBatchEditId);
+            if (item) {
+                const textInput = document.getElementById('textInput');
+                item.content = textInput.innerText.trim();
+                item.images = [...uploadedImages];
+            }
+        }
+
+        async function startBatchDetection() {
+            const detectBtn = document.getElementById('detectBtn');
+            if (detectBtn.classList.contains('loading')) return;
+            
+            detectBtn.classList.add('loading');
+            detectBtn.innerHTML = '批量检测中...';
+            detectBtn.disabled = true;
+            
+            // Calculate total progress
+            const totalItems = batchItems.length;
+            let processedItems = 0;
+            
+            for (let i = 0; i < totalItems; i++) {
+                const item = batchItems[i];
+                
+                // Skip empty items
+                if (!item.content && (!item.images || item.images.length === 0)) {
+                    item.status = 'skipped';
+                    continue;
+                }
+
+                if (item.status === 'done') {
+                    processedItems++;
+                    continue;
+                }
+                
+                item.status = 'analyzing';
+                renderBatchList(); // Update UI to show "analyzing"
+                
+                try {
+                    let imageUrls = [];
+                    if (item.images && item.images.length > 0) {
+                        imageUrls = item.images.slice(0, 4).map(img => typeof img === 'string' ? img : img.url);
+                    }
+                    
+                    let sourceUrl = '';
+                    if (isURL(item.content)) {
+                        sourceUrl = item.content;
+                    }
+                    
+                    // Simulate progress for item
+                    let itemProgress = 0;
+                    const progressInterval = setInterval(() => {
+                        if (itemProgress < 90) {
+                            itemProgress += 5;
+                            item.progress = itemProgress;
+                            renderBatchList(); // Re-render to show progress
+                        }
+                    }, 200);
+                    
+                    let analysisResult;
+                    
+                    // If it's a URL, extract content first
+                    if (sourceUrl) {
+                        try {
+                            // Call extract-content
+                            const extractRes = await window.electronAPI.invoke('extract-content-sync', sourceUrl);
+                            if (extractRes.success) {
+                                // Use extracted content for analysis
+                                const extractedText = extractRes.textContent || extractRes.content;
+                                const extractedImages = extractRes.images || [];
+                                
+                                // Store parsed content in item for display
+                                item.parsedContent = extractedText;
+                                item.parsedImages = extractedImages;
+                                
+                                // Analyze extracted content
+                                const response = await window.electronAPI.invoke('analyze-content', { 
+                                    text: extractedText, 
+                                    imageUrls: extractedImages, 
+                                    url: sourceUrl 
+                                });
+                                analysisResult = response;
+                            } else {
+                                throw new Error(extractRes.error || '提取失败');
+                            }
+                        } catch (e) {
+                            analysisResult = { success: false, error: e.message };
+                        }
+                    } else {
+                        // Normal analysis
+                        const response = await window.electronAPI.invoke('analyze-content', { 
+                            text: item.content, 
+                            imageUrls, 
+                            url: sourceUrl 
+                        });
+                        analysisResult = response;
+                    }
+                    
+                    clearInterval(progressInterval);
+                    
+                    if (analysisResult.success) {
+                        item.result = analysisResult.data;
+                        const fakeProb = analysisResult.data.probability;
+                        item.score = Math.round(fakeProb * 100); // Assuming probability is the score (0-100)
+                        item.status = 'done';
+                        item.progress = 100;
+
+                        // Save to history
+                        const contentToSave = item.parsedContent || item.content;
+                        const imagesToSave = item.parsedImages || item.images;
+                        await saveToHistory(contentToSave, item.result, imagesToSave, false);
+
+                    } else {
+                        item.status = 'error';
+                        item.progress = 0;
+                        console.error(analysisResult.error);
+                    }
+                } catch (err) {
+                    console.error(err);
+                    item.status = 'error';
+                    item.progress = 0;
+                }
+                
+                processedItems++;
+                renderBatchList();
+                
+                // Update total progress on button
+                detectBtn.innerHTML = `批量检测中 (${processedItems}/${totalItems})`;
+            }
+            
+            detectBtn.classList.remove('loading');
+            detectBtn.innerHTML = '开始检测';
+            detectBtn.disabled = false;
+            showToast('批量检测完成', 'success');
+        }
     </script>
 </body>
 </html>

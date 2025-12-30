@@ -47,7 +47,9 @@
     "cheerio": "^1.1.2",
     "electron-squirrel-startup": "^1.0.1",
     "jsdom": "^27.3.0",
-    "openai": "^6.15.0"
+    "openai": "^6.15.0",
+    "pdf-parse": "^1.1.1",
+    "xlsx": "^0.18.5"
   },
   "build": {
     "appId": "com.detectfake.app",

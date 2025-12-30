@@ -612,6 +612,33 @@ class DetectApp {
       await this.handleExtractContent(event, url);
     });
 
+    // 同步提取内容事件 (Promise based)
+    ipcMain.handle('extract-content-sync', async (event, url) => {
+      try {
+        // 验证URL
+        if (!url || typeof url !== 'string') {
+          throw new Error('无效的URL');
+        }
+
+        // 限制内容长度
+        if (url.length > 2000) {
+          throw new Error('URL过长');
+        }
+
+        // 执行内容提取
+        const result = await this.extractionManager.extractContent(event, url);
+        return result;
+        
+      } catch (error) {
+        console.error('内容提取错误:', error);
+        return {
+          success: false,
+          error: error.message || '内容提取失败',
+          url: url
+        };
+      }
+    });
+
     // 大模型分析事件
     ipcMain.handle('analyze-content', async (event, { text, imageUrls, url }) => {
       try {
@@ -707,6 +734,25 @@ class DetectApp {
       }
     });
 
+    // 选择文件（PDF/Excel）
+    ipcMain.handle('select-file', async (event) => {
+      try {
+        const mainWindow = this.getMainWindow();
+        const { canceled, filePaths } = await dialog.showOpenDialog(mainWindow, {
+          properties: ['openFile', 'multiSelections'],
+          filters: [
+            { name: 'Documents', extensions: ['pdf', 'xlsx', 'xls'] }
+          ]
+        });
+
+        if (canceled) return { canceled: true, filePaths: [] };
+        return { canceled: false, filePaths };
+      } catch (err) {
+        console.error('select-file error:', err);
+        return { canceled: true, error: err.message };
+      }
+    });
+
     // 返回窗口是否处于最大化
     ipcMain.handle('window-is-maximized', () => {
       const w = this.getMainWindow();
@@ -736,6 +782,138 @@ class DetectApp {
     });
 
     // 历史记录相关
+    ipcMain.handle('read-file-content', async (event, filePath) => {
+      try {
+        const ext = path.extname(filePath).toLowerCase();
+        
+        if (ext === '.pdf') {
+          try {
+            const pdf = require('pdf-parse');
+            const dataBuffer = fs.readFileSync(filePath);
+            const data = await pdf(dataBuffer);
+            
+            // PDF Text Cleanup
+            let text = data.text;
+            // 1. Remove multiple newlines (replace 2+ newlines with 1)
+            text = text.replace(/\n\s*\n/g, '\n');
+            // 2. Remove page numbers (simple heuristic: single digits on a line)
+            text = text.replace(/^\s*\d+\s*$/gm, '');
+            // 3. Trim
+            text = text.trim();
+            
+            // PDF Image Extraction (Simple JPEG Carving)
+            // Note: This is a basic heuristic to find embedded JPEGs without heavy dependencies.
+            // It scans for JPEG headers (FF D8) and footers (FF D9).
+            const images = [];
+            try {
+              let offset = 0;
+              const maxImages = 10;
+              const minSize = 1024; // 1KB
+              
+              while (offset < dataBuffer.length && images.length < maxImages) {
+                // Find JPEG Start (FF D8)
+                const start = dataBuffer.indexOf(Buffer.from([0xFF, 0xD8]), offset);
+                if (start === -1) break;
+                
+                // Find JPEG End (FF D9)
+                // We look for the next FF D9
+                const end = dataBuffer.indexOf(Buffer.from([0xFF, 0xD9]), start);
+                if (end === -1) break;
+                
+                const length = end - start + 2;
+                if (length > minSize) {
+                  const imageBuffer = dataBuffer.subarray(start, end + 2);
+                  const base64 = imageBuffer.toString('base64');
+                  images.push(`data:image/jpeg;base64,${base64}`);
+                }
+                
+                offset = end + 2;
+              }
+            } catch (imgErr) {
+              console.error('PDF Image extraction failed:', imgErr);
+            }
+            
+            return { 
+              success: true, 
+              type: 'pdf', 
+              data: { 
+                text: text, 
+                images: images 
+              } 
+            };
+          } catch (e) {
+            if (e.code === 'MODULE_NOT_FOUND') {
+              return { success: false, error: '缺少依赖: pdf-parse。请运行 npm install pdf-parse' };
+            }
+            throw e;
+          }
+        } else if (ext === '.xlsx' || ext === '.xls') {
+          try {
+            const xlsx = require('xlsx');
+            const workbook = xlsx.readFile(filePath);
+            const sheetName = workbook.SheetNames[0];
+            const sheet = workbook.Sheets[sheetName];
+            const rows = xlsx.utils.sheet_to_json(sheet, { header: 1 });
+            
+            const items = [];
+            
+            // Helper to check if string is URL
+            const isUrl = (str) => {
+              if (typeof str !== 'string') return false;
+              return /^(http|https):\/\/[^ "]+$/.test(str);
+            };
+
+            for (let i = 0; i < rows.length; i++) {
+              const row = rows[i];
+              if (!row || row.length === 0) continue;
+              
+              const col1 = row[0];
+              const col2 = row[1];
+              
+              if (isUrl(col1)) {
+                // First column is URL -> Import as URL item
+                items.push({ content: col1, images: [] });
+              } else if (col1) {
+                // First column is Text
+                const content = String(col1);
+                const images = [];
+                
+                if (col2) {
+                  if (isUrl(col2)) {
+                    // Second column is URL (Image Link)
+                    images.push(col2);
+                  } else {
+                    // Second column might be local path or other text
+                    // User said "if it is an image, import image"
+                    // We assume it's a path if it's not a URL
+                    // Or we can check if it looks like an image path
+                    const col2Str = String(col2);
+                    if (col2Str.match(/\.(jpg|jpeg|png|gif|webp)$/i)) {
+                       images.push(col2Str);
+                    }
+                  }
+                }
+                items.push({ content, images });
+              }
+            }
+            
+            return { success: true, type: 'excel', data: items };
+            
+          } catch (e) {
+            if (e.code === 'MODULE_NOT_FOUND') {
+              return { success: false, error: '缺少依赖: xlsx。请运行 npm install xlsx' };
+            }
+            throw e;
+          }
+        }
+        
+        return { success: false, error: '不支持的文件格式' };
+      } catch (error) {
+        console.error('Read file error:', error);
+        return { success: false, error: error.message };
+      }
+    });
+
     ipcMain.handle('save-history', async (event, historyItem) => {
       try {
         const historyDir = path.join(app.getPath('userData'), 'history');
