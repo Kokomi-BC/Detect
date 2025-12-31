@@ -71,7 +71,7 @@
 
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-            background: var(--bg-primary);
+            background: var(--bg-secondary);
             color: var(--text-primary);
             height: 100vh;
             overflow: hidden;
@@ -88,7 +88,7 @@
         
         html {
             height: 100%;
-            background: var(--bg-primary);
+            background: var(--bg-secondary);
             overflow: hidden;
             transition: background-color var(--transition-fast);
         }
@@ -341,23 +341,28 @@
             transition: all 0.2s;
             position: relative;
             user-select: none;
+            box-shadow: var(--shadow-sm);
         }
         
         .batch-item:hover {
             border-color: var(--accent-color);
-            box-shadow: var(--shadow-sm);
+            box-shadow: var(--shadow-md);
             transform: translateY(-2px);
         }
         
         .batch-item.active {
             border-color: var(--accent-color);
-            background: var(--accent-light);
+            border-width: 2px;
+            background: var(--bg-primary);
+            box-shadow: var(--shadow-accent);
+            padding: 15px; /* Adjust padding to compensate for 2px border */
         }
 
         .batch-item.skipped {
             opacity: 0.6;
-            background: var(--bg-secondary);
+            background: var(--bg-tertiary);
             border-style: dashed;
+            box-shadow: none;
         }
 
         .batch-item-index {
@@ -570,7 +575,7 @@
             flex: 1;
             display: flex;
             flex-direction: column;
-            background: var(--bg-primary);
+            background: var(--bg-secondary);
             min-width: 0 !important; /* Force min-width 0 to allow full collapse */
             max-width: none; /* Removed max-width limit */
             transition: background-color 0.3s, flex 0.4s cubic-bezier(0.4, 0, 0.2, 1);
@@ -5664,6 +5669,8 @@
                         const filePath = result.filePaths[0];
                         const ext = filePath.split('.').pop().toLowerCase();
 
+                        console.log('[import-file] chosen', { filePath, ext });
+
                         if (ext === 'xlsx' || ext === 'xls') {
                             // Excel: Ask for batch mode
                             showCustomModal({
@@ -5675,6 +5682,7 @@
                                     if (!isBatchMode) enterBatchMode();
                                     // Process Excel
                                     const fileResult = await window.electronAPI.invoke('read-file-content', filePath);
+                                    console.log('[import-file] excel result', fileResult);
                                     if (fileResult.success && fileResult.type === 'excel') {
                                         fileResult.data.forEach(item => {
                                             addBatchItem(item.content, item.images);
@@ -5691,8 +5699,15 @@
                             });
                         } else if (ext === 'pdf') {
                             const fileResult = await window.electronAPI.invoke('read-file-content', filePath);
+                            console.log('[import-file] pdf raw result', fileResult);
                             if (fileResult.success && fileResult.type === 'pdf') {
                                 const { text, images } = fileResult.data;
+                                const validImages = Array.isArray(images)
+                                    ? images.filter(img => typeof img === 'string' && img.trim().startsWith('data:image/') && img.trim().length > 'data:image/jpeg;base64,'.length)
+                                    : [];
+                                if (validImages.length !== (Array.isArray(images) ? images.length : 0)) {
+                                    console.warn('[import-file] pdf images sanitized', { before: Array.isArray(images) ? images.length : 0, after: validImages.length });
+                                }
                                 
                                 if (isBatchMode) {
                                     // Add to batch
@@ -5714,11 +5729,11 @@
                                             currentText = currentText.substring(chunk.length);
                                         }
                                         chunks.forEach((chunk, index) => {
-                                            const chunkImages = index === 0 ? images : [];
+                                            const chunkImages = index === 0 ? validImages : [];
                                             addBatchItem(chunk, chunkImages);
                                         });
                                     } else {
-                                        addBatchItem(text, images);
+                                        addBatchItem(text, validImages);
                                     }
                                     renderBatchList();
                                     showToast('PDF已添加到批量列表', 'success');
@@ -5731,8 +5746,8 @@
                                     }
                                     
                                     // Handle images
-                                    if (images && images.length > 0) {
-                                        images.forEach(imgStr => {
+                                    if (validImages.length > 0) {
+                                        validImages.forEach(imgStr => {
                                             if (uploadedImages.length < maxImages) {
                                                 uploadedImages.push({
                                                     id: Date.now() + Math.random(),
@@ -5748,6 +5763,7 @@
                                     showToast('PDF内容已导入', 'success');
                                 }
                             } else {
+                                console.error('[import-file] pdf read failed', fileResult);
                                 showToast('读取PDF失败: ' + (fileResult.error || '未知错误'), 'error');
                             }
                         }

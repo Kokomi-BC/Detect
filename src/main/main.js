@@ -1,4 +1,5 @@
 const { app, BrowserWindow, ipcMain, session, Menu, MenuItem, shell, nativeTheme, dialog, clipboard, nativeImage, net } = require('electron');
+const crypto = require('crypto');
 const path = require('path');
 const fs = require('fs');
 const { WindowManager, WindowType } = require('./windowManager');
@@ -783,14 +784,18 @@ class DetectApp {
 
     // 历史记录相关
     ipcMain.handle('read-file-content', async (event, filePath) => {
+      console.log('[read-file-content] start', { filePath });
       try {
         const ext = path.extname(filePath).toLowerCase();
+        console.log('[read-file-content] detected ext', ext);
         
         if (ext === '.pdf') {
           try {
             const pdf = require('pdf-parse');
             const dataBuffer = fs.readFileSync(filePath);
+            console.log('[read-file-content] pdf size(bytes)', dataBuffer.length);
             const data = await pdf(dataBuffer);
+            console.log('[read-file-content] pdf pages', data.numpages, 'rendered pages', data.numrender, 'info', data.info);
             
             // PDF Text Cleanup
             let text = data.text;
@@ -805,10 +810,12 @@ class DetectApp {
             // Note: This is a basic heuristic to find embedded JPEGs without heavy dependencies.
             // It scans for JPEG headers (FF D8) and footers (FF D9).
             const images = [];
+            const seenHashes = new Set();
             try {
               let offset = 0;
               const maxImages = 10;
-              const minSize = 1024; // 1KB
+              const minSize = 2048; // Raise floor to skip tiny/blank embeds
+              const startTime = Date.now();
               
               while (offset < dataBuffer.length && images.length < maxImages) {
                 // Find JPEG Start (FF D8)
@@ -823,28 +830,60 @@ class DetectApp {
                 const length = end - start + 2;
                 if (length > minSize) {
                   const imageBuffer = dataBuffer.subarray(start, end + 2);
-                  const base64 = imageBuffer.toString('base64');
-                  images.push(`data:image/jpeg;base64,${base64}`);
+                  // Validate buffer is a real image (non-empty, non-tiny)
+                  const imageObj = nativeImage.createFromBuffer(imageBuffer);
+                  if (imageObj.isEmpty()) {
+                    console.warn('[read-file-content] skip empty carved image', { start, end, length });
+                  } else {
+                    const { width, height } = imageObj.getSize();
+                    if (width < 8 || height < 8) {
+                      console.warn('[read-file-content] skip tiny carved image', { width, height, length });
+                    } else {
+                      const hash = crypto.createHash('sha1').update(imageBuffer).digest('hex');
+                      if (seenHashes.has(hash)) {
+                        console.warn('[read-file-content] skip duplicate carved image', { hash, length, width, height });
+                      } else {
+                        seenHashes.add(hash);
+                        const base64 = imageBuffer.toString('base64');
+                        images.push(`data:image/jpeg;base64,${base64}`);
+                      }
+                    }
+                  }
                 }
                 
                 offset = end + 2;
               }
+              console.log('[read-file-content] pdf image carve done', { found: images.length, elapsedMs: Date.now() - startTime });
             } catch (imgErr) {
               console.error('PDF Image extraction failed:', imgErr);
             }
             
+            // Sanitize images to avoid undefined/blank entries
+            const sanitizedImages = images.filter(img => {
+              if (typeof img !== 'string') return false;
+              const trimmed = img.trim();
+              return trimmed.startsWith('data:image/') && trimmed.length > 'data:image/jpeg;base64,'.length;
+            });
+
+            if (sanitizedImages.length !== images.length) {
+              console.warn('[read-file-content] pdf image sanitized', { before: images.length, after: sanitizedImages.length });
+            }
+
+            console.log('[read-file-content] pdf result summary', { textLength: text.length, images: sanitizedImages.length });
+
             return { 
               success: true, 
               type: 'pdf', 
               data: { 
                 text: text, 
-                images: images 
+                images: sanitizedImages 
               } 
             };
           } catch (e) {
             if (e.code === 'MODULE_NOT_FOUND') {
               return { success: false, error: '缺少依赖: pdf-parse。请运行 npm install pdf-parse' };
             }
+            console.error('[read-file-content] pdf parse error', e);
             throw e;
           }
         } else if (ext === '.xlsx' || ext === '.xls') {
@@ -854,6 +893,7 @@ class DetectApp {
             const sheetName = workbook.SheetNames[0];
             const sheet = workbook.Sheets[sheetName];
             const rows = xlsx.utils.sheet_to_json(sheet, { header: 1 });
+            console.log('[read-file-content] excel rows', rows.length);
             
             const items = [];
             
@@ -903,10 +943,12 @@ class DetectApp {
             if (e.code === 'MODULE_NOT_FOUND') {
               return { success: false, error: '缺少依赖: xlsx。请运行 npm install xlsx' };
             }
+            console.error('[read-file-content] excel parse error', e);
             throw e;
           }
         }
         
+        console.warn('[read-file-content] unsupported file format', { filePath, ext });
         return { success: false, error: '不支持的文件格式' };
       } catch (error) {
         console.error('Read file error:', error);
