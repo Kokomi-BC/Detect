@@ -2660,11 +2660,11 @@
             left: 16px;
             width: 40px;
             height: 40px;
-            border-radius: var(--radius-sm);
-            background: var(--bg-glass);
+            border-radius: 50%;
+            background: rgba(67, 97, 238, 0.15);
             backdrop-filter: blur(8px);
             -webkit-backdrop-filter: blur(8px);
-            border: 1px solid rgba(0,0,0,0.05);
+            border: 1px solid rgba(67, 97, 238, 0.3);
             display: flex;
             align-items: center;
             justify-content: center;
@@ -2674,7 +2674,7 @@
             pointer-events: none;
             transform: translateX(-10px);
             transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
-            color: var(--text-secondary);
+            color: var(--accent-color);
             box-shadow: var(--shadow-sm);
         }
 
@@ -2685,10 +2685,20 @@
         }
 
         .exit-detection-btn:hover {
-            background: var(--accent-light);
+            background: rgba(67, 97, 238, 0.25);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(67, 97, 238, 0.3);
+            border-color: var(--accent-color);
             color: var(--accent-color);
-            box-shadow: var(--shadow-accent);
-            transform: translateY(-1px);
+        }
+
+        /* Ensure background consistency in dark mode */
+        [data-theme="dark"] .exit-detection-btn {
+            background: rgba(67, 97, 238, 0.2);
+            border-color: rgba(67, 97, 238, 0.4);
+        }
+        [data-theme="dark"] .exit-detection-btn:hover {
+            background: rgba(67, 97, 238, 0.3);
         }
 
         /* Squeeze Masks */
