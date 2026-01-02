@@ -1,6 +1,6 @@
 {
   "name": "fake-news-detector",
-  "version": "2.0.1",
+  "version": "2.1.0",
   "description": "假新闻检测应用",
   "main": "src/main/index.js",
   "scripts": {
@@ -11,6 +11,7 @@
     "dev": "concurrently \"npm run build:dev -- --watch\" \"wait-on dist/Welcome.html && electron .\"",
     "package": "electron-builder --dir",
     "make": "electron-builder --win",
+    "make:portable": "electron-builder --win --x64 --config.portable.target=portable",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [
@@ -46,6 +47,7 @@
     "cheerio": "^1.1.2",
     "electron-squirrel-startup": "^1.0.1",
     "jsdom": "^27.3.0",
+    "mammoth": "^1.11.0",
     "openai": "^6.15.0",
     "pdf-parse": "^1.1.1",
     "xlsx": "^0.18.5"
@@ -74,6 +76,12 @@
           "arch": [
             "x64"
           ]
+        },
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
         }
       ],
       "signAndEditExecutable": false,
@@ -85,6 +93,9 @@
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
       "shortcutName": "假新闻检测"
+    },
+    "portable": {
+      "artifactName": "${productName}-${version}-portable.exe"
     },
     "publish": null
   }

@@ -19,6 +19,9 @@ class DetectApp {
     this.windowManager = new WindowManager();
     this.extractionManager = new ExtractionManager();
     this.llmService = new LLMService();
+
+    // Limits
+    this.PDF_MAX_TEXT_LENGTH = 20000;
   }
 
   /**
@@ -735,14 +738,14 @@ class DetectApp {
       }
     });
 
-    // 选择文件（PDF/Excel）
+    // 选择文件（PDF/Excel/Word/Text/Markdown）
     ipcMain.handle('select-file', async (event) => {
       try {
         const mainWindow = this.getMainWindow();
         const { canceled, filePaths } = await dialog.showOpenDialog(mainWindow, {
           properties: ['openFile', 'multiSelections'],
           filters: [
-            { name: 'Documents', extensions: ['pdf', 'xlsx', 'xls'] }
+            { name: 'Documents', extensions: ['pdf','doc','docx' ,'xlsx', 'xls', 'docx', 'txt', 'md'] }
           ]
         });
 
@@ -805,6 +808,14 @@ class DetectApp {
             text = text.replace(/^\s*\d+\s*$/gm, '');
             // 3. Trim
             text = text.trim();
+
+            // 4. Enforce max length
+            let truncated = false;
+            if (text.length > this.PDF_MAX_TEXT_LENGTH) {
+              text = text.substring(0, this.PDF_MAX_TEXT_LENGTH);
+              truncated = true;
+              console.warn('[read-file-content] pdf text truncated to limit', { limit: this.PDF_MAX_TEXT_LENGTH });
+            }
             
             // PDF Image Extraction (Simple JPEG Carving)
             // Note: This is a basic heuristic to find embedded JPEGs without heavy dependencies.
@@ -860,7 +871,7 @@ class DetectApp {
             
             // Sanitize images to avoid undefined/blank entries
             const sanitizedImages = images.filter(img => {
-              if (typeof img !== 'string') return false;
+              if (!img || typeof img !== 'string') return false;
               const trimmed = img.trim();
               return trimmed.startsWith('data:image/') && trimmed.length > 'data:image/jpeg;base64,'.length;
             });
@@ -869,14 +880,15 @@ class DetectApp {
               console.warn('[read-file-content] pdf image sanitized', { before: images.length, after: sanitizedImages.length });
             }
 
-            console.log('[read-file-content] pdf result summary', { textLength: text.length, images: sanitizedImages.length });
+            console.log('[read-file-content] pdf result summary', { textLength: text.length, images: sanitizedImages.length, truncated });
 
             return { 
               success: true, 
               type: 'pdf', 
               data: { 
                 text: text, 
-                images: sanitizedImages 
+                images: sanitizedImages,
+                truncated
               } 
             };
           } catch (e) {
@@ -903,36 +915,54 @@ class DetectApp {
               return /^(http|https):\/\/[^ "]+$/.test(str);
             };
 
+            // Helper to check if string is Image URL/Path
+            const isImage = (str) => {
+              if (typeof str !== 'string') return false;
+              // Allow query params: ends with extension or extension followed by ? or #
+              // Also allow data:image
+              if (str.startsWith('data:image/')) return true;
+              return /\.(jpg|jpeg|png|gif|webp|bmp)($|[?#])/i.test(str);
+            };
+
             for (let i = 0; i < rows.length; i++) {
               const row = rows[i];
               if (!row || row.length === 0) continue;
               
-              const col1 = row[0];
-              const col2 = row[1];
+              let content = null;
+              const images = [];
               
-              if (isUrl(col1)) {
-                // First column is URL -> Import as URL item
-                items.push({ content: col1, images: [] });
-              } else if (col1) {
-                // First column is Text
-                const content = String(col1);
-                const images = [];
+              for (let j = 0; j < row.length; j++) {
+                const cell = row[j];
+                if (!cell) continue;
                 
-                if (col2) {
-                  if (isUrl(col2)) {
-                    // Second column is URL (Image Link)
-                    images.push(col2);
-                  } else {
-                    // Second column might be local path or other text
-                    // User said "if it is an image, import image"
-                    // We assume it's a path if it's not a URL
-                    // Or we can check if it looks like an image path
-                    const col2Str = String(col2);
-                    if (col2Str.match(/\.(jpg|jpeg|png|gif|webp)$/i)) {
-                       images.push(col2Str);
-                    }
+                const str = String(cell).trim();
+                if (!str) continue;
+                
+                // Check for Image
+                if (isImage(str)) {
+                  if (images.length < 4) {
+                    images.push(str);
                   }
+                  continue; 
                 }
+                
+                // Check for Content (First text > 10 chars)
+                if (content === null && str.length > 10) {
+                  // Check if it's NOT just a URL (unless it's a very long URL that isn't an image?)
+                  // Usually content is not just a URL.
+                  // If it is a URL but not an image URL, it might be the article link.
+                  // But the requirement says "text > 10 chars".
+                  // Let's assume if it is a URL, it might be content if we haven't found content yet?
+                  // But usually we want the body text.
+                  // Let's stick to: if it's not an image, and > 10 chars, it's content.
+                  
+                  // Truncate to 20000
+                  content = str.substring(0, 20000);
+                }
+              }
+              
+              // Only add if we found valid content
+              if (content) {
                 items.push({ content, images });
               }
             }
@@ -946,13 +976,65 @@ class DetectApp {
             console.error('[read-file-content] excel parse error', e);
             throw e;
           }
+        } else if (ext === '.txt') {
+          try {
+            const content = fs.readFileSync(filePath, 'utf-8');
+            return { success: true, type: 'txt', data: { text: content, images: [] } };
+          } catch (e) {
+            console.error('[read-file-content] txt read error', e);
+            throw e;
+          }
+        } else if (ext === '.md') {
+          try {
+            const content = fs.readFileSync(filePath, 'utf-8');
+            // Extract images from markdown: ![alt](url)
+            const images = [];
+            const regex = /!\[.*?\]\((.*?)\)/g;
+            let match;
+            while ((match = regex.exec(content)) !== null) {
+                images.push(match[1]);
+            }
+            return { success: true, type: 'md', data: { text: content, images } };
+          } catch (e) {
+            console.error('[read-file-content] md read error', e);
+            throw e;
+          }
+        } else if (ext === '.docx') {
+          try {
+            const mammoth = require('mammoth');
+            // Convert to HTML to get images (mammoth converts images to base64 by default)
+            const result = await mammoth.convertToHtml({path: filePath});
+            const html = result.value; 
+            
+            // Extract raw text for the content
+            const textResult = await mammoth.extractRawText({path: filePath});
+            const text = textResult.value;
+
+            // Extract images from the generated HTML
+            const images = [];
+            const imgRegex = /src="(data:image\/[^;]+;base64,[^"]+)"/g;
+            let imgMatch;
+            while ((imgMatch = imgRegex.exec(html)) !== null) {
+                if (imgMatch[1] && !imgMatch[1].includes('undefined')) {
+                    images.push(imgMatch[1]);
+                }
+            }
+
+            return { success: true, type: 'docx', data: { text, images } };
+          } catch (e) {
+            if (e.code === 'MODULE_NOT_FOUND') {
+                return { success: false, error: '缺少依赖: mammoth。请运行 cnpm install mammoth' };
+            }
+            console.error('[read-file-content] docx parse error', e);
+            throw e;
+          }
         }
         
         console.warn('[read-file-content] unsupported file format', { filePath, ext });
         return { success: false, error: '不支持的文件格式' };
       } catch (error) {
-        console.error('Read file error:', error);
-        return { success: false, error: error.message };
+        console.error('[read-file-content] Fatal Error:', error);
+        return { success: false, error: error.message || '读取文件时发生未知错误' };
       }
     });
 

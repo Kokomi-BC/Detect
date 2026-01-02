@@ -3022,6 +3022,11 @@
                             <path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/>
                         </svg>
                     </button>
+                    <button class="batch-tool-btn" id="batchClearBtn" title="清空列表">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/>
+                        </svg>
+                    </button>
                 </div>
 
                 <!-- Batch List Container -->
@@ -5671,6 +5676,19 @@
 
                         console.log('[import-file] chosen', { filePath, ext });
 
+                        const sanitizeImportedImages = (imgs) => {
+                            if (!Array.isArray(imgs)) return [];
+                            return imgs.filter(img => {
+                                if (typeof img !== 'string') return false;
+                                const trimmed = img.trim();
+                                // Allow data URI, http/https, and file protocols
+                                if (trimmed.startsWith('data:image/')) {
+                                    return trimmed.length > 'data:image/jpeg;base64,'.length;
+                                }
+                                return /^(http|https|file):\/\//i.test(trimmed);
+                            });
+                        };
+
                         if (ext === 'xlsx' || ext === 'xls') {
                             // Excel: Ask for batch mode
                             showCustomModal({
@@ -5680,12 +5698,11 @@
                                 cancelText: '仅导入内容',
                                 onConfirm: async () => {
                                     if (!isBatchMode) enterBatchMode();
-                                    // Process Excel
                                     const fileResult = await window.electronAPI.invoke('read-file-content', filePath);
                                     console.log('[import-file] excel result', fileResult);
                                     if (fileResult.success && fileResult.type === 'excel') {
                                         fileResult.data.forEach(item => {
-                                            addBatchItem(item.content, item.images);
+                                            addBatchItem(item.content, sanitizeImportedImages(item.images));
                                         });
                                         renderBatchList();
                                         showToast(`已导入 ${fileResult.data.length} 条数据`, 'success');
@@ -5697,62 +5714,31 @@
                                     showToast('Excel文件通常包含多条数据，建议使用批量模式', 'info');
                                 }
                             });
-                        } else if (ext === 'pdf') {
+                        } else if (['pdf', 'txt', 'md', 'docx'].includes(ext)) {
                             const fileResult = await window.electronAPI.invoke('read-file-content', filePath);
-                            console.log('[import-file] pdf raw result', fileResult);
-                            if (fileResult.success && fileResult.type === 'pdf') {
-                                const { text, images } = fileResult.data;
-                                const validImages = Array.isArray(images)
-                                    ? images.filter(img => typeof img === 'string' && img.trim().startsWith('data:image/') && img.trim().length > 'data:image/jpeg;base64,'.length)
-                                    : [];
-                                if (validImages.length !== (Array.isArray(images) ? images.length : 0)) {
-                                    console.warn('[import-file] pdf images sanitized', { before: Array.isArray(images) ? images.length : 0, after: validImages.length });
+                            console.log('[import-file] generic file result', fileResult);
+                            if (fileResult.success && ['pdf', 'txt', 'md', 'docx'].includes(fileResult.type)) {
+                                const { text, images, truncated } = fileResult.data;
+                                const validImages = sanitizeImportedImages(images);
+
+                                if (fileResult.type === 'pdf' && truncated) {
+                                    showToast('PDF文本较长，已截断至20000字', 'info');
                                 }
-                                
-                                if (isBatchMode) {
-                                    // Add to batch
-                                    const MAX_CHUNK_SIZE = 15000;
-                                    if (text.length > MAX_CHUNK_SIZE) {
-                                        const chunks = [];
-                                        let currentText = text;
-                                        while (currentText.length > 0) {
-                                            let chunk = currentText.substring(0, MAX_CHUNK_SIZE);
-                                            if (currentText.length > MAX_CHUNK_SIZE) {
-                                                const lastNewline = chunk.lastIndexOf('\n');
-                                                const lastPeriod = chunk.lastIndexOf('。');
-                                                const splitIndex = Math.max(lastNewline, lastPeriod);
-                                                if (splitIndex > MAX_CHUNK_SIZE * 0.8) {
-                                                    chunk = currentText.substring(0, splitIndex + 1);
-                                                }
-                                            }
-                                            chunks.push(chunk);
-                                            currentText = currentText.substring(chunk.length);
-                                        }
-                                        chunks.forEach((chunk, index) => {
-                                            const chunkImages = index === 0 ? validImages : [];
-                                            addBatchItem(chunk, chunkImages);
-                                        });
-                                    } else {
-                                        addBatchItem(text, validImages);
-                                    }
-                                    renderBatchList();
-                                    showToast('PDF已添加到批量列表', 'success');
-                                } else {
-                                    // Import to main input
+
+                                const applyToEditor = () => {
                                     const textInput = document.getElementById('textInput');
                                     if (textInput) {
                                         textInput.innerText = text;
+                                        textInput.dispatchEvent(new Event('input'));
                                         updateEditorStats();
                                     }
-                                    
-                                    // Handle images
                                     if (validImages.length > 0) {
                                         validImages.forEach(imgStr => {
                                             if (uploadedImages.length < maxImages) {
                                                 uploadedImages.push({
                                                     id: Date.now() + Math.random(),
                                                     url: imgStr,
-                                                    name: 'PDF Image',
+                                                    name: 'Imported Image',
                                                     file: null
                                                 });
                                             }
@@ -5760,11 +5746,63 @@
                                         renderImages();
                                         updateBtnState();
                                     }
-                                    showToast('PDF内容已导入', 'success');
+                                };
+
+                                if (isBatchMode) {
+                                    const updateCurrentBatchItem = () => {
+                                        if (isBatchEditMode && currentBatchEditId) {
+                                            const target = batchItems.find(b => b.id === currentBatchEditId);
+                                            if (target) {
+                                                target.content = text;
+                                                target.images = validImages;
+                                                renderBatchList();
+                                                applyToEditor(); // 覆盖编辑器内容，保持编辑视图同步
+                                                showToast('已更新当前批量项', 'success');
+                                                return true;
+                                            }
+                                        }
+                                        return false;
+                                    };
+
+                                    const handled = updateCurrentBatchItem();
+                                    if (!handled) {
+                                        if (fileResult.type === 'pdf') {
+                                            const MAX_CHUNK_SIZE = 15000;
+                                            if (text.length > MAX_CHUNK_SIZE) {
+                                                const chunks = [];
+                                                let currentText = text;
+                                                while (currentText.length > 0) {
+                                                    let chunk = currentText.substring(0, MAX_CHUNK_SIZE);
+                                                    if (currentText.length > MAX_CHUNK_SIZE) {
+                                                        const lastNewline = chunk.lastIndexOf('\n');
+                                                        const lastPeriod = chunk.lastIndexOf('。');
+                                                        const splitIndex = Math.max(lastNewline, lastPeriod);
+                                                        if (splitIndex > MAX_CHUNK_SIZE * 0.8) {
+                                                            chunk = currentText.substring(0, splitIndex + 1);
+                                                        }
+                                                    }
+                                                    chunks.push(chunk);
+                                                    currentText = currentText.substring(chunk.length);
+                                                }
+                                                chunks.forEach((chunk, index) => {
+                                                    const chunkImages = index === 0 ? validImages : [];
+                                                    addBatchItem(chunk, chunkImages);
+                                                });
+                                            } else {
+                                                addBatchItem(text, validImages);
+                                            }
+                                        } else {
+                                            addBatchItem(text, validImages);
+                                        }
+                                        renderBatchList();
+                                        showToast('文件内容已添加到批量列表', 'success');
+                                    }
+                                } else {
+                                    applyToEditor();
+                                    showToast('文件内容已导入', 'success');
                                 }
                             } else {
-                                console.error('[import-file] pdf read failed', fileResult);
-                                showToast('读取PDF失败: ' + (fileResult.error || '未知错误'), 'error');
+                                showToast('读取文件失败: ' + (fileResult.error || '未知错误'), 'error');
                             }
                         }
                     } catch (error) {
@@ -7819,16 +7857,44 @@
         if (batchModeToggle) {
             batchModeToggle.addEventListener('click', () => {
                 if (isBatchMode) {
-                    // Exit Batch Mode
-                    showCustomModal({
-                        title: '退出批量模式',
-                        message: '退出将清空当前批量列表中的所有内容，确定要退出吗？',
-                        confirmText: '退出',
-                        cancelText: '取消',
-                        onConfirm: () => {
-                            exitBatchMode();
+                    // Check items
+                    const validItems = batchItems.filter(item => item.content.trim() !== '' || (item.images && item.images.length > 0));
+                    
+                    if (validItems.length === 1) {
+                        // Only one valid item, preserve it
+                        const item = validItems[0];
+                        exitBatchMode(false); // Pass false to NOT clear editor
+                        
+                        // Restore content to editor
+                        const textInput = document.getElementById('textInput');
+                        if (textInput) {
+                             textInput.innerText = item.content || '';
+                             // Trigger input event to update word count etc.
+                             textInput.dispatchEvent(new Event('input'));
                         }
-                    });
+                        
+                        if (item.images && item.images.length > 0) {
+                            uploadedImages = item.images.map(img => {
+                                if (typeof img === 'string') return { id: Date.now() + Math.random(), url: img, name: 'Image' };
+                                return { ...img, id: img.id || (Date.now() + Math.random()) };
+                            });
+                            renderImages();
+                        }
+                        
+                        updateBtnState();
+                        updateEditorStats();
+                    } else {
+                        // Exit Batch Mode
+                        showCustomModal({
+                            title: '退出批量模式',
+                            message: '退出将清空当前批量列表中的所有内容，确定要退出吗？',
+                            confirmText: '退出',
+                            cancelText: '取消',
+                            onConfirm: () => {
+                                exitBatchMode();
+                            }
+                        });
+                    }
                 } else {
                     // Enter Batch Mode
                     enterBatchMode();
@@ -7846,6 +7912,28 @@
             });
         }
 
+        const batchClearBtn = document.getElementById('batchClearBtn');
+        if (batchClearBtn) {
+            batchClearBtn.addEventListener('click', () => {
+                if (batchItems.length === 0) return;
+                showCustomModal({
+                    title: '清空列表',
+                    message: '确定要清空所有批量检测项吗？',
+                    confirmText: '清空',
+                    cancelText: '取消',
+                    onConfirm: () => {
+                        batchItems = [];
+                        renderBatchList();
+                        if (isBatchEditMode) {
+                             isBatchEditMode = false;
+                             currentBatchEditId = null;
+                             document.body.classList.remove('batch-edit-mode');
+                        }
+                    }
+                });
+            });
+        }
+
         const batchFileBtn = document.getElementById('batchFileBtn');
         if (batchFileBtn) {
             batchFileBtn.addEventListener('click', async () => {
@@ -7853,54 +7941,72 @@
                     const result = await window.electronAPI.invoke('select-file');
                     if (result.canceled || !result.filePaths || result.filePaths.length === 0) return;
 
+                    const sanitizeImportedImages = (imgs) => {
+                        if (!Array.isArray(imgs)) return [];
+                        return imgs.filter(img => {
+                            if (typeof img !== 'string') return false;
+                            const trimmed = img.trim();
+                            // Allow data URI, http/https, and file protocols
+                            if (trimmed.startsWith('data:image/')) {
+                                return trimmed.length > 'data:image/jpeg;base64,'.length;
+                            }
+                            return /^(http|https|file):\/\//i.test(trimmed);
+                        });
+                    };
+
                     for (const filePath of result.filePaths) {
                         const fileResult = await window.electronAPI.invoke('read-file-content', filePath);
-                        if (fileResult.success) {
-                            if (fileResult.type === 'pdf') {
-                                const { text, images } = fileResult.data;
-                                
-                                // Handle Word Count Limit (Split if > 15000 chars)
-                                const MAX_CHUNK_SIZE = 15000;
-                                if (text.length > MAX_CHUNK_SIZE) {
-                                    const chunks = [];
-                                    let currentText = text;
-                                    while (currentText.length > 0) {
-                                        let chunk = currentText.substring(0, MAX_CHUNK_SIZE);
-                                        // Try to split at a newline or period to be cleaner
-                                        if (currentText.length > MAX_CHUNK_SIZE) {
-                                            const lastNewline = chunk.lastIndexOf('\n');
-                                            const lastPeriod = chunk.lastIndexOf('。');
-                                            const splitIndex = Math.max(lastNewline, lastPeriod);
-                                            
-                                            if (splitIndex > MAX_CHUNK_SIZE * 0.8) { // Only if split point is near the end
-                                                chunk = currentText.substring(0, splitIndex + 1);
-                                            }
-                                        }
-                                        chunks.push(chunk);
-                                        currentText = currentText.substring(chunk.length);
-                                    }
-                                    
-                                    // Add chunks as separate items
-                                    chunks.forEach((chunk, index) => {
-                                        // Attach images only to the first chunk to avoid duplication
-                                        const chunkImages = index === 0 ? images : [];
-                                        addBatchItem(chunk, chunkImages);
-                                    });
-                                    showToast(`PDF内容过长，已自动拆分为 ${chunks.length} 个检测项`, 'info');
-                                } else {
-                                    addBatchItem(text, images);
-                                }
-                            } else if (fileResult.type === 'excel') {
-                                const items = fileResult.data;
-                                if (items && items.length > 0) {
-                                    items.forEach(item => {
-                                        addBatchItem(item.content, item.images);
-                                    });
-                                }
-                            }
-                        } else {
+                        if (!fileResult.success) {
                             console.error('Error reading file:', fileResult.error);
                             alert('读取文件失败: ' + fileResult.error);
+                            continue;
+                        }
+
+                        const { type, data } = fileResult;
+                        // Limit images to maxImages (4)
+                        const images = sanitizeImportedImages(data?.images).slice(0, maxImages);
+                        const text = data?.text || '';
+                        
+                        if (data?.truncated) {
+                            showToast('文件内容较长，已截断至20000字', 'info');
+                        }
+
+                        if (type === 'pdf') {
+                            const MAX_CHUNK_SIZE = 15000;
+                            if (text.length > MAX_CHUNK_SIZE) {
+                                const chunks = [];
+                                let currentText = text;
+                                while (currentText.length > 0) {
+                                    let chunk = currentText.substring(0, MAX_CHUNK_SIZE);
+                                    if (currentText.length > MAX_CHUNK_SIZE) {
+                                        const lastNewline = chunk.lastIndexOf('\n');
+                                        const lastPeriod = chunk.lastIndexOf('。');
+                                        const splitIndex = Math.max(lastNewline, lastPeriod);
+                                        if (splitIndex > MAX_CHUNK_SIZE * 0.8) {
+                                            chunk = currentText.substring(0, splitIndex + 1);
+                                        }
+                                    }
+                                    chunks.push(chunk);
+                                    currentText = currentText.substring(chunk.length);
+                                }
+                                chunks.forEach((chunk, index) => {
+                                    const chunkImages = index === 0 ? images : [];
+                                    addBatchItem(chunk, chunkImages);
+                                });
+                                showToast(`PDF内容过长，已自动拆分为 ${chunks.length} 个检测项`, 'info');
+                            } else {
+                                addBatchItem(text, images);
+                            }
+                        } else if (type === 'excel') {
+                            const items = data;
+                            if (items && items.length > 0) {
+                                items.forEach(item => {
+                                    // Excel backend already limits images, but safe to slice again
+                                    addBatchItem(item.content, sanitizeImportedImages(item.images).slice(0, maxImages));
+                                });
+                            }
+                        } else if (['txt', 'md', 'docx'].includes(type)) {
+                            addBatchItem(text, images);
                         }
                     }
                     renderBatchList();
@@ -7937,7 +8043,7 @@
             toggleSidebar(false);
         }
 
-        function exitBatchMode() {
+        function exitBatchMode(clearEditor = true) {
             isBatchMode = false;
             isBatchEditMode = false;
             currentBatchEditId = null;
@@ -7946,12 +8052,14 @@
             document.body.classList.remove('batch-mode-active');
             document.body.classList.remove('batch-edit-mode');
             
-            // Reset Editor
-            const textInput = document.getElementById('textInput');
-            textInput.innerHTML = '';
-            uploadedImages = [];
-            renderImages();
-            updateEditorStats();
+            if (clearEditor) {
+                // Reset Editor
+                const textInput = document.getElementById('textInput');
+                if (textInput) textInput.innerHTML = '';
+                uploadedImages = [];
+                renderImages();
+                updateEditorStats();
+            }
             
             // Show sidebar
             // toggleSidebar(true); // Optional, maybe keep collapsed
@@ -7993,7 +8101,11 @@
                     div.addEventListener('click', () => {
                         if (item.result) {
                             const displayContent = item.parsedContent || item.content;
-                            const displayImages = item.parsedImages || item.images;
+                            // Ensure images are in the correct format for showAnalysisResult
+                            let displayImages = item.parsedImages || item.images;
+                            if (displayImages && displayImages.length > 0 && typeof displayImages[0] === 'string') {
+                                displayImages = displayImages.map(url => ({ url, name: 'Batch Image' }));
+                            }
                             showAnalysisResult(item.result, displayContent, displayImages, false);
                         } else {
                              const resultItem = document.getElementById('resultItem');
@@ -8179,7 +8291,11 @@
             const item = batchItems.find(i => i.id === currentBatchContextId);
             if (item && item.result) {
                 const displayContent = item.parsedContent || item.content;
-                const displayImages = item.parsedImages || item.images;
+                // Ensure images are in the correct format for showAnalysisResult
+                let displayImages = item.parsedImages || item.images;
+                if (displayImages && displayImages.length > 0 && typeof displayImages[0] === 'string') {
+                    displayImages = displayImages.map(url => ({ url, name: 'Batch Image' }));
+                }
                 showAnalysisResult(item.result, displayContent, displayImages, false);
             }
             document.getElementById('batchContextMenu').classList.remove('active');
@@ -8204,7 +8320,20 @@
             // Restore content to editor
             const textInput = document.getElementById('textInput');
             textInput.innerText = item.content; // Or innerHTML if we support rich text
-            uploadedImages = [...item.images];
+            
+            // Convert stored image strings back to editor objects
+            uploadedImages = (item.images || []).map(img => {
+                if (typeof img === 'string') {
+                    return {
+                        id: Date.now() + Math.random(),
+                        url: img,
+                        name: 'Batch Image',
+                        file: null
+                    };
+                }
+                return img; // Fallback for legacy objects
+            });
+            
             renderImages();
             updateEditorStats();
             
@@ -8249,7 +8378,8 @@
             if (item) {
                 const textInput = document.getElementById('textInput');
                 item.content = textInput.innerText.trim();
-                item.images = [...uploadedImages];
+                // Convert editor objects back to image strings
+                item.images = uploadedImages.map(img => img.url);
             }
         }
 
