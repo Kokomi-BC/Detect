@@ -791,6 +791,14 @@ class DetectApp {
       try {
         const ext = path.extname(filePath).toLowerCase();
         console.log('[read-file-content] detected ext', ext);
+
+        // Normalize text across all imported files: unify newlines and collapse blank lines
+        const sanitizeText = (raw) => {
+          if (typeof raw !== 'string') return '';
+          let text = raw.replace(/\r\n/g, '\n');
+          text = text.replace(/\n{2,}/g, '\n');
+          return text.trim();
+        };
         
         if (ext === '.pdf') {
           try {
@@ -802,14 +810,12 @@ class DetectApp {
             
             // PDF Text Cleanup
             let text = data.text;
-            // 1. Remove multiple newlines (replace 2+ newlines with 1)
-            text = text.replace(/\n\s*\n/g, '\n');
-            // 2. Remove page numbers (simple heuristic: single digits on a line)
+            // Remove page numbers (simple heuristic: single digits on a line)
             text = text.replace(/^\s*\d+\s*$/gm, '');
-            // 3. Trim
-            text = text.trim();
+            // Normalize spacing and blank lines
+            text = sanitizeText(text);
 
-            // 4. Enforce max length
+            // Enforce max length
             let truncated = false;
             if (text.length > this.PDF_MAX_TEXT_LENGTH) {
               text = text.substring(0, this.PDF_MAX_TEXT_LENGTH);
@@ -979,7 +985,7 @@ class DetectApp {
         } else if (ext === '.txt') {
           try {
             const content = fs.readFileSync(filePath, 'utf-8');
-            return { success: true, type: 'txt', data: { text: content, images: [] } };
+            return { success: true, type: 'txt', data: { text: sanitizeText(content), images: [] } };
           } catch (e) {
             console.error('[read-file-content] txt read error', e);
             throw e;
@@ -994,9 +1000,34 @@ class DetectApp {
             while ((match = regex.exec(content)) !== null) {
                 images.push(match[1]);
             }
-            return { success: true, type: 'md', data: { text: content, images } };
+            return { success: true, type: 'md', data: { text: sanitizeText(content), images } };
           } catch (e) {
             console.error('[read-file-content] md read error', e);
+            throw e;
+          }
+        } else if (ext === '.doc') {
+          try {
+            const WordExtractor = require('word-extractor');
+            const extractor = new WordExtractor();
+            const doc = await extractor.extract(filePath);
+            
+            const text = sanitizeText(doc.getBody());
+            const images = [];
+            
+            // Extract images from .doc
+            const attachments = doc.getAnnotations(); // word-extractor doesn't directly expose images in a simple way, but we can try to get them from the document structure if available
+            // Note: word-extractor is primarily for text. For images in .doc, it's very complex.
+            // However, we can try to get images if they are stored as attachments/ole objects.
+            
+            // If word-extractor doesn't support images well, we'll just return text.
+            // Most .doc users are okay with text-only if images are hard to get without heavy native deps.
+            
+            return { success: true, type: 'doc', data: { text, images } };
+          } catch (e) {
+            if (e.code === 'MODULE_NOT_FOUND') {
+                return { success: false, error: '缺少依赖: word-extractor。请运行 cnpm install word-extractor' };
+            }
+            console.error('[read-file-content] doc parse error', e);
             throw e;
           }
         } else if (ext === '.docx') {
@@ -1008,7 +1039,7 @@ class DetectApp {
             
             // Extract raw text for the content
             const textResult = await mammoth.extractRawText({path: filePath});
-            const text = textResult.value;
+            const text = sanitizeText(textResult.value);
 
             // Extract images from the generated HTML
             const images = [];

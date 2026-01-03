@@ -5714,10 +5714,10 @@
                                     showToast('Excel文件通常包含多条数据，建议使用批量模式', 'info');
                                 }
                             });
-                        } else if (['pdf', 'txt', 'md', 'docx'].includes(ext)) {
+                        } else if (['pdf', 'txt', 'md', 'docx', 'doc'].includes(ext)) {
                             const fileResult = await window.electronAPI.invoke('read-file-content', filePath);
                             console.log('[import-file] generic file result', fileResult);
-                            if (fileResult.success && ['pdf', 'txt', 'md', 'docx'].includes(fileResult.type)) {
+                            if (fileResult.success && ['pdf', 'txt', 'md', 'docx', 'doc'].includes(fileResult.type)) {
                                 const { text, images, truncated } = fileResult.data;
                                 const validImages = sanitizeImportedImages(images);
 
@@ -5868,7 +5868,48 @@
                     showToast('内容未变化，无需重复检测', 'info');
                     return;
                 }
-                // 检查是否为URL
+
+                // 提取所有URL
+                const foundUrls = extractURLs(textContent);
+
+                // 如果发现多个URL
+                if (foundUrls.length > 1) {
+                    showCustomModal({
+                        title: '检测到多个链接',
+                        message: `检测到输入内容包含 ${foundUrls.length} 个链接，是否进入批量模式分别检测？`,
+                        confirmText: '进入批量模式',
+                        cancelText: '仅作为文本检测',
+                        onConfirm: () => {
+                            // Clear editor to prevent enterBatchMode from adding the whole text as a single item
+                            const textInput = document.getElementById('textInput');
+                            if (textInput) textInput.innerHTML = '';
+                            uploadedImages = [];
+                            renderImages();
+                            updateEditorStats();
+
+                            if (!isBatchMode) enterBatchMode();
+                            
+                            let addedCount = 0;
+                            for (const url of foundUrls) {
+                                if (addBatchItem(url, [])) {
+                                    addedCount++;
+                                } else {
+                                    break; // Stop if limit reached
+                                }
+                            }
+                            renderBatchList();
+                            if (addedCount > 0) {
+                                showToast(`已添加 ${addedCount} 个链接到批量列表`, 'success');
+                            }
+                        },
+                        onCancel: () => {
+                            analyzeContent(textContent, uploadedImages, false, htmlContent);
+                        }
+                    });
+                    return;
+                }
+
+                // 检查是否为单个URL
                 if (isURL(textContent)) {
                     if (uploadedImages.length > 0) {
                         // 弹出询问对话框
@@ -5902,6 +5943,15 @@
                 // 记录本次内容和图片
                 lastTextContent = textContent;
                 lastImages = uploadedImages.map(img => img.url);
+            });
+        }
+
+        // 提取文本中的所有URL
+        function extractURLs(text) {
+            const urlRegex = /(https?:\/\/[^\s]+)/g;
+            const matches = text.match(urlRegex) || [];
+            return matches.filter(url => {
+                try { new URL(url); return true; } catch { return false; }
             });
         }
 
@@ -7843,6 +7893,7 @@
         // --- Batch Mode Logic ---
         let isBatchMode = false;
         let batchItems = []; // { id, content, images, result, progress, score }
+        const MAX_BATCH_ITEMS = 200;
         let isBatchEditMode = false;
         let currentBatchEditId = null;
         let batchCounter = 1;
@@ -7989,23 +8040,24 @@
                                     chunks.push(chunk);
                                     currentText = currentText.substring(chunk.length);
                                 }
-                                chunks.forEach((chunk, index) => {
-                                    const chunkImages = index === 0 ? images : [];
-                                    addBatchItem(chunk, chunkImages);
-                                });
-                                showToast(`PDF内容过长，已自动拆分为 ${chunks.length} 个检测项`, 'info');
+                                for (let i = 0; i < chunks.length; i++) {
+                                    const chunkImages = i === 0 ? images : [];
+                                    const addedId = addBatchItem(chunks[i], chunkImages);
+                                    if (!addedId) break;
+                                }
+                                showToast(`PDF内容过长，已自动拆分为 ${Math.min(chunks.length, MAX_BATCH_ITEMS - batchItems.length)} 个检测项`, 'info');
                             } else {
                                 addBatchItem(text, images);
                             }
                         } else if (type === 'excel') {
                             const items = data;
                             if (items && items.length > 0) {
-                                items.forEach(item => {
-                                    // Excel backend already limits images, but safe to slice again
-                                    addBatchItem(item.content, sanitizeImportedImages(item.images).slice(0, maxImages));
-                                });
+                                for (const item of items) {
+                                    const addedId = addBatchItem(item.content, sanitizeImportedImages(item.images).slice(0, maxImages));
+                                    if (!addedId) break;
+                                }
                             }
-                        } else if (['txt', 'md', 'docx'].includes(type)) {
+                        } else if (['pdf', 'txt', 'md', 'docx', 'doc'].includes(type)) {
                             addBatchItem(text, images);
                         }
                     }
@@ -8066,6 +8118,10 @@
         }
 
         function addBatchItem(content, images) {
+            if (batchItems.length >= MAX_BATCH_ITEMS) {
+                showToast(`批量列表最多支持 ${MAX_BATCH_ITEMS} 条，请先删除部分条目`, 'warning');
+                return null;
+            }
             const id = Date.now() + Math.random();
             batchItems.push({
                 id,
@@ -8081,6 +8137,10 @@
 
         function renderBatchList() {
             if (!batchListContainer) return;
+            if (batchItems.length === 0) {
+                batchListContainer.innerHTML = '';
+                return;
+            }
             
             // 1. Mark all existing items as stale
             const existingItems = new Map();
