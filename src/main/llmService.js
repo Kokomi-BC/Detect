@@ -77,9 +77,9 @@ Analyze the provided content and determine its authenticity. You can request a w
   "search_query": string,  // If needs_search is true, provide concise Chinese keywords (entities, events, time). Avoid long sentences.
   "title": string,         // A short, objective title for the news (Simplified Chinese).
   "probability": number,   // Float (0-1) representing the likelihood of the news being true.
-  "type": number,          // 1: Likely Real (Prob >= 0.8), 2: Partial/Uncertain (0.2 < Prob < 0.8), 3: Likely Fake (Prob <= 0.2).
+  "type": number,          // 1: Real (Prob >= 0.8), 2: Partial/Uncertain (0.2 < Prob < 0.8), 3: Fake (Prob <= 0.2).
   "explanation": string,   // A brief summary of your judgment (Simplified Chinese).
-  "analysis_points": [     // Exactly 3 analysis points (Simplified Chinese).
+  "analysis_points": [     // Exactly 3 analysis points from: information verifiability, linguistic objectivity, media consistency/source reliability (Simplified Chinese).
     { "description": "Detailed analysis", "status": "positive"|"warning"|"negative" }
   ],
   "fake_parts": [          // Only if type is 2 or 3. List specific fake segments and reasons (Simplified Chinese).
