@@ -7,6 +7,56 @@ class LLMService {
       baseURL: 'https://ark.cn-beijing.volces.com/api/v3',
     });
     this.model = 'doubao-seed-1-6-vision-250815';
+    this.bochaApiKey = 'sk-3a242c2d462a460c9a378c181bd93c95';
+  }
+
+  /**
+   * 执行联网搜索
+   * @param {string} query 搜索关键词
+   * @returns {Promise<string>} 搜索结果摘要
+   */
+  async performWebSearch(query) {
+    try {
+      console.log(`正在执行联网搜索: ${query}`);
+      const response = await fetch('https://api.bochaai.com/v1/web-search', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${this.bochaApiKey}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          query: query,
+          summary: true,
+          count: 5
+        })
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Bocha API Error: ${response.status} - ${errorText}`);
+      }
+
+      const data = await response.json();
+      console.log('博查搜索API返回结果:', JSON.stringify(data, null, 2));
+      
+      // 兼容不同的返回结构 (data.webPages 或 data.data.webPages)
+      const webPages = data.webPages || (data.data && data.data.webPages);
+      
+      if (webPages && webPages.value && webPages.value.length > 0) {
+        // 优化：返回JSON格式的搜索结果，方便模型解析
+        const results = webPages.value.map(item => ({
+          title: item.name,
+          url: item.url,
+          summary: item.summary,
+          date: item.datePublished || '未知'
+        }));
+        return JSON.stringify(results, null, 2);
+      }
+      return '[]'; // 返回空JSON数组表示无结果
+    } catch (error) {
+      console.error('联网搜索失败:', error);
+      return `(搜索遇到错误: ${error.message})`;
+    }
   }
 
   /**
@@ -18,27 +68,32 @@ class LLMService {
    */
   async analyzeContent(text, imageUrls = [], sourceUrl = '') {
     const currentDate = new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' });
-    const systemPrompt = `你是一个专业的新闻真伪检测助手。当前时间是：${currentDate}（仅供参考）。
-请分析用户提供的文本和图片${sourceUrl ? `（来源链接：${sourceUrl}）` : ''}。
-请判断该新闻的真假。注意：新闻具有时效性，请务必区分“过时信息”与“虚假信息”，不要仅因为新闻发布时间较早或内容已发生变化而将其判定为假。请结合内容本身的逻辑、来源可靠性及发布时的背景进行综合判断。
-请返回严格的JSON格式响应（不要包含markdown代码块标记），包含以下字段：
+    const systemPrompt = `You are a professional fake news detection assistant. Current date: ${currentDate}.
+Analyze the provided content and determine its authenticity. You can request a web search for verification.
 
-0. title: (字符串) 为该新闻生成一个简短、客观的标题（不超过20个字）。
-1. probability: (0-1之间的浮点数) 新闻为真的概率。
-2. type: (整数) 
-   - 1: 大概率为真 (Probability >= 0.8)
-   - 2: 部分为假 (0.2 < Probability < 0.8)
-   - 3: 大概率为假 (Probability <= 0.2)
-3. explanation: (字符串) 简短的判断理由（为什么是真新闻，或者为什么是假新闻）。
-4. analysis_points: (数组) 包含3个关键维度的详细分析点，每个对象包含：
-   - "description": "分析描述"
-   - "status": "positive" (正面/可靠) | "warning" (存疑/需核实) | "negative" (负面/虚假)
-   请从以下维度进行分析：内容来源可靠性、语言表达客观性、图文一致性/信息核实情况。
-5. fake_parts: (数组) 仅在type为2或3时提供，用于标出虚假内容。每个元素为对象：
-   - "text": "原文中被认为是虚假的具体片段（必须与原文完全一致以便定位）"
-   - "reason": "该片段为假的原因"
+### JSON Output Format (STRICT JSON, NO MARKDOWN):
+{
+  "needs_search": boolean, // Set to true if the news involves specific events, data, or recent facts that require verification.
+  "search_query": string,  // If needs_search is true, provide concise Chinese keywords (entities, events, time). Avoid long sentences.
+  "title": string,         // A short, objective title for the news (Simplified Chinese).
+  "probability": number,   // Float (0-1) representing the likelihood of the news being true.
+  "type": number,          // 1: Likely Real (Prob >= 0.8), 2: Partial/Uncertain (0.2 < Prob < 0.8), 3: Likely Fake (Prob <= 0.2).
+  "explanation": string,   // A brief summary of your judgment (Simplified Chinese).
+  "analysis_points": [     // Exactly 3 analysis points (Simplified Chinese).
+    { "description": "Detailed analysis", "status": "positive"|"warning"|"negative" }
+  ],
+  "fake_parts": [          // Only if type is 2 or 3. List specific fake segments and reasons (Simplified Chinese).
+    { "text": "Exact quote from original", "reason": "Why it is fake" }
+  ]
+}
 
-请务必确保返回的是合法的JSON字符串。`;
+ Critical Requirements:
+1. Search First: If information is vague or time-sensitive, set "needs_search": true and provide concise Chinese keywords.
+2. Final Judgment: If search results are provided, "needs_search" MUST be false. Prioritize search evidence.
+3. Language: All text fields (title, explanation, description, reason) MUST be in Simplified Chinese.
+4. Format: Return ONLY the raw JSON string. No markdown blocks.
+
+Summary: Prioritize web search for verification using concise Chinese keywords; ensure all descriptive fields are in Simplified Chinese; output strictly valid JSON.`;
 
     const userContent = [];
     
@@ -63,17 +118,47 @@ class LLMService {
       throw new Error('没有提供文本或图片进行分析');
     }
 
+    const messages = [
+      { role: 'system', content: systemPrompt },
+      { role: 'user', content: userContent }
+    ];
+
     try {
-      const response = await this.client.chat.completions.create({
+      // 第一次调用
+      console.log('Requesting LLM analysis (第一次调用)...');
+      let response = await this.client.chat.completions.create({
         model: this.model,
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: userContent }
-        ],
+        messages: messages,
       });
 
-      const content = response.choices[0].message.content;
-      return this.parseResponse(content);
+      let content = response.choices[0].message.content;
+      let result = this.parseResponse(content);
+
+      // 检查是否需要搜索
+      if (result.needs_search && result.search_query) {
+        console.log(`Model requests search: ${result.search_query}`);
+        
+        // 执行搜索
+        const searchResults = await this.performWebSearch(result.search_query);
+        
+        // 构造第二轮对话
+        messages.push({ role: 'assistant', content: content }); // 保留模型的第一轮回复
+        messages.push({ 
+          role: 'user', 
+          content: `[联网搜索结果(JSON格式)]:\n${searchResults}\n\n请根据以上搜索结果和原始信息，进行最终的真伪判断。请确保 needs_search 为 false，并填写完整的分析字段。搜索结果具有较高的可信度，请优先参考。` 
+        });
+
+        console.log('Requesting LLM analysis (Round 2 with search results)...');
+        response = await this.client.chat.completions.create({
+          model: this.model,
+          messages: messages,
+        });
+
+        content = response.choices[0].message.content;
+        result = this.parseResponse(content);
+      }
+
+      return result;
     } catch (error) {
       console.error('LLM API调用失败:', error);
       throw error;

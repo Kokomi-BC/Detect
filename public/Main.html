@@ -7038,26 +7038,33 @@
             errorState.classList.remove('active');
             loadingState.classList.add('active');
             detectBtn.classList.add('loading');
-            detectBtn.innerHTML = 'AI分析中...';
+            detectBtn.innerHTML = '分析中...';
             
             // 设置进度条初始状态
             if (fromExtraction) {
-                progressBar.style.width = '50%';
+                progressBar.style.width = '20%';
             } else {
                 progressBar.style.width = '0%';
-                // 快速动画到 50%
+                // 快速动画到 20%
                 setTimeout(() => {
-                    progressBar.style.width = '50%';
+                    progressBar.style.width = '20%';
                 }, 100);
             }
-            loadingText.textContent = '正在分析新闻中...';
+            loadingText.textContent = '正在初始化分析...';
 
-            // 模拟分析阶段的进度增长 (50% -> 90%)
-            let progress = 50;
+            // 模拟分析阶段的进度增长 (20% -> 90%)
+            // 阶段1: 20% -> 50% (联网搜索/信息核实)
+            // 阶段2: 50% -> 90% (深度分析/生成报告)
+            let progress = 20;
             const progressInterval = setInterval(() => {
-                if (progress < 90) {
-                    progress += 0.5; // 慢一点
+                if (progress < 50) {
+                    progress += 0.8; // 较快
                     progressBar.style.width = progress + '%';
+                    if (progress > 25) loadingText.textContent = '正在联网搜索相关信息...';
+                } else if (progress < 90) {
+                    progress += 0.4; // 较慢
+                    progressBar.style.width = progress + '%';
+                    if (progress > 55) loadingText.textContent = '正在进行多维深度分析...';
                 }
             }, 100);
 
