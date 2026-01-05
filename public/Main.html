@@ -7911,7 +7911,10 @@
                     // Check items
                     const validItems = batchItems.filter(item => item.content.trim() !== '' || (item.images && item.images.length > 0));
                     
-                    if (validItems.length === 1) {
+                    if (validItems.length === 0) {
+                        // No valid items, exit directly
+                        exitBatchMode();
+                    } else if (validItems.length === 1) {
                         // Only one valid item, preserve it
                         const item = validItems[0];
                         exitBatchMode(false); // Pass false to NOT clear editor
@@ -7935,7 +7938,7 @@
                         updateBtnState();
                         updateEditorStats();
                     } else {
-                        // Exit Batch Mode
+                        // Multiple items, ask for confirmation
                         showCustomModal({
                             title: '退出批量模式',
                             message: '退出将清空当前批量列表中的所有内容，确定要退出吗？',
