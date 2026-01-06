@@ -130,6 +130,13 @@
             margin-left: 8px;
             gap: 6px;
             -webkit-app-region: no-drag;
+            transition: opacity 0.3s;
+        }
+
+        .batch-mode-toggle.disabled {
+            opacity: 0.3;
+            pointer-events: none;
+            cursor: not-allowed;
         }
         
         .batch-icon {
@@ -556,7 +563,7 @@
 
         .container {
             display: flex;
-            height: calc(100vh - 32px); /* 减去标题栏高度 */
+            height: calc(100vh - 34px); /* 减去标题栏高度 (34px) */
             position: relative;
         }
 
@@ -575,7 +582,7 @@
             flex: 1;
             display: flex;
             flex-direction: column;
-            background: var(--bg-secondary);
+            background: var(--bg-primary);
             min-width: 0 !important; /* Force min-width 0 to allow full collapse */
             max-width: none; /* Removed max-width limit */
             transition: background-color 0.3s, flex 0.4s cubic-bezier(0.4, 0, 0.2, 1);
@@ -591,18 +598,18 @@
             background: var(--bg-primary);
             /* backdrop-filter: blur(12px); Removed for solid background */
             /* -webkit-backdrop-filter: blur(12px); */
-            border: 1px solid var(--border-color);
-            /* Half rounded rectangle: flat on left, rounded on right */
-            border-radius: 0 var(--radius-lg) var(--radius-lg) 0;
+            border: none;
+            border-top: none; /* Make it seamless with title bar */
+            border-radius: 0;
             border-left: none; /* Remove left border as it sticks to edge */
-            margin: 4px 4px 4px 0; /* Stick to left edge */
-            height: calc(100% - 8px);
+            margin: 0; /* Stick to left edge and touch top/bottom */
+            height: 100%;
             z-index: 20;
             align-items: center;
             padding-top: 16px;
             flex-shrink: 0;
-            transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1), padding 0.4s, opacity 0.4s, margin 0.4s, border-radius 0.4s;
-            box-shadow: var(--shadow-sm);
+            transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1), padding 0.4s, opacity 0.4s, margin 0.4s;
+            box-shadow: none;
         }
 
         .left-sidebar.expanded {
@@ -611,9 +618,10 @@
             padding-left: 12px;
             padding-right: 12px;
             /* Restore floating appearance when expanded */
-            margin: 4px;
-            border-radius: var(--radius-lg);
-            border-left: 1px solid var(--border-color);
+            margin: 0;
+            border-radius: 0;
+            border-left: none;
+            border-right: none;
             transition-delay: 0s; /* No delay when manually expanded */
         }
 
@@ -661,6 +669,7 @@
         .icon-btn:hover {
             background: var(--bg-tertiary);
             color: var(--text-primary);
+            box-shadow: 0 0 0 1px var(--accent-color);
         }
 
         .left-content {
@@ -746,7 +755,7 @@
         .toolbar-btn:hover {
             background: var(--accent-light);
             color: var(--accent-color);
-            box-shadow: var(--shadow-accent);
+            box-shadow: 0 0 0 1.5px var(--accent-color);
             transform: translateY(-1px);
         }
 
@@ -918,7 +927,7 @@
         .more-menu .dropdown-item:hover {
             background: var(--accent-light);
             color: var(--accent-color);
-            box-shadow: var(--shadow-accent);
+            box-shadow: 0 0 0 1px var(--accent-color);
         }
 
         /* Edit Options - Refactored for Edit Mode */
@@ -993,7 +1002,7 @@
         .edit-btn:hover {
             background: var(--accent-light);
             color: var(--accent-color);
-            box-shadow: var(--shadow-accent);
+            box-shadow: 0 0 0 1px var(--accent-color);
         }
         .edit-btn.active {
             background: var(--accent-light);
@@ -1008,6 +1017,7 @@
         .close-edit-btn:hover {
             background: var(--success-color);
             color: white;
+            box-shadow: 0 0 0 1px var(--success-color);
             transform: scale(1.05);
         }
 
@@ -1131,10 +1141,11 @@
         .context-menu-item > svg:not(:first-child) {
             margin-left: auto;
         }
-        .context-menu-item:hover {
+        .context-menu-item:hover,
+        .context-menu-item.has-submenu-open {
             background: var(--accent-light);
             color: var(--accent-color);
-            box-shadow: var(--shadow-accent);
+            box-shadow: 0 0 0 1px var(--accent-color);
         }
         .context-menu-item.disabled {
             opacity: 0.5;
@@ -1155,7 +1166,7 @@
         .floating-submenu {
             position: fixed;
             z-index: 10000;
-            background: var(--bg-menu);
+            background: var(--bg-glass);
             backdrop-filter: blur(20px);
             -webkit-backdrop-filter: blur(20px);
             border: 1px solid var(--border-color);
@@ -1183,7 +1194,7 @@
         .floating-submenu .context-menu-item:hover {
             background: var(--accent-light);
             color: var(--accent-color);
-            box-shadow: var(--shadow-accent);
+            box-shadow: 0 0 0 1px var(--accent-color);
         }
 
         /* Left-side submenu when near right edge */
@@ -1305,7 +1316,7 @@
         .dropdown-item:hover {
             background: var(--accent-light);
             color: var(--accent-color);
-            box-shadow: var(--shadow-accent);
+            box-shadow: 0 0 0 1px var(--accent-color);
         }
         
         .dropdown-separator {
@@ -1353,6 +1364,7 @@
 
         .zoom-btn:hover {
             background: var(--bg-secondary);
+            box-shadow: 0 0 0 1px var(--accent-color);
         }
 
         .zoom-val {
@@ -1416,7 +1428,7 @@
             flex: 1;
             display: flex;
             flex-direction: column;
-            padding: 12px 4px 10px 4px; /* 缩小左右边距 */
+            padding: 8px 12px 10px 0; /* 去除左侧间隔，右侧间隔略增大 */
             overflow: hidden; /* Prevent outer scroll */
             gap: 12px;
             transition: padding 0.4s cubic-bezier(0.4, 0, 0.2, 1);
@@ -1445,11 +1457,11 @@
             min-height: 0; /* Allow shrinking */
             display: flex;
             flex-direction: column;
-            background: var(--bg-primary);
+            background: var(--bg-secondary);
             /* backdrop-filter: blur(8px); */
             /* -webkit-backdrop-filter: blur(8px); */
             border: 1px solid var(--border-color); /* Use standard border color */
-            border-radius: var(--radius-lg);
+            border-radius:  var(--radius-lg);
             box-shadow: var(--shadow-sm);
             overflow: hidden; /* Clip children */
             position: relative;
@@ -1462,8 +1474,8 @@
 
         .text-container:focus-within {
             border-color: var(--accent-color);
-            box-shadow: var(--shadow-md);
-            background: var(--bg-primary);
+            box-shadow: none;
+            background: var(--bg-secondary);
         }
 
         /* Text Input - The scrollable content */
@@ -1471,7 +1483,7 @@
             flex: 1;
             width: 100%;
             height: 100%;
-            padding: 32px 24px 24px;
+            padding: 24px;
             border: none;
             background: transparent;
             color: var(--text-primary);
@@ -1618,6 +1630,7 @@
         .image-delete-btn:hover {
             background: var(--danger-color);
             transform: scale(1.1);
+            box-shadow: 0 0 0 1px var(--danger-color);
         }
 
         /* Bottom Area - Floating Action Button Container */
@@ -1711,7 +1724,7 @@
             flex: 1;
             display: flex;
             flex-direction: column;
-            background: var(--bg-secondary);
+            background: var(--bg-primary);
             min-width: 300px;
         }
 
@@ -2153,7 +2166,7 @@
             height: 100%;
             background-color: var(--accent-color);
             width: 0%;
-            transition: width 0.3s ease;
+            transition: width 0.8s cubic-bezier(0.1, 0.7, 0.1, 1);
             border-radius: 3px;
         }
 
@@ -2530,7 +2543,7 @@
         .cancel-extract-btn:hover {
             background: var(--danger-color);
             color: white;
-            box-shadow: 0 4px 15px rgba(231, 29, 54, 0.3);
+            box-shadow: 0 0 0 1px var(--danger-color), 0 4px 15px rgba(231, 29, 54, 0.3);
             transform: translateY(-1px);
         }
         
@@ -2784,6 +2797,7 @@
         .sidebar-toggle-btn:hover {
             background: var(--accent-light);
             color: var(--accent-color);
+            box-shadow: 0 0 0 1px var(--accent-color);
         }
 
         /* 侧边栏展开时隐藏历史记录图标 */
@@ -4263,10 +4277,12 @@
                 const rightPanel = document.getElementById('rightPanel');
                 const toolbar = document.querySelector('.toolbar');
                 const collapsedIndicator = document.getElementById('collapsedIndicator');
+                const batchToggle = document.getElementById('batchModeToggle');
 
                 if (active) {
                     document.body.classList.add('edit-mode');
                     editBtn.classList.add('active');
+                    if (batchToggle) batchToggle.classList.add('disabled');
                     textInput.focus();
                     
                     // In edit mode the container scrolls; align it with the previous text scroll
@@ -4277,6 +4293,7 @@
                 } else {
                     document.body.classList.remove('edit-mode');
                     editBtn.classList.remove('active');
+                    if (batchToggle) batchToggle.classList.remove('disabled');
                     
                     // Reset divider to middle
                     if (leftPanel && rightPanel) {
@@ -4495,6 +4512,12 @@
 
             function closeSubmenu() {
                 if (activeSubmenu) {
+                    const parentText = activeSubmenu.dataset.parent;
+                    document.querySelectorAll('.context-menu-item').forEach(i => {
+                        if (i.innerText === parentText) {
+                            i.classList.remove('has-submenu-open');
+                        }
+                    });
                     activeSubmenu.remove();
                     activeSubmenu = null;
                 }
@@ -4517,6 +4540,8 @@
                     if (originalSubmenu) {
                         if (activeSubmenu) return; // Already open
 
+                        item.classList.add('has-submenu-open');
+                        
                         // Create floating submenu
                         const floating = document.createElement('div');
                         floating.className = 'floating-submenu';
@@ -7041,32 +7066,38 @@
             detectBtn.innerHTML = '分析中...';
             
             // 设置进度条初始状态
-            if (fromExtraction) {
-                progressBar.style.width = '20%';
-            } else {
-                progressBar.style.width = '0%';
-                // 快速动画到 20%
-                setTimeout(() => {
-                    progressBar.style.width = '20%';
-                }, 100);
-            }
+            let progress = fromExtraction ? 50 : 0;
+            progressBar.style.width = progress + '%';
             loadingText.textContent = '正在初始化分析...';
 
-            // 模拟分析阶段的进度增长 (20% -> 90%)
-            // 阶段1: 20% -> 50% (联网搜索/信息核实)
-            // 阶段2: 50% -> 90% (深度分析/生成报告)
-            let progress = 20;
+            // 模拟分析阶段的进度增长 (0% -> 90%)
             const progressInterval = setInterval(() => {
-                if (progress < 50) {
-                    progress += 0.8; // 较快
+                if (progress < 90) {
+                    // 随着进度增加，增长速度逐渐放缓，显得更真实丝滑
+                    let increment = 0;
+                    if (progress < 30) {
+                        increment = 0.5;
+                    } else if (progress < 60) {
+                        increment = 0.3;
+                    } else {
+                        increment = 0.15;
+                    }
+                    
+                    progress += increment;
                     progressBar.style.width = progress + '%';
-                    if (progress > 25) loadingText.textContent = '正在联网搜索相关信息...';
-                } else if (progress < 90) {
-                    progress += 0.4; // 较慢
-                    progressBar.style.width = progress + '%';
-                    if (progress > 55) loadingText.textContent = '正在进行多维深度分析...';
+                    
+                    // 动态更新加载提示词
+                    if (progress > 30 && progress < 65) {
+                        if (loadingText.textContent !== '正在联网搜索相关信息...') {
+                            loadingText.textContent = '正在联网搜索相关信息...';
+                        }
+                    } else if (progress >= 65) {
+                        if (loadingText.textContent !== '正在进行深度分析...') {
+                            loadingText.textContent = '正在进行深度分析...';
+                        }
+                    }
                 }
-            }, 100);
+            }, 60); // 缩短间隔时间，配合 CSS transition 实现丝滑过渡
 
             try {
                 let imageUrls = [];

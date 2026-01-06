@@ -105,6 +105,9 @@ class ImageExtractor {
     const images = [];
     const uniqueImageUrls = new Set();
 
+    // 移除视频、音频、iframe等非必要元素
+    $('video, audio, iframe, embed, object').remove();
+
     $('img').each((i, element) => {
       const src = $(element).attr('src');
       if (!src) {

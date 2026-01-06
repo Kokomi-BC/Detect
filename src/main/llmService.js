@@ -11,6 +11,31 @@ class LLMService {
   }
 
   /**
+   * 将JSON转换为TOON格式以减少Token消耗
+   * @param {Array} data 
+   * @returns {string}
+   */
+  jsonToToon(data) {
+    if (!Array.isArray(data) || data.length === 0) return '[]';
+    const keys = Object.keys(data[0]);
+    const header = `results[${data.length}]{${keys.join(',')}}:`;
+    const rows = data.map(item => {
+      return '  ' + keys.map(key => {
+        let val = item[key];
+        if (val === null || val === undefined) return '';
+        val = String(val).trim();
+        val = val.replace(/\s+/g, ' '); // 合并空白字符
+        // TOON/CSV规范：仅当包含逗号或双引号时才需要引号，冒号不需要
+        if (val.includes(',') || val.includes('"')) {
+          return `"${val.replace(/"/g, '""')}"`;
+        }
+        return val;
+      }).join(',');
+    });
+    return [header, ...rows].join('\n');
+  }
+
+  /**
    * 执行联网搜索
    * @param {string} query 搜索关键词
    * @returns {Promise<string>} 搜索结果摘要
@@ -37,22 +62,24 @@ class LLMService {
       }
 
       const data = await response.json();
-      console.log('博查搜索API返回结果:', JSON.stringify(data, null, 2));
       
       // 兼容不同的返回结构 (data.webPages 或 data.data.webPages)
       const webPages = data.webPages || (data.data && data.data.webPages);
       
       if (webPages && webPages.value && webPages.value.length > 0) {
-        // 优化：返回JSON格式的搜索结果，方便模型解析
+        // 优化：返回toon格式的搜索结果，方便模型解析
         const results = webPages.value.map(item => ({
           title: item.name,
           url: item.url,
           summary: item.summary,
           date: item.datePublished || '未知'
         }));
-        return JSON.stringify(results, null, 2);
+        const toonResult = this.jsonToToon(results);
+        console.log('联网搜索结果 (TOON格式):\n', toonResult);
+        return toonResult;
       }
-      return '[]'; // 返回空JSON数组表示无结果
+      console.log('联网搜索结果: 未找到相关内容');
+      return '[]'; // 返回空表示无结果
     } catch (error) {
       console.error('联网搜索失败:', error);
       return `(搜索遇到错误: ${error.message})`;
@@ -73,27 +100,27 @@ Analyze the provided content and determine its authenticity. You can request a w
 
 ### JSON Output Format (STRICT JSON, NO MARKDOWN):
 {
-  "needs_search": boolean, // Set to true if the news involves specific events, data, or recent facts that require verification.
-  "search_query": string,  // If needs_search is true, provide concise Chinese keywords (entities, events, time). Avoid long sentences.
-  "title": string,         // A short, objective title for the news (Simplified Chinese).
-  "probability": number,   // Float (0-1) representing the likelihood of the news being true.
-"type": number,          // 1: Real (Prob >= 0.8, >0.9 for major political events/verified facts/common sense), 2: Mixed/Uncertain (0.2 < Prob < 0.8), 3: Fake (Prob <= 0.2).
-  "explanation": string,   // A brief summary of your judgment (Simplified Chinese).
-  "analysis_points": [     // Exactly 3 analysis points from: information verifiability, linguistic objectivity, media consistency/source reliability (Simplified Chinese).
-    { "description": "Detailed analysis", "status": "positive"|"warning"|"negative" }
+  "needs_search": boolean, // True if verification is needed for specific events, data, or recent facts.
+  "search_query": string,  // If needs_search=true, provide concise Chinese keywords (entities, events, time). No long sentences.
+  "title": string,         // Objective news title (Simplified Chinese).
+  "probability": number,   // Float (0-1) of being true.
+  "type": number,          // 1: Real (>=0.8), 2: Mixed/Uncertain (0.2-0.8), 3: Fake (<=0.2).
+  "explanation": string,   // Brief judgment summary (Simplified Chinese).
+  "analysis_points": [     // Exactly 3 points: source reliability, linguistic objectivity, and factual consistency (Simplified Chinese).
+    { "description": "Analysis detail", "status": "positive"|"warning"|"negative" }
   ],
   "fake_parts": [          // Only if type is 2 or 3. List specific fake segments and reasons (Simplified Chinese).
-    { "text": "Exact quote from original", "reason": "Why it is fake" }
+    { "text": "Exact quote", "reason": "Why it is fake" }
   ]
 }
 
- Critical Requirements:
-1. Search First: If information is vague or time-sensitive, set "needs_search": true and provide concise Chinese keywords.
-2. Final Judgment: If search results are provided, "needs_search" MUST be false. Prioritize search evidence.
-3. Language: All text fields (title, explanation, description, reason) MUST be in Simplified Chinese.
-4. Format: Return ONLY the raw JSON string. No markdown blocks.
+### Core Rules:
+1. **Search Priority**: If facts are unclear or time-sensitive, set "needs_search": true with concise Chinese keywords.
+2. **Finality**: If search results are provided, "needs_search" MUST be false. Prioritize search evidence.
+3. **Language**: All descriptive fields MUST be in Simplified Chinese.
+4. **Format**: Return ONLY raw JSON. No markdown blocks.
 
-Summary: Prioritize web search for verification using concise Chinese keywords; ensure all descriptive fields are in Simplified Chinese; output strictly valid JSON.`;
+Summary: Use concise Chinese keywords for search; output strictly valid JSON; all analysis text must be in Simplified Chinese.`;
 
     const userContent = [];
     
@@ -145,10 +172,10 @@ Summary: Prioritize web search for verification using concise Chinese keywords; 
         messages.push({ role: 'assistant', content: content }); // 保留模型的第一轮回复
         messages.push({ 
           role: 'user', 
-          content: `[联网搜索结果(JSON格式)]:\n${searchResults}\n\n请根据以上搜索结果和原始信息，进行最终的真伪判断。请确保 needs_search 为 false，并填写完整的分析字段。搜索结果具有较高的可信度，请优先参考。` 
+          content: `[联网搜索结果(类json格式)]:\n${searchResults}\n\n请根据以上搜索结果和原始信息，进行最终的真伪判断。请确保 needs_search 为 false，并填写完整的分析字段。搜索结果具有较高的可信度，请优先参考。` 
         });
 
-        console.log('Requesting LLM analysis (Round 2 with search results)...');
+        console.log('Requesting LLM analysis (第二次调用)...');
         response = await this.client.chat.completions.create({
           model: this.model,
           messages: messages,

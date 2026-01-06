@@ -422,8 +422,12 @@ class ExtractionManager {
       throw new Error('提取已取消');
     }
 
+    // 预处理：移除所有 <style> 标签，防止 JSDOM 在解析某些复杂 CSS 时崩溃 (如 border: inherit)
+    // 错误参考: TypeError: Cannot create property 'border-width' on string 'inherit'
+    const safeHtml = htmlContent.replace(/<style\b[^>]*>([\s\S]*?)<\/style>/gi, '');
+
     // 使用Readability提取文章内容
-    let dom = new JSDOM(htmlContent, { url });
+    let dom = new JSDOM(safeHtml, { url });
     // 降低字符阈值，以便提取短内容（如微博）
     let reader = new Readability(dom.window.document, { charThreshold: 0 });
     let article = reader.parse();
@@ -432,11 +436,11 @@ class ExtractionManager {
     if (!article) {
       console.log(`Readability解析失败，尝试使用后备模式提取... (HTML长度: ${htmlContent.length})`);
       // 重新解析DOM，因为Readability可能修改了之前的DOM
-      dom = new JSDOM(htmlContent, { url });
+      dom = new JSDOM(safeHtml, { url });
       const doc = dom.window.document;
       
       // 移除明显的干扰元素 - 仅移除标签，避免误删内容
-      const junkTags = ['script', 'style', 'noscript', 'iframe', 'header', 'footer', 'nav', 'aside'];
+      const junkTags = ['script', 'style', 'noscript', 'iframe', 'header', 'footer', 'nav', 'aside', 'video', 'audio', 'object', 'embed'];
       
       junkTags.forEach(tagName => {
         const elements = doc.getElementsByTagName(tagName);
@@ -455,7 +459,7 @@ class ExtractionManager {
       // 如果清理后没有内容，尝试使用原始body（不清理）
       if (textContent.length === 0 && imageCount === 0) {
         console.log('后备模式清理后内容为空，尝试使用原始body...');
-        const rawDom = new JSDOM(htmlContent, { url });
+        const rawDom = new JSDOM(safeHtml, { url });
         if (rawDom.window.document.body) {
             content = rawDom.window.document.body.innerHTML;
             textContent = rawDom.window.document.body.textContent.trim();
