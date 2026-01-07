@@ -154,26 +154,29 @@
 
         .toggle-switch {
             position: relative;
-            width: 32px;
-            height: 18px;
+            width: 38px;
+            height: 22px;
             background: var(--border-color);
-            border-radius: 9px;
+            border-radius: 11px;
             cursor: pointer;
-            transition: background 0.3s;
-            display: flex;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            display: inline-flex;
             align-items: center;
+            flex-shrink: 0;
+            box-shadow: inset 0 1px 3px rgba(0,0,0,0.06);
         }
         
         .toggle-switch::after {
             content: '';
             position: absolute;
-            left: 2px;
-            width: 14px;
-            height: 14px;
+            left: 3px;
+            top: 3px;
+            width: 16px;
+            height: 16px;
             background: white;
             border-radius: 50%;
-            transition: transform 0.3s cubic-bezier(0.4, 0.0, 0.2, 1);
-            box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 2px 5px rgba(0,0,0,0.15);
         }
         
         /* Scoped to batch mode toggle only */
@@ -182,7 +185,7 @@
         }
         
         .batch-mode-active .batch-mode-toggle .toggle-switch::after {
-            transform: translateX(18px);
+            transform: translateX(16px);
         }
 
         /* Generic active state for other toggles (like settings) */
@@ -191,7 +194,19 @@
         }
         
         .toggle-switch.active::after {
-            transform: translateX(18px);
+            transform: translateX(16px);
+        }
+
+        .toggle-switch:hover {
+            background: #e2e4e7;
+        }
+
+        [data-theme="dark"] .toggle-switch:hover {
+            background: #4a4d51;
+        }
+
+        .toggle-switch.active:hover {
+            background: var(--accent-hover);
         }
 
         #title-bar .app-title {
@@ -203,7 +218,7 @@
 
         .title-bar-actions {
             position: absolute;
-            right: 150px;
+            right: 160px;
             top: 0;
             height: 100%;
             display: flex;
@@ -1374,34 +1389,6 @@
             font-variant-numeric: tabular-nums;
         }
 
-        /* Toggle Switch */
-        .toggle-switch {
-            width: 36px;
-            height: 20px;
-            background: var(--bg-tertiary);
-            border-radius: 10px;
-            position: relative;
-            transition: background 0.3s;
-            cursor: pointer;
-        }
-        .toggle-switch.active {
-            background: var(--accent-color);
-        }
-        .toggle-knob {
-            width: 16px;
-            height: 16px;
-            background: white;
-            border-radius: 50%;
-            position: absolute;
-            top: 2px;
-            left: 2px;
-            transition: transform 0.3s;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.2);
-        }
-        .toggle-switch.active .toggle-knob {
-            transform: translateX(16px);
-        }
-
         @keyframes menuPopup {
             from { opacity: 0; transform: scale(0.95); }
             to { opacity: 1; transform: scale(1); }
@@ -1428,7 +1415,7 @@
             flex: 1;
             display: flex;
             flex-direction: column;
-            padding: 8px 12px 10px 0; /* 去除左侧间隔，右侧间隔略增大 */
+            padding: 2px 10px 10px 0; 
             overflow: hidden; /* Prevent outer scroll */
             gap: 12px;
             transition: padding 0.4s cubic-bezier(0.4, 0, 0.2, 1);
@@ -2859,11 +2846,11 @@
         <div class="app-icon"></div>
         <button class="sidebar-toggle-btn" id="sidebarToggleBtn" title="展开/收起">
             <!-- Dock To Right (Expand) -->
-            <svg class="icon-expand" width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+            <svg class="icon-expand" width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
                 <path d="M4.75 4A2.75 2.75 0 0 0 2 6.75v10.5A2.75 2.75 0 0 0 4.75 20h14.5A2.75 2.75 0 0 0 22 17.25V6.75A2.75 2.75 0 0 0 19.25 4H4.75ZM3.5 6.75c0-.69.56-1.25 1.25-1.25h3.254v13H4.75c-.69 0-1.25-.56-1.25-1.25V6.75ZM9.504 18.5v-13h9.746c.69 0 1.25.56 1.25 1.25v10.5c0 .69-.56 1.25-1.25 1.25H9.504Z"/>
             </svg>
             <!-- Dock To Left (Collapse) -->
-            <svg class="icon-collapse" width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+            <svg class="icon-collapse" width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
                 <path d="M19.25 4A2.75 2.75 0 0 1 22 6.75v10.5A2.75 2.75 0 0 1 19.25 20H4.75A2.75 2.75 0 0 1 2 17.25V6.75A2.75 2.75 0 0 1 4.75 4h14.5Zm1.25 2.75c0-.69-.56-1.25-1.25-1.25h-3.254v13h3.254c.69 0 1.25-.56 1.25-1.25V6.75ZM14.496 18.5v-13H4.75c-.69 0-1.25.56-1.25 1.25v10.5c0 .69.56 1.25 1.25 1.25h9.746Z"/>
             </svg>
         </button>
@@ -2874,10 +2861,10 @@
         </button>
         <button class="sidebar-toggle-btn" id="themeBtn" title="切换主题" style="margin-left: 4px;">
             <span id="themeIconWrapper">
-                <svg id="themeIconLight" width="16" height="16" viewBox="0 -960 960 960" fill="currentColor" style="display: none;">
+                <svg id="themeIconLight" width="17" height="17" viewBox="0 -960 960 960" fill="currentColor" style="display: none;">
                     <path d="M480-360q50 0 85-35t35-85q0-50-35-85t-85-35q-50 0-85 35t-35 85q0 50 35 85t85 35Zm0 80q-83 0-141.5-58.5T280-480q0-83 58.5-141.5T480-680q83 0 141.5 58.5T680-480q0 83-58.5 141.5T480-280ZM200-440H40v-80h160v80Zm720 0H760v-80h160v80ZM440-760v-160h80v160h-80Zm0 720v-160h80v160h-80ZM256-650l-101-97 57-59 96 100-52 56Zm492 496-97-101 53-55 101 97-57 59Zm-98-550 97-101 59 57-100 96-56-52ZM154-212l101-97 55 53-97 101-59-57Zm326-268Z"/>
                 </svg>
-                <svg id="themeIconDark" width="16" height="16" viewBox="0 -960 960 960" fill="currentColor" style="display: none;">
+                <svg id="themeIconDark" width="17" height="17" viewBox="0 -960 960 960" fill="currentColor" style="display: none;">
                     <path d="M480-120q-150 0-255-105T120-480q0-150 105-255t255-105q14 0 27.5 1t26.5 3q-41 29-65.5 75.5T444-660q0 90 63 153t153 63q55 0 101-24.5t75-65.5q2 13 3 26.5t1 27.5q0 150-105 255T480-120Zm0-80q88 0 158-48.5T740-375q-20 5-40 8t-40 3q-123 0-209.5-86.5T364-660q0-20 3-40t8-40q-78 32-126.5 102T200-480q0 116 82 198t198 82Zm-10-270Z"/>
                 </svg>
             </span>
@@ -2885,7 +2872,7 @@
         
         <!-- Batch Mode Toggle -->
         <div class="batch-mode-toggle" id="batchModeToggle" title="批量处理模式">
-            <svg class="batch-icon" viewBox="0 0 24 24" fill="currentColor">
+            <svg class="batch-icon"   width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
                 <path d="M4 6h16v2H4zm0 5h16v2H4zm0 5h16v2H4z"/>
             </svg>
             <div class="toggle-switch"></div>
@@ -2893,14 +2880,14 @@
 
         <div class="app-title">假新闻检测系统</div>
         <div class="title-bar-actions">
-            <div class="toolbar-btn more-menu" id="moreBtn" title="更多操作" tabindex="0">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/>
+            <div class="toolbar-btn more-menu" id="moreBtn" title="设置" tabindex="0">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M12.012 2.25c.734.008 1.465.093 2.182.253a.75.75 0 0 1 .582.649l.17 1.527a1.384 1.384 0 0 0 1.927 1.116l1.401-.615a.75.75 0 0 1 .85.174 9.792 9.792 0 0 1 2.204 3.792.75.75 0 0 1-.271.825l-1.242.916a1.381 1.381 0 0 0 0 2.226l1.243.915a.75.75 0 0 1 .272.826 9.797 9.797 0 0 1-2.204 3.792.75.75 0 0 1-.848.175l-1.407-.617a1.38 1.38 0 0 0-1.926 1.114l-.169 1.526a.75.75 0 0 1-.572.647 9.518 9.518 0 0 1-4.406 0 .75.75 0 0 1-.572-.647l-.168-1.524a1.382 1.382 0 0 0-1.926-1.11l-1.406.616a.75.75 0 0 1-.849-.175 9.798 9.798 0 0 1-2.204-3.796.75.75 0 0 1 .272-.826l1.243-.916a1.38 1.38 0 0 0 0-2.226l-1.243-.914a.75.75 0 0 1-.271-.826 9.793 9.793 0 0 1 2.204-3.792.75.75 0 0 1 .85-.174l1.4.615a1.387 1.387 0 0 0 1.93-1.118l.17-1.526a.75.75 0 0 1 .583-.65c.717-.159 1.45-.243 2.201-.252Zm0 1.5a9.135 9.135 0 0 0-1.354.117l-.109.977A2.886 2.886 0 0 1 6.525 7.17l-.898-.394a8.293 8.293 0 0 0-1.348 2.317l.798.587a2.881 2.881 0 0 1 0 4.643l-.799.588c.32.842.776 1.626 1.348 2.322l.905-.397a2.882 2.882 0 0 1 4.017 2.318l.11.984c.889.15 1.798.15 2.687 0l.11-.984a2.881 2.881 0 0 1 4.018-2.322l.905.396a8.296 8.296 0 0 0 1.347-2.318l-.798-.588a2.881 2.881 0 0 1 0-4.643l.796-.587a8.293 8.293 0 0 0-1.348-2.317l-.896.393a2.884 2.884 0 0 1-4.023-2.324l-.11-.976a8.988 8.988 0 0 0-1.333-.117ZM12 8.25a3.75 3.75 0 1 1 0 7.5 3.75 3.75 0 0 1 0-7.5Zm0 1.5a2.25 2.25 0 1 0 0 4.5 2.25 2.25 0 0 0 0-4.5Z"/>
                 </svg>
                 <div class="dropdown-menu" id="moreDropdown">
                     
                     <div class="dropdown-item-row">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
                             <path d="M10.212 17.11 15.043 3.5c.223-.627 1.07-.664 1.365-.111l.049.11 5.5 15.5a.75.75 0 0 1-1.373.596l-.04-.094L18.945 15h-6.394l-1.58 4.452a.75.75 0 0 1-.354.452l-.093.044a.75.75 0 0 1-.929-.33l-.044-.092L8.556 17H4.443l-.995 2.52a.75.75 0 0 1-.876.454l-.098-.031a.75.75 0 0 1-.452-.876l.03-.098 3.754-9.495c.236-.595 1.043-.63 1.345-.104l.05.105 3.011 7.635L15.043 3.5l-4.831 13.61Zm-3.71-5.318L5.037 15.5h2.928l-1.461-3.708Zm9.248-5.8L13.084 13.5h5.33L15.75 5.992Z"/>
                         </svg>
                         <span>字体缩放</span>
@@ -2911,7 +2898,7 @@
                         </div>
                     </div>
                     <div class="dropdown-item-row">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
                             <path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14zM12 10h-2v2H9v-2H7V9h2V7h1v2h2v1z"/>
                         </svg>
                         <span>UI缩放</span>
@@ -2922,14 +2909,14 @@
                         </div>
                     </div>
                     <div class="dropdown-item" id="clearBrowserDataBtn">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
                             <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/>
                         </svg>
                         <span>清除浏览器数据</span>
                     </div>
                     <div class="dropdown-separator"></div>
                     <div class="dropdown-item-row" id="browserToggleRow" style="cursor: pointer;">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
                             <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/>
                         </svg>
                         <span>使用系统浏览器</span>
@@ -2938,11 +2925,11 @@
                 </div>
             </div>
             <button class="toolbar-btn" id="fullScreenBtn" title="全屏显示">
-                <svg class="icon-enter-fullscreen" width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"/>
+                <svg class="icon-enter-fullscreen" width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M4.5 5.75c0-.69.56-1.25 1.25-1.25h2a.75.75 0 0 0 0-1.5h-2A2.75 2.75 0 0 0 3 5.75v2a.75.75 0 0 0 1.5 0v-2ZM4.5 18.25c0 .69.56 1.25 1.25 1.25h2a.75.75 0 0 1 0 1.5h-2A2.75 2.75 0 0 1 3 18.25v-2a.75.75 0 0 1 1.5 0v2ZM18.25 4.5c.69 0 1.25.56 1.25 1.25v2a.75.75 0 0 0 1.5 0v-2A2.75 2.75 0 0 0 18.25 3h-2a.75.75 0 0 0 0 1.5h2ZM19.5 18.25c0 .69-.56 1.25-1.25 1.25h-2a.75.75 0 0 0 0 1.5h2A2.75 2.75 0 0 0 21 18.25v-2a.75.75 0 0 0-1.5 0v2Z"/>
                 </svg>
-                <svg class="icon-exit-fullscreen" width="20" height="20" viewBox="0 0 24 24" fill="currentColor" style="display: none;">
-                    <path d="M5 16h3v3h2v-5H5v2zm3-8H5v2h5V5H8v3zm6 11h2v-3h3v-2h-5v5zm2-11V5h-2v5h5V8h-3z"/>
+                <svg class="icon-exit-fullscreen" width="18" height="18" viewBox="0 0 24 24" fill="currentColor" style="display: none;">
+                   <path d="M8.5 3.75a.75.75 0 0 0-1.5 0v2.5a.75.75 0 0 1-.75.75h-2.5a.75.75 0 0 0 0 1.5h2.5A2.25 2.25 0 0 0 8.5 6.25v-2.5ZM8.5 20.25a.75.75 0 0 1-1.5 0v-2.5a.75.75 0 0 0-.75-.75h-2.5a.75.75 0 0 1 0-1.5h2.5a2.25 2.25 0 0 1 2.25 2.25v2.5ZM16.25 3a.75.75 0 0 0-.75.75v2.5a2.25 2.25 0 0 0 2.25 2.25h2.5a.75.75 0 0 0 0-1.5h-2.5a.75.75 0 0 1-.75-.75v-2.5a.75.75 0 0 0-.75-.75ZM15.5 20.25a.75.75 0 0 0 1.5 0v-2.5a.75.75 0 0 1 .75-.75h2.5a.75.75 0 0 0 0-1.5h-2.5a2.25 2.25 0 0 0-2.25 2.25v2.5Z"/>
                 </svg>
             </button>
         </div>
@@ -2953,7 +2940,7 @@
             <!-- 工具栏 -->
             <div class="toolbar">
                 <!-- Exit Batch Edit Button -->
-                <button class="toolbar-btn" id="batchExitBtn" title="返回批量列表" style="display: none;">
+                <button class="toolbar-btn" id="batchExitBtn" title="返回列表" style="display: none;">
                     <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
                         <path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/>
                     </svg>
