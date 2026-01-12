@@ -6,7 +6,7 @@ class LLMService {
       apiKey: '914b3c31-1b7b-4053-81e2-ea7546afae5a',
       baseURL: 'https://ark.cn-beijing.volces.com/api/v3',
     });
-    this.model = 'doubao-seed-1-6-vision-250815';
+    this.model = 'doubao-seed-1-8-251228';
     this.bochaApiKey = 'sk-3a242c2d462a460c9a378c181bd93c95';
   }
 
@@ -96,7 +96,7 @@ class LLMService {
   async analyzeContent(text, imageUrls = [], sourceUrl = '') {
     const currentDate = new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' });
     const systemPrompt = `You are a professional fake news detection assistant. Current date: ${currentDate}.
-Analyze the provided content and determine its authenticity. You can request a web search for verification.
+  Analyze the provided content and determine its authenticity. You can request a web search for verification. If images are provided, you MUST also check text-image consistency (图文一致性): extract visible text from images (OCR mentally), identify key entities/objects/scenes/time/watermarks, and compare with the written claims and captions. Flag mismatches explicitly.
 
 ### JSON Output Format (STRICT JSON, NO MARKDOWN):
 {
@@ -106,10 +106,10 @@ Analyze the provided content and determine its authenticity. You can request a w
   "probability": number,   // Float (0-1) of being true.
   "type": number,          // 1: Real (>=0.8), 2: Mixed/Uncertain (0.2-0.8), 3: Fake (<=0.2).
   "explanation": string,   // Brief judgment summary (Simplified Chinese).
-  "analysis_points": [     // Exactly 3 points: source reliability, linguistic objectivity, and factual consistency (Simplified Chinese).
+  "analysis_points": [     // Exactly 3 points: source reliability, linguistic objectivity, and factual consistency (include image-text consistency when images exist) (Simplified Chinese).
     { "description": "Analysis detail", "status": "positive"|"warning"|"negative" }
   ],
-  "fake_parts": [          // Only if type is 2 or 3. List specific fake segments and reasons (Simplified Chinese).
+  "fake_parts": [          // Only if type is 2 or 3. List specific fake segments and reasons (Simplified Chinese). Include image-text mismatches clearly, e.g., reason starts with "图文不一致:".
     { "text": "Exact quote", "reason": "Why it is fake" }
   ]
 }
@@ -117,10 +117,11 @@ Analyze the provided content and determine its authenticity. You can request a w
 ### Core Rules:
 1. **Search Priority**: If facts are unclear or time-sensitive, set "needs_search": true with concise Chinese keywords.
 2. **Finality**: If search results are provided, "needs_search" MUST be false. Prioritize search evidence.
-3. **Language**: All descriptive fields MUST be in Simplified Chinese.
-4. **Format**: Return ONLY raw JSON. No markdown blocks.
+3. **Image-Text Consistency**: When images exist, assess whether images support, contradict, or are unrelated to textual claims. If contradiction or likely mismatch is found, lower the probability accordingly and put the specific claim into "fake_parts" with reason prefixed by "图文不一致" or "图文疑似不一致"; reference visible cues (e.g.,人物/地点/时间/水印/画面元素)。
+4. **Language**: All descriptive fields MUST be in Simplified Chinese.
+5. **Format**: Return ONLY raw JSON. No markdown blocks.
 
-Summary: Use concise Chinese keywords for search; output strictly valid JSON; all analysis text must be in Simplified Chinese.`;
+Summary: Use concise Chinese keywords for search; output strictly valid JSON; all analysis text must be in Simplified Chinese; explicitly check and report image-text consistency when images are provided.`;
 
     const userContent = [];
     

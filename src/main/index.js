@@ -1,5 +1,10 @@
 const { app } = require('electron');
 const DetectApp = require('./main');
+
+// 屏蔽 Chromium 内核的警告和错误日志 (如 STUN 域名解析失败)
+app.commandLine.appendSwitch('log-level', '3');
+app.commandLine.appendSwitch('disable-logging');
+
 process.on('uncaughtException', (error) => {
   console.error('Uncaught exception:', error);
   process.exit(1);

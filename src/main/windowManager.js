@@ -767,7 +767,9 @@ class WindowManager {
     if (session && session.webRequest) {
       session.webRequest.onBeforeRequest({
         urls: [
-          '*://stun.l.google.com/*',
+          '*://*.l.google.com/*',
+          '*://*.services.mozilla.com/*',
+          '*://*.services.mozilla1.com/*',
           '*://*.google-analytics.com/*',
           '*://*.doubleclick.net/*',
           '*://*.googlesyndication.com/*'

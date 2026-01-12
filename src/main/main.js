@@ -180,8 +180,11 @@ class DetectApp {
    * 禁用WebRTC连接，避免STUN错误
    */
   disableWebRTCConnections() {
-    // 通过命令行开关禁用WebRTC
+    // 通过命令行开关更全面地禁用WebRTC和相关功能
     app.commandLine.appendSwitch('disable-webrtc');
+    app.commandLine.appendSwitch('disable-features', 'WebRtcHideLocalIpsWithMdns,WebRTC-H264WithOpenH264FFmpeg');
+    // 强制限制IP泄露检查，进一步减少底层尝试
+    app.commandLine.appendSwitch('enforce-webrtc-ip-permission-check');
   }
 
   /**

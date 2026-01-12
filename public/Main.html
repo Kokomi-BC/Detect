@@ -4542,20 +4542,29 @@
                         const rect = item.getBoundingClientRect();
                         const winWidth = window.innerWidth;
                         const winHeight = window.innerHeight;
-                        const subRect = floating.getBoundingClientRect();
                         
-                        let left = rect.right;
-                        let top = rect.top - 4; // Align top
+                        // Use offsetWidth/Height to ignore scaling transformations
+                        const subWidth = floating.offsetWidth || 160;
+                        const subHeight = floating.offsetHeight || 100;
+                        
+                        let left = rect.right - 2; // Slight overlap
+                        let top = rect.top - 6; // Align with item padding
 
                         // Horizontal flip
-                        if (left + subRect.width > winWidth) {
-                            left = rect.left - subRect.width;
+                        let isFlipped = false;
+                        if (left + subWidth > winWidth - 10) {
+                            left = rect.left - subWidth + 2;
+                            isFlipped = true;
                         }
 
                         // Vertical adjustment
-                        if (top + subRect.height > winHeight) {
-                            top = winHeight - subRect.height - 10;
+                        if (top + subHeight > winHeight - 10) {
+                            top = winHeight - subHeight - 10;
                         }
+                        if (top < 10) top = 10;
+                        
+                        // Set transform origin for better animation
+                        floating.style.transformOrigin = isFlipped ? 'right top' : 'left top';
                         
                         floating.style.left = left + 'px';
                         floating.style.top = top + 'px';
@@ -5679,6 +5688,7 @@
             const importFileBtn = document.getElementById('importFileBtn');
             if (importFileBtn) {
                 importFileBtn.addEventListener('click', async () => {
+                    let importSucceeded = false;
                     try {
                         const result = await window.electronAPI.invoke('select-file');
                         if (result.canceled || !result.filePaths || result.filePaths.length === 0) return;
@@ -5709,17 +5719,23 @@
                                 confirmText: '进入批量模式',
                                 cancelText: '仅导入内容',
                                 onConfirm: async () => {
-                                    if (!isBatchMode) enterBatchMode();
-                                    const fileResult = await window.electronAPI.invoke('read-file-content', filePath);
-                                    console.log('[import-file] excel result', fileResult);
-                                    if (fileResult.success && fileResult.type === 'excel') {
-                                        fileResult.data.forEach(item => {
-                                            addBatchItem(item.content, sanitizeImportedImages(item.images));
-                                        });
-                                        renderBatchList();
-                                        showToast(`已导入 ${fileResult.data.length} 条数据`, 'success');
-                                    } else {
-                                        showToast('读取Excel失败: ' + (fileResult.error || '未知错误'), 'error');
+                                    try {
+                                        if (!isBatchMode) enterBatchMode();
+                                        const fileResult = await window.electronAPI.invoke('read-file-content', filePath);
+                                        console.log('[import-file] excel result', fileResult);
+                                        if (fileResult.success && fileResult.type === 'excel') {
+                                            fileResult.data.forEach(item => {
+                                                addBatchItem(item.content, sanitizeImportedImages(item.images));
+                                            });
+                                            renderBatchList();
+                                            importSucceeded = true;
+                                            showToast(`已导入 ${fileResult.data.length} 条数据`, 'success');
+                                        } else {
+                                            showToast('读取Excel失败: ' + (fileResult.error || '未知错误'), 'error');
+                                        }
+                                    } catch (err) {
+                                        console.error('[import-file] excel import failed', err);
+                                        showToast('导入失败', 'error');
                                     }
                                 },
                                 onCancel: () => {
@@ -5730,7 +5746,7 @@
                             const fileResult = await window.electronAPI.invoke('read-file-content', filePath);
                             console.log('[import-file] generic file result', fileResult);
                             if (fileResult.success && ['pdf', 'txt', 'md', 'docx', 'doc'].includes(fileResult.type)) {
-                                const { text, images, truncated } = fileResult.data;
+                                const { text = '', images = [], truncated = false } = fileResult.data || {};
                                 const validImages = sanitizeImportedImages(images);
 
                                 if (fileResult.type === 'pdf' && truncated) {
@@ -5770,6 +5786,7 @@
                                                 renderBatchList();
                                                 applyToEditor(); // 覆盖编辑器内容，保持编辑视图同步
                                                 showToast('已更新当前批量项', 'success');
+                                                importSucceeded = true;
                                                 return true;
                                             }
                                         }
@@ -5800,11 +5817,14 @@
                                                     const chunkImages = index === 0 ? validImages : [];
                                                     addBatchItem(chunk, chunkImages);
                                                 });
+                                                importSucceeded = true;
                                             } else {
                                                 addBatchItem(text, validImages);
+                                                importSucceeded = true;
                                             }
                                         } else {
                                             addBatchItem(text, validImages);
+                                            importSucceeded = true;
                                         }
                                         renderBatchList();
                                         showToast('文件内容已添加到批量列表', 'success');
@@ -5812,6 +5832,7 @@
                                 } else {
                                     applyToEditor();
                                     showToast('文件内容已导入', 'success');
+                                    importSucceeded = true;
                                 }
                             } else {
                                 showToast('读取文件失败: ' + (fileResult.error || '未知错误'), 'error');
@@ -5819,7 +5840,11 @@
                         }
                     } catch (error) {
                         console.error('Import failed:', error);
-                        showToast('导入失败', 'error');
+                        if (!importSucceeded) {
+                            showToast('导入失败', 'error');
+                        } else {
+                            showToast('导入已完成，但出现非关键错误，请检查控制台', 'warning');
+                        }
                     }
                 });
             }
@@ -5827,19 +5852,7 @@
             // 清空按钮
             document.getElementById('clearBtn').addEventListener('click', function() {
                 showCustomModal(() => {
-                    document.getElementById('textInput').innerText = '';
-                    uploadedImages = [];
-                    detectedUrls = [];
-                    document.getElementById('imagePreview').innerHTML = '';
-                    updateEditorStats();
-                    document.getElementById('initialState').style.display = 'flex';
-                    const resultItem = document.getElementById('resultItem');
-                    resultItem.classList.remove('active');
-                    resultItem.style.display = 'none';
-                    document.getElementById('errorState').classList.remove('active');
-                    document.getElementById('loadingState').classList.remove('active');
-                    
-                    showToast('内容已清空', 'success');
+                    clearEditorContent();
                 });
             });
 
@@ -6792,22 +6805,71 @@
                 // 监听主进程请求显示清空确认弹窗（来自右键菜单）
                 window.electronAPI.on('request-clear', function() {
                     showCustomModal(() => {
-                        // 确认后执行同样的清空逻辑
-                        document.getElementById('textInput').innerText = '';
-                        uploadedImages = [];
-                        detectedUrls = [];
-                        document.getElementById('imagePreview').innerHTML = '';
-                        updateEditorStats();
-                        document.getElementById('initialState').style.display = 'flex';
-                        document.getElementById('resultItem').classList.remove('active');
-                        document.getElementById('errorState').classList.remove('active');
-                        document.getElementById('loadingState').classList.remove('active');
-                        
-                        showToast('内容已清空', 'success');
+                        clearEditorContent();
                     }, () => {
                         // 取消时不作操作
                     });
                 });
+            }
+        }
+
+        // 恢复右侧界面至初始状态
+        function resetRightPanel() {
+            const initialState = document.getElementById('initialState');
+            const resultItem = document.getElementById('resultItem');
+            const errorState = document.getElementById('errorState');
+            const loadingState = document.getElementById('loadingState');
+
+            if (initialState) {
+                initialState.style.display = 'flex';
+                initialState.classList.add('active');
+            }
+            if (resultItem) {
+                resultItem.style.display = 'none';
+                resultItem.classList.remove('active');
+            }
+            if (errorState) {
+                errorState.style.display = 'none';
+                errorState.classList.remove('active');
+            }
+            if (loadingState) {
+                loadingState.style.display = 'none';
+                loadingState.classList.remove('active');
+            }
+        }
+
+        // 清空编辑器内容
+        function clearEditorContent(showToastMessage = true) {
+            const textInput = document.getElementById('textInput');
+            if (textInput) {
+                textInput.innerText = '';
+            }
+
+            uploadedImages = [];
+            if (typeof selectedImages !== 'undefined' && selectedImages instanceof Set) {
+                selectedImages.clear();
+            }
+            if (typeof detectedUrls !== 'undefined') {
+                detectedUrls = [];
+            }
+
+            const imagePreview = document.getElementById('imagePreview');
+            if (imagePreview) {
+                imagePreview.innerHTML = '';
+            }
+            if (typeof renderImages === 'function') {
+                renderImages();
+            }
+
+            updateEditorStats();
+            if (typeof updateBtnState === 'function') {
+                updateBtnState();
+            }
+
+            resetRightPanel();
+
+            if (showToastMessage) {
+                showToast('内容已清空', 'success');
             }
         }
 
@@ -7971,6 +8033,7 @@
                             cancelText: '取消',
                             onConfirm: () => {
                                 exitBatchMode();
+                                
                             }
                         });
                     }
@@ -8008,6 +8071,8 @@
                              currentBatchEditId = null;
                              document.body.classList.remove('batch-edit-mode');
                         }
+                        // 同时重置右侧界面
+                        resetRightPanel();
                     }
                 });
             });
@@ -8133,12 +8198,7 @@
             document.body.classList.remove('batch-edit-mode');
             
             if (clearEditor) {
-                // Reset Editor
-                const textInput = document.getElementById('textInput');
-                if (textInput) textInput.innerHTML = '';
-                uploadedImages = [];
-                renderImages();
-                updateEditorStats();
+                clearEditorContent(false);
             }
             
             // Show sidebar
