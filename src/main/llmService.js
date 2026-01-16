@@ -76,13 +76,22 @@ class LLMService {
         }));
         const toonResult = this.jsonToToon(results);
         console.log('联网搜索结果 (类json格式):\n', toonResult);
-        return toonResult;
+        
+        // 返回包含格式化字符串和原始数据的对象
+        return {
+          formattedString: toonResult,
+          rawResults: results
+        };
       }
-      console.log('联网搜索结果: 未找到相关内容');
-      return '[]'; // 返回空表示无结果
+      
+      return { formattedString: "未搜索到相关结果。", rawResults: [] };
     } catch (error) {
       console.error('联网搜索失败:', error);
-      return `(搜索遇到错误: ${error.message})`;
+      // Return error structure that matches the expected object format
+      return { 
+        formattedString: `(搜索遇到错误: ${error.message})`, 
+        rawResults: [] 
+      };
     }
   }
 
@@ -91,10 +100,10 @@ class LLMService {
    * @param {string} text 文本内容
    * @param {string[]} imageUrls 图片URL数组
    * @param {string} sourceUrl 来源URL（可选）
-   * @param {Function} onSearchStart 联网搜索开始时的回调函数（可选）
+   * @param {Function} onStatusChange 状态变化回调函数（可选）
    * @returns {Promise<Object>} 分析结果
    */
-  async analyzeContent(text, imageUrls = [], sourceUrl = '', onSearchStart = null) {
+  async analyzeContent(text, imageUrls = [], sourceUrl = '', onStatusChange = null) {
     const currentDate = new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' });
     const systemPrompt = `You are a professional fake news detection assistant. Current date: ${currentDate}.
   Analyze the provided content and determine its authenticity. You can request a web search for verification. If images are provided, you MUST also check text-image consistency (图文一致性): extract visible text from images (OCR mentally), identify key entities/objects/scenes/time/watermarks, and compare with the written claims and captions. Flag mismatches explicitly.
@@ -169,19 +178,31 @@ Summary: Use concise Chinese keywords for search; output strictly valid JSON; al
       if (result.needs_search && result.search_query) {
         console.log(`Model requests search: ${result.search_query}`);
         
-        // 执行回调通知前端
-        if (typeof onSearchStart === 'function') {
-          onSearchStart(result.search_query);
+        // 执行回调通知前端：开始搜索
+        if (typeof onStatusChange === 'function') {
+          onStatusChange('searching', { query: result.search_query });
         }
 
         // 执行搜索
-        const searchResults = await this.performWebSearch(result.search_query);
+        // 修改：现在 performWebSearch 返回 { formattedString, rawResults } 用于前端展示
+        const searchData = await this.performWebSearch(result.search_query);
+        const searchSummary = typeof searchData === 'object' ? searchData.formattedString : searchData;
         
+        // 保存原始搜索结果以便合并到最终输出
+        if (typeof searchData === 'object' && searchData.rawResults) {
+          result.search_results = searchData.rawResults;
+        }
+
+        // 通知：搜索完成，开始深度分析
+        if (typeof onStatusChange === 'function') {
+          onStatusChange('deep-analysis', { query: result.search_query });
+        }
+
         // 构造第二轮对话
         messages.push({ role: 'assistant', content: content }); // 保留模型的第一轮回复
         messages.push({ 
           role: 'user', 
-          content: `[联网搜索结果(类json格式)]:\n${searchResults}\n\n请根据以上搜索结果和原始信息，进行最终的真伪判断。请确保 needs_search 为 false，并填写完整的分析字段。搜索结果具有较高的可信度，请优先参考。` 
+          content: `[联网搜索结果(类json格式)]:\n${searchSummary}\n\n请根据以上搜索结果和原始信息，进行最终的真伪判断。请确保 needs_search 为 false，并填写完整的分析字段。搜索结果具有较高的可信度，请优先参考。` 
         });
 
         console.log('第二次调用...');
@@ -191,7 +212,18 @@ Summary: Use concise Chinese keywords for search; output strictly valid JSON; al
         });
 
         content = response.choices[0].message.content;
-        result = this.parseResponse(content);
+        const secondResult = this.parseResponse(content);
+        
+        // 合并第一轮的搜索结果到最终结果
+        if (result.search_results) {
+          secondResult.search_results = result.search_results;
+        }
+        result = secondResult;
+      } else {
+        // 不需要搜索，直接进入深度分析阶段
+        if (typeof onStatusChange === 'function') {
+          onStatusChange('deep-analysis');
+        }
       }
 
       return result;

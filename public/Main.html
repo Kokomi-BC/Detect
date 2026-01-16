@@ -111,7 +111,7 @@
             padding: 0 16px;
             -webkit-app-region: drag;
             position: relative;
-            z-index: 1000;
+            z-index: 1000; /* Higher than search results (999) */
             transition: background-color var(--transition-fast);
             font-size: 12px;
             color: var(--text-secondary);
@@ -268,7 +268,168 @@
             /* background: var(--bg-secondary); Removed to match toolbar/sidebar */
             animation: fadeIn 0.3s ease;
         }
+
+        /* Search Results Overlay */
+        .search-results-overlay {
+            position: fixed;
+            top: 34px; /* Title bar height */
+            right: 0;
+            width: 400px;
+            height: calc(100vh - 34px);
+            background: var(--bg-primary);
+            border-left: 1px solid var(--border-color);
+            z-index: 400; 
+            transform: translateX(100%);
+            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .search-results-overlay.active {
+            transform: translateX(0);
+        }
         
+        /* Layout adjustment when search overlay is active */
+        body.search-results-active .container {
+            margin-right: 400px; /* Squeeze content */
+            width: auto; /* Allow shrink */
+            transition: margin-right 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        /* Ensure container transitions smoothly */
+        .container {
+            transition: margin-right 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .search-results-header {
+            padding: 10px 16px; /* Reduced padding */
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: var(--bg-glass); /* Glass effect */
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            position: sticky;
+            top: 0;
+            z-index: 5;
+        }
+
+        .search-results-header h3 {
+            margin: 0;
+            font-size: 14px; /* Slightly smaller */
+        }
+
+        .search-results-close {
+            background: none;
+            border: none;
+            color: var(--text-tertiary);
+            cursor: pointer;
+            padding: 4px;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s ease;
+        }
+
+        .search-results-close:hover {
+            background: var(--accent-light);
+            color: var(--accent-color);
+            box-shadow: 0 0 0 1.5px var(--accent-color);
+            transform: translateY(-1px);
+        }
+
+        .search-results-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 12px 16px;
+        }
+
+        .search-result-item {
+            background: var(--bg-secondary);
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 12px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            position: relative;
+            border: 1px solid var(--border-color);
+        }
+
+        .search-result-item:hover {
+            background: var(--accent-light);
+            border-color: var(--accent-color);
+            transform: translateX(-4px);
+        }
+
+        .search-item-header {
+            display: flex;
+            margin-bottom: 8px;
+            gap: 10px;
+        }
+
+        .search-item-favicon {
+            width: 16px;
+            height: 16px;
+            margin-top: 3px;
+            border-radius: 2px;
+            flex-shrink: 0;
+        }
+
+        .search-item-content-wrapper {
+            flex: 1;
+            min-width: 0;
+        }
+        
+        .search-item-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 6px;
+            line-height: 1.4;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        .search-item-meta {
+            font-size: 12px;
+            color: var(--text-tertiary);
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        
+        .search-item-summary {
+            font-size: 13px;
+            color: var(--text-secondary);
+            line-height: 1.6;
+            display: -webkit-box;
+            -webkit-line-clamp: 3;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+        
+        .search-item-index {
+             position: absolute;
+             top: 12px;
+             right: 12px;
+             background: rgba(0, 0, 0, 0.3);
+             color: #fff;
+             font-size: 10px;
+             padding: 2px 6px;
+             border-radius: 10px;
+             font-weight: bold;
+        }
+        
+        /* Overlay Mask REMOVED per request */
+        .search-overlay-backdrop {
+            display: none !important;
+        }
+
         .batch-mode-active .batch-list-container {
             display: flex;
         }
@@ -2921,7 +3082,7 @@
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
                             <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/>
                         </svg>
-                        <span>清除浏览器数据</span>
+                        <span>清除内置浏览器数据</span>
                     </div>
                     <div class="dropdown-separator"></div>
                     <div class="dropdown-item-row" id="browserToggleRow" style="cursor: pointer;">
@@ -3519,6 +3680,23 @@
         <img class="modal-image" id="modalImage" src="" alt="预览图片">
     </div>
 
+    <!-- Search Results Components -->
+    <div id="searchResultsBackdrop" class="search-overlay-backdrop"></div>
+    <div id="searchResultsOverlay" class="search-results-overlay">
+        <div class="search-results-header">
+            <h3>搜索结果</h3>
+            <button class="search-results-close" id="searchResultsClose">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+            </button>
+        </div>
+        <div class="search-results-list" id="searchResultsList">
+            <!-- Items injected here -->
+        </div>
+    </div>
+
     <!-- Toast 提示 -->
     <div class="toast" id="toast"></div>
 
@@ -4079,6 +4257,11 @@
                 initialMouseX = e.clientX;
                 document.body.classList.add('resizing');
                 document.body.style.cursor = 'col-resize';
+                
+                // 拖动分隔线时立即关闭搜索页面
+                if (typeof toggleSearchResults === 'function') {
+                    toggleSearchResults(false);
+                }
             });
 
             document.addEventListener('mousemove', function(e) {
@@ -6842,33 +7025,124 @@
             }
         }
 
+        // Search Results Overlay Logic
+        function getFaviconUrl(url) {
+            try {
+                const urlObj = new URL(url);
+                return `https://ico.kucat.cn/get.php?url=${urlObj.hostname}&sz=32`;
+            } catch (e) {
+                return 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiM4ODgiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj48Y2lyY2xlIGN4PSIxMiIgY3k9IjEyIiByPSIxMCI+PC9jaXJjbGU+PGxpbmUgeTE9IjEyIiB5Mj0iMTIiIHgxPSIxMiIgeDI9IjEyLjAxIj48L2xpbmU+PC9zdmc+'; // Fallback icon
+            }
+        }
+
+        function toggleSearchResults(show, results = []) {
+            const overlay = document.getElementById('searchResultsOverlay');
+            const backdrop = document.getElementById('searchResultsBackdrop');
+            const list = document.getElementById('searchResultsList');
+            
+            if (show) {
+                list.innerHTML = '';
+                
+                results.forEach((item, index) => {
+                    const el = document.createElement('div');
+                    el.className = 'search-result-item';
+                    
+                    let faviconUrl = '';
+                    let hostname = '';
+                    try {
+                        const u = new URL(item.url);
+                        hostname = u.hostname;
+                        faviconUrl = getFaviconUrl(item.url);
+                    } catch(e) {
+                         hostname = '未知来源';
+                    }
+
+                    const formattedDate = item.date ? item.date.split('T')[0] : '未知日期';
+                    
+                    el.innerHTML = `
+                        <div class="search-item-index">${index + 1}</div>
+                        <div class="search-item-header">
+                            <img src="${faviconUrl}" class="search-item-favicon" onerror="this. style.display='none'" alt="icon">
+                             <div class="search-item-content-wrapper">
+                                <div class="search-item-title">${item.title}</div>
+                                <div class="search-item-meta">
+                                    <span>${hostname}</span>
+                                    <span>${formattedDate}</span>
+                                </div>
+                             </div>
+                        </div>
+                        <div class="search-item-summary">${item.summary}</div>
+                    `;
+                    
+                    el.addEventListener('click', () => {
+                        const useSystemBrowser = localStorage.getItem('useSystemBrowser') === 'true';
+                        
+                        // 如果开启了使用系统浏览器，或者当前不是 Electron 环境
+                        if (useSystemBrowser || !window.electronAPI) {
+                            if (window.electronAPI) {
+                                window.electronAPI.send('open-external', item.url);
+                            } else {
+                                window.open(item.url, '_blank');
+                            }
+                        } else {
+                            // 默认行为：在应用内跳转
+                            if (window.electronAPI) {
+                                window.electronAPI.send('navigate-internal', item.url);
+                            }
+                        }
+                    });
+                    
+                    list.appendChild(el);
+                });
+
+                overlay.classList.add('active');
+                // backdrop.classList.add('active'); // Removed backdrop
+                document.body.classList.add('search-results-active'); // Add squeeze class
+            } else {
+                overlay.classList.remove('active');
+                // backdrop.classList.remove('active'); // Removed backdrop
+                document.body.classList.remove('search-results-active'); // Remove squeeze class
+            }
+        }
+
+        // Close handlers logic
+        (function initSearchResultsEvents() {
+             const closeBtn = document.getElementById('searchResultsClose');
+             const panel = document.getElementById('searchResultsOverlay');
+             
+             if (closeBtn) closeBtn.addEventListener('click', () => toggleSearchResults(false));
+             
+             // Global click listener to close when clicking outside
+             document.addEventListener('click', (e) => {
+                 const isClickInside = panel.contains(e.target);
+                 // Check if the click is on a trigger button or element that opens the panel to prevent immediate closing
+                 // However, the analysis item click handler uses stopPropagation(), so we don't need to worry about the trigger.
+                 
+                 // If panel is active and click is OUTSIDE, close it.
+                 if (panel.classList.contains('active') && !isClickInside) {
+                     toggleSearchResults(false);
+                 }
+             });
+             
+             // Prevent clicks inside the panel from closing it
+             panel.addEventListener('click', (e) => {
+                 e.stopPropagation();
+             });
+        })();
+
         // 初始化IPC通信
         function initIPC() {
             if (window.electronAPI) {
                 // 监听内容提取结果 - 已移至 extractContent 函数中单独处理，避免冲突
-                /*
-                window.electronAPI.on('extract-content-result', function(event, result) {
-                    const detectBtn = document.getElementById('detectBtn');
-                    detectBtn.classList.remove('loading');
-                    detectBtn.innerHTML = '开始检测';
-
-                    if (result.success) {
-                        // 显示提取结果
-                        showExtractedResult(result);
-                        showToast('提取完成', 'success');
-                    } else {
-                        showError(result.error);
-                        showToast('提取失败: ' + result.error, 'error');
-                    }
-                });
-                */
-
                 // 监听分析过程中的搜索事件
                 window.electronAPI.on('analysis-searching', function(event, data) {
-                    const loadingText = document.getElementById('loadingText');
-                    if (loadingText) {
-                        loadingText.textContent = '正在联网搜索相关信息...';
-                    }
+                    // 仅设置标记，具体的文字显示交由 analyzeContent 的进度循环控制，实现平滑过渡
+                    window.currentAnalysisStatus = 'searching';
+                });
+
+                // 监听进入深度分析事件
+                window.electronAPI.on('analysis-deep', function(event, data) {
+                    window.currentAnalysisStatus = 'deep-analysis';
                 });
 
                 // 监听导出操作
@@ -7197,34 +7471,53 @@
             detectBtn.innerHTML = '分析中...';
             
             // 设置进度条初始状态
-            let progress = fromExtraction ? 50 : 0;
+            let progress = fromExtraction ? 20 : 0;
             progressBar.style.width = progress + '%';
             loadingText.textContent = '正在初始化分析...';
+            
+            // 初始化分析状态标记
+            window.currentAnalysisStatus = 'initializing';
 
-            // 模拟分析阶段的进度增长 (0% -> 90%)
+            // 模拟分析阶段的进度增长
+            // 阶段定义: 初始化(0-40%) -> 联网搜索(40-70%) -> 深度分析(70-90%)
             const progressInterval = setInterval(() => {
-                if (progress < 90) {
-                    // 随着进度增加，增长速度逐渐放缓，显得更真实丝滑
-                    let increment = 0;
-                    if (progress < 30) {
-                        increment = 0.5;
-                    } else if (progress < 60) {
-                        increment = 0.3;
-                    } else {
-                        increment = 0.15;
-                    }
+                let targetMax = 40; // 默认停在初始化阶段末尾
+                
+                // 根据后台返回的实际状态决定进度上限
+                if (window.currentAnalysisStatus === 'searching') {
+                    targetMax = 70;
+                } else if (window.currentAnalysisStatus === 'deep-analysis') {
+                    // 如果不需要搜索或者搜索已完成，允许进度到达深度分析阶段
+                    targetMax = 91; 
+                }
+                
+                if (progress < targetMax) {
+                    // 速度控制，让增长显得自然
+                    let increment = (progress < 20) ? 0.6 : (progress < 40) ? 0.3 : (progress < 70) ? 0.2 : 0.1;
                     
                     progress += increment;
-                    progressBar.style.width = progress + '%';
+                    if (progress > 91) progress = 91;
                     
-                    // 动态更新加载提示词
-                    if (progress >= 70) {
-                        if (loadingText.textContent === '正在联网搜索相关信息...' || loadingText.textContent === '正在初始化分析...') {
-                            loadingText.textContent = '正在进行深度分析...';
+                    progressBar.style.width = Math.min(progress, 90) + '%';
+
+                    // 文本过渡逻辑：合并状态监听与进度条位置
+                    // 1. 如果进入搜索状态且进度已接近或超过40%
+                    if (window.currentAnalysisStatus === 'searching' && progress >= 38) {
+                        if (loadingText.textContent !== '正在联网搜索相关信息...') {
+                            loadingText.textContent = '正在联网搜索相关信息...';
+                        }
+                    } 
+                    // 2. 如果进入深度分析状态（无论是搜索完进入，还是跳过搜索进入）
+                    else if (window.currentAnalysisStatus === 'deep-analysis') {
+                        // 如果进度已经过了搜索阶段（70%），或者模型根本不需要搜索（直接从40%跳到分析）
+                        if (progress >= 68 || (progress >= 38 && loadingText.textContent === '正在初始化分析...')) {
+                            if (loadingText.textContent !== '正在进行深度分析...') {
+                                loadingText.textContent = '正在进行深度分析...';
+                            }
                         }
                     }
                 }
-            }, 60); // 缩短间隔时间，配合 CSS transition 实现丝滑过渡
+            }, 80);
 
             try {
                 let imageUrls = [];
@@ -7376,7 +7669,7 @@
             analysisContainer.appendChild(analysisTitle);
 
             if (result.analysis_points && Array.isArray(result.analysis_points)) {
-                result.analysis_points.forEach(point => {
+                result.analysis_points.forEach((point, index) => {
                     const item = document.createElement('div');
                     item.className = 'analysis-item';
                     
@@ -7395,6 +7688,29 @@
                         <div class="analysis-icon ${iconClass}">${icon}</div>
                         <div class="analysis-text">${point.description}</div>
                     `;
+
+                    // Only bind click event to the first item if there are search results
+                    if (index === 0 && result.search_results && Array.isArray(result.search_results) && result.search_results.length > 0) {
+                        item.style.cursor = 'pointer';
+                        item.title = '点击查看搜索来源';
+                        
+                        // Add an indication icon
+                        const linkIcon = document.createElement('div');
+                        linkIcon.style.display = 'flex';
+                        linkIcon.style.alignItems = 'center';
+                        linkIcon.style.marginTop = '4px';
+                        linkIcon.style.fontSize = '12px';
+                        linkIcon.style.opacity = '0.7';
+                        linkIcon.style.color = 'var(--text-secondary)';
+                        linkIcon.innerHTML = `🔗 (已引用${result.search_results.length}个结果)`;
+                        item.querySelector('.analysis-text').appendChild(linkIcon);
+
+                         item.addEventListener('click', (e) => {
+                             e.stopPropagation();
+                             toggleSearchResults(true, result.search_results);
+                         });
+                    }
+
                     analysisContainer.appendChild(item);
                 });
             } else {
@@ -7627,6 +7943,8 @@
             if (isExpanded) {
                 leftSidebar.classList.add('expanded');
                 document.body.classList.add('sidebar-expanded');
+                // Close search results when sidebar opens
+                toggleSearchResults(false);
             } else {
                 leftSidebar.classList.remove('expanded');
                 document.body.classList.remove('sidebar-expanded');
@@ -8535,6 +8853,14 @@
             document.getElementById('batchContextMenu').classList.remove('active');
         });
 
+        function formatSearchResultsForHistory(result) {
+            // 如果结果中有 search_results，保留它
+            if (result.search_results) {
+                return result.search_results;
+            }
+            return null;
+        }
+
         function enterBatchEditMode(id) {
             const item = batchItems.find(i => i.id === id);
             if (!item) return;
@@ -8710,6 +9036,10 @@
                         // Save to history
                         const contentToSave = item.parsedContent || item.content;
                         const imagesToSave = item.parsedImages || item.images;
+                         // 保持 search_results（如果有）
+                        if (analysisResult.data.search_results) {
+                             // 如果需要，可以在这里做额外的处理，目前已经在 result 对象里了
+                        }
                         await saveToHistory(contentToSave, item.result, imagesToSave, false);
 
                     } else {

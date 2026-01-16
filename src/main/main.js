@@ -423,6 +423,10 @@ class DetectApp {
     });
 
     // 打开外部链接
+    ipcMain.on('navigate-internal', (event, url) => {
+        this.windowManager.jumpurl(url);
+    });
+
     ipcMain.on('open-external', (event, url) => {
       shell.openExternal(url);
     });
@@ -686,10 +690,14 @@ class DetectApp {
           text, 
           processedImageUrls, 
           url,
-          (query) => {
-            // 当大模型开始联网搜索时，通知前端更新加载状态
+          (status, data) => {
+            // 当大模型状态改变时，通知前端更新加载状态和进度
             if (event.sender && !event.sender.isDestroyed()) {
-              event.sender.send('analysis-searching', { query });
+              if (status === 'searching') {
+                event.sender.send('analysis-searching', data); // { query }
+              } else if (status === 'deep-analysis') {
+                event.sender.send('analysis-deep', data); // { query } 可选
+              }
             }
           }
         );
