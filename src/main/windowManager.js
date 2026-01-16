@@ -1,5 +1,6 @@
-const { BrowserWindow, Menu, MenuItem, clipboard, shell, nativeTheme } = require('electron');
+const { app, BrowserWindow, Menu, MenuItem, clipboard, shell, nativeTheme } = require('electron');
 const path = require('path');
+const fs = require('fs');
 
 /**
  * 窗口类型枚举
@@ -7,7 +8,6 @@ const path = require('path');
 const WindowType = {
   MAIN: 'main',
   BROWSER: 'browser',
-  NAVIGATION: 'navigation',
   EXTRACTION: `extraction`
 };
 
@@ -17,66 +17,56 @@ const WindowType = {
 class WindowManager {
   constructor() {
     this.mainWindow = null;
-    this.browserWindows = new Set(); // 所有浏览器窗口
-    this.navigationWindows = new Set(); // 主窗口
+    this.browserWindows = new Set(); // 所有外部浏览器窗口
     this.extractionWindows = new Set(); // 提取窗口
   }
 
-
+  /**
+   * 获取窗口状态保存路径
+   */
+  getWindowStatePath() {
+    return path.join(app.getPath('userData'), 'window-state.json');
+  }
 
   /**
-   * 构建右键菜单
+   * 加载窗口状态
    */
-  buildContextMenu() {
-    return Menu.buildFromTemplate([
-      {
-        label: '全选',
-        accelerator: 'CmdOrCtrl+A',
-        click: (menuItem, browserWindow) => {
-          if (browserWindow) {
-            browserWindow.webContents.send('context-menu-select-all');
-          }
-        }
-      },
-      { type: 'separator' },
-      {
-        label: '复制',
-        accelerator: 'CmdOrCtrl+C',
-        click: (menuItem, browserWindow) => {
-          if (browserWindow) {
-            browserWindow.webContents.send('context-menu-copy');
-          }
-        }
-      },
-      {
-        label: '剪切',
-        accelerator: 'CmdOrCtrl+X',
-        click: (menuItem, browserWindow) => {
-          if (browserWindow) {
-            browserWindow.webContents.send('context-menu-cut');
-          }
-        }
-      },
-      {
-        label: '粘贴',
-        accelerator: 'CmdOrCtrl+V',
-        click: (menuItem, browserWindow) => {
-          if (browserWindow) {
-            browserWindow.webContents.send('context-menu-paste');
-          }
-        }
-      },
-      { type: 'separator' },
-      {
-        label: '搜索',
-        click: (menuItem, browserWindow) => {
-          if (browserWindow) {
-            browserWindow.webContents.send('context-menu-search');
-          }
-        }
+  loadWindowState() {
+    try {
+      const statePath = this.getWindowStatePath();
+      if (fs.existsSync(statePath)) {
+        return JSON.parse(fs.readFileSync(statePath, 'utf8'));
       }
-    ]);
+    } catch (error) {
+      console.error('加载窗口状态失败:', error);
+    }
+    return { width: 1000, height: 700 }; // 默认分辨率
   }
+
+  /**
+   * 保存窗口状态
+   */
+  saveWindowState() {
+    if (!this.mainWindow || this.mainWindow.isDestroyed()) return;
+    
+    try {
+      const bounds = this.mainWindow.getBounds();
+      // 如果窗口被最小化，不保存状态
+      if (this.mainWindow.isMinimized()) return;
+
+      const state = {
+        width: bounds.width,
+        height: bounds.height,
+        x: bounds.x,
+        y: bounds.y,
+        isMaximized: this.mainWindow.isMaximized()
+      };
+      fs.writeFileSync(this.getWindowStatePath(), JSON.stringify(state));
+    } catch (error) {
+      console.error('保存窗口状态失败:', error);
+    }
+  }
+
 
   /**
    * 为窗口添加类型标记
@@ -84,52 +74,24 @@ class WindowManager {
    * @param {WindowType} type 窗口类型
    */
   markWindowType(window, type) {
-    if (window && !window.isDestroyed()) {
-      // 直接设置window对象属性（同步方式）
-      // 使用 writable: true 允许后续修改，虽然通常不需要
-      Object.defineProperty(window, '__windowType', {
-        value: type,
-        writable: true,
-        enumerable: false,
-        configurable: true
-      });
-      
-      Object.defineProperty(window, '__isMainWindow', {
-        value: type === WindowType.MAIN,
-        writable: true,
-        enumerable: false,
-        configurable: true
-      });
-      
-      // 异步设置webContents中的属性
-      if (window.webContents && !window.isDestroyed()) {
-        window.webContents.executeJavaScript(`
-          window.__windowType = '${type}';
-          window.__isMainWindow = ${type === WindowType.MAIN};
-        `).catch(() => {
-          // 如果执行JavaScript失败，使用webPreferences中的额外信息
-          if (window.webPreferences && window.webPreferences.extraInfo) {
-            window.webPreferences.extraInfo.windowType = type;
-          }
-        });
-      }
-      
-      // 添加到对应的集合中
-      switch (type) {
-        case WindowType.MAIN:
-          // 主窗口引用已在createMainWindow中设置，这里只做标记
-          console.log('主窗口标记完成'); // 添加调试日志
-          break;
-        case WindowType.BROWSER:
-          this.browserWindows.add(window);
-          break;
-        case WindowType.NAVIGATION:
-          this.navigationWindows.add(window);
-          break;
-        case WindowType.EXTRACTION:
-          this.extractionWindows.add(window);
-          break;
-      }
+    if (!window || window.isDestroyed()) return;
+
+    // 直接在 window 对象上设置属性
+    window.__windowType = type;
+    window.__isMainWindow = (type === WindowType.MAIN);
+    
+    // 异步设置 webContents 中的属性
+    if (window.webContents && !window.isDestroyed()) {
+      window.webContents.executeJavaScript(`
+        window.__windowType = '${type}';
+        window.__isMainWindow = ${type === WindowType.MAIN};
+      `).catch(() => {});
+    }
+    
+    // 添加到相关的集合
+    switch (type) {
+      case WindowType.BROWSER: this.browserWindows.add(window); break;
+      case WindowType.EXTRACTION: this.extractionWindows.add(window); break;
     }
   }
 
@@ -165,11 +127,16 @@ class WindowManager {
     
     // 隐藏应用程序菜单
     this.setupApplicationMenu();
+
+    // 加载窗口记忆分辨率
+    const windowState = this.loadWindowState();
     
-    // 使用无框窗口（frameless）作为兼容沉浸式标题栏的回退方案
+    // 使用无框窗口作为兼容沉浸式标题栏
     const mainWindow = new BrowserWindow({
-      width: 800,
-      height: 600,
+      width: windowState.width,
+      height: windowState.height,
+      x: windowState.x,
+      y: windowState.y,
       minWidth: 800,
       minHeight: 530,
       show: false, // 先隐藏窗口，等待内容加载完成
@@ -235,9 +202,6 @@ class WindowManager {
       return { action: 'deny' };
     });
 
-    // 设置原生右键菜单
-    this.setupWindowContextMenu(mainWindow);
-
     // 在开发模式下加载webpack开发服务器
     if (process.env.NODE_ENV === 'development') {
       mainWindow.loadURL('http://localhost:8080/Welcome.html')
@@ -264,24 +228,116 @@ class WindowManager {
 
     // 优雅显示窗口：等待内容加载完成再显示，避免闪烁
     mainWindow.once('ready-to-show', () => {
+      // 恢复窗口最大化状态
+      if (windowState && windowState.isMaximized) {
+        mainWindow.maximize();
+      }
       mainWindow.show();
     });
-
-    console.log('主窗口创建完成');
+    const { width, height } = mainWindow.getBounds();
+    console.log(`主窗口创建完成`);
+    console.log(`分辨率: ${width}x${height}`);
     return mainWindow;
   }
 
   /**
-   * 设置窗口的原生右键菜单
+   * 统一设置子窗口（浏览器和导航窗口）的事件
    * @param {BrowserWindow} window 窗口实例
+   * @param {Set} windowSet 窗口所属的集合
    */
-  setupWindowContextMenu(window) {
-    // 右键菜单由main.js中的setupContextMenu()方法统一处理
-    // 这里不需要额外的设置
+  setupChildWindowEvents(window, windowSet) {
+    if (!window || window.isDestroyed()) return;
+
+    // 监听窗口关闭事件
+    window.on('closed', () => {
+      windowSet.delete(window);
+    });
+
+    const webContents = window.webContents;
+    webContents.on('did-finish-load', () => {
+      if (webContents.getTitle()) {
+        window.setTitle(webContents.getTitle());
+      }
+    });
+
+    // 设置统一的子窗口右键菜单
+    webContents.on('context-menu', (event, params) => {
+      const menu = new Menu();
+      const hasSelection = !!params.selectionText;
+      
+      // 浏览器核心功能
+      if (!hasSelection) {
+        if (webContents.navigationHistory.canGoBack()) {
+          menu.append(new MenuItem({
+            label: '后退',
+            accelerator: 'Alt+Left',
+            click: () => webContents.navigationHistory.goBack()
+          }));
+        }
+        
+        if (webContents.navigationHistory.canGoForward()) {
+          menu.append(new MenuItem({
+            label: '前进',
+            accelerator: 'Alt+Right',
+            click: () => webContents.navigationHistory.goForward()
+          }));
+        }
+        
+        menu.append(new MenuItem({
+          label: '刷新',
+          accelerator: 'F5',
+          click: () => window.reload()
+        }));
+
+        menu.append(new MenuItem({ type: 'separator' }));
+      }
+
+      // 链接功能
+      if (params.linkURL) {
+        menu.append(new MenuItem({
+          label: '复制链接地址',
+          click: () => clipboard.writeText(params.linkURL)
+        }));
+        menu.append(new MenuItem({
+          label: '在系统浏览器中打开链接',
+          click: () => shell.openExternal(params.linkURL)
+        }));
+        menu.append(new MenuItem({ type: 'separator' }));
+      }
+      
+      // 文本功能
+      if (params.selectionText) {
+        const searchText = params.selectionText.trim();
+        const truncatedText = searchText.length > 15 ? searchText.substring(0, 15) + '...' : searchText;
+        menu.append(new MenuItem({
+          label: `搜索 ：${truncatedText}`,
+          click: () => shell.openExternal(`https://www.bing.com/search?q=${encodeURIComponent(params.selectionText)}`)
+        }));
+        menu.append(new MenuItem({ label: '复制', role: 'copy' }));
+        menu.append(new MenuItem({ label: '全选', role: 'selectall' }));
+      }
+      
+      // 编辑功能
+      if (params.isEditable) {
+        menu.append(new MenuItem({ label: '剪切', role: 'cut' }));
+        menu.append(new MenuItem({ label: '粘贴', role: 'paste' }));
+        menu.append(new MenuItem({ type: 'separator' }));
+      }
+      menu.append(new MenuItem({
+        label: '复制本页链接',
+        click: () => {
+          const url = webContents.getURL();
+          clipboard.writeText(url);
+        }
+      }));
+      menu.append(new MenuItem({ label: '在系统浏览器中打开本页', click: () => shell.openExternal(webContents.getURL()) }));
+      menu.append(new MenuItem({ label: '打印', click: () => webContents.print() }));
+      menu.popup({ window });
+    });
   }
 
   /**
-   * 创建浏览器窗口（用于URL跳转，使用原生右键菜单）
+   * 创建浏览器窗口（用于URL跳转和内部导航）
    * @param {string} url 要加载的URL
    * @returns {BrowserWindow}
    */
@@ -296,19 +352,18 @@ class WindowManager {
       webPreferences: {
         nodeIntegration: false,
         contextIsolation: true,
-        webSecurity: true,
-        allowRunningInsecureContent: false,
+        webSecurity: false, // 统一关闭安全限制以支持某些功能的跳转和提取
+        allowRunningInsecureContent: true,
         plugins: true,
         experimentalFeatures: false,
-        // 不使用preload脚本，让新窗口成为完全的浏览器窗口
-        extraInfo: { windowType: WindowType.BROWSER } // 添加窗口类型标记
+        extraInfo: { windowType: WindowType.BROWSER }
       }
     });
 
     // 为窗口添加类型标记
     this.markWindowType(browserWindow, WindowType.BROWSER);
 
-    // 设置浏览器窗口的安全策略（防止打开新窗口）
+    // 设置浏览器窗口的安全策略（防止打开新窗口，在原窗口跳转）
     this.setupNavigationWindowSecurity(browserWindow);
 
     // 加载URL
@@ -318,52 +373,9 @@ class WindowManager {
     });
 
     // 设置浏览器窗口事件监听
-    this.setupBrowserWindowEvents(browserWindow);
+    this.setupChildWindowEvents(browserWindow, this.browserWindows);
 
     return browserWindow;
-  }
-
-  /**
-   * 创建导航窗口（用于内部导航）
-   * @param {string} url 要加载的URL
-   * @returns {BrowserWindow}
-   */
-  createNavigationWindow(url) {
-    console.log('创建导航窗口...');
-    
-    const navigationWindow = new BrowserWindow({
-      width: 1200,
-      height: 800,
-      icon: path.join(__dirname, '../../ico/Detect.ico'),
-      show: true,
-      webPreferences: {
-        nodeIntegration: false,
-        contextIsolation: true,
-        webSecurity: false,
-        allowRunningInsecureContent: true,
-        plugins: true,
-        experimentalFeatures: false,
-        // 不使用preload脚本
-        extraInfo: { windowType: WindowType.NAVIGATION }
-      }
-    });
-
-    // 为窗口添加类型标记
-    this.markWindowType(navigationWindow, WindowType.NAVIGATION);
-
-    // 设置导航窗口的安全策略和事件监听
-    this.setupNavigationWindowSecurity(navigationWindow);
-
-    // 加载URL
-    navigationWindow.loadURL(url).catch((error) => {
-      console.error('导航窗口加载失败:', error);
-      this.destroyWindow(navigationWindow);
-    });
-
-    // 设置导航窗口事件监听
-    this.setupNavigationWindowEvents(navigationWindow);
-
-    return navigationWindow;
   }
 
   /**
@@ -402,324 +414,13 @@ class WindowManager {
   setupMainWindowEvents() {
     if (!this.mainWindow) return;
 
+    // 监听窗口大小改变和移动
+    this.mainWindow.on('resize', () => this.saveWindowState());
+    this.mainWindow.on('move', () => this.saveWindowState());
+
     this.mainWindow.on('closed', () => {
+      this.saveWindowState();
       this.mainWindow = null;
-    });
-  }
-
-  /**
-   * 设置浏览器窗口事件监听
-   */
-  setupBrowserWindowEvents(window) {
-    // 监听窗口关闭事件，从集合中移除
-    window.on('closed', () => {
-      this.browserWindows.delete(window);
-    });
-
-    // 监听页面导航，更新窗口状态
-    const webContents = window.webContents;
-    webContents.on('did-finish-load', () => {
-      // 页面加载完成，可以更新窗口标题等
-      if (webContents.getTitle()) {
-        window.setTitle(webContents.getTitle());
-      }
-    });
-
-    // 为浏览器窗口设置右键菜单（只在窗口创建时设置一次）
-    console.log('为浏览器窗口设置右键菜单...');
-    webContents.on('context-menu', (event, params) => {
-      console.log('浏览器窗口右键菜单事件触发');
-      // 创建右键菜单
-      const menu = new Menu();
-      
-      // 浏览器核心功能（放在最前面）
-      menu.append(new MenuItem({
-        label: '后退',
-        enabled: webContents.navigationHistory.canGoBack(),
-        accelerator: 'Alt+Left',
-        click: () => {
-          webContents.navigationHistory.goBack();
-        }
-      }));
-      
-      menu.append(new MenuItem({
-        label: '前进',
-        enabled: webContents.navigationHistory.canGoForward(),
-        accelerator: 'Alt+Right',
-        click: () => {
-          webContents.navigationHistory.goForward();
-        }
-      }));
-      
-      menu.append(new MenuItem({
-        label: '刷新',
-        accelerator: 'F5',
-        click: () => {
-          window.reload();
-        }
-      }));
-
-      menu.append(new MenuItem({ type: 'separator' }));
-
-      // 链接相关功能（如果有链接）
-      if (params.linkURL) {
-        menu.append(new MenuItem({
-          label: '复制链接地址',
-          accelerator: 'Ctrl+Shift+C',
-          click: () => {
-            clipboard.writeText(params.linkURL);
-          }
-        }));
-        
-        menu.append(new MenuItem({
-          label: '跳转到链接',
-          click: () => {
-            // 在当前窗口加载链接，而不是创建新窗口
-            window.loadURL(params.linkURL).catch(err => console.error('跳转失败:', err));
-          }
-        }));
-
-        menu.append(new MenuItem({
-          label: '在系统浏览器中打开链接',
-          click: () => {
-            shell.openExternal(params.linkURL);
-          }
-        }));
-
-        menu.append(new MenuItem({ type: 'separator' }));
-      }
-      
-      // 文本相关功能
-      if (params.selectionText) {
-        menu.append(new MenuItem({
-          label: '搜索 "' + params.selectionText + '"',
-          click: () => {
-            const searchUrl = `https://www.bing.com/search?q=${encodeURIComponent(params.selectionText)}`;
-            // 在当前窗口加载搜索结果，而不是创建新窗口
-            window.loadURL(searchUrl).catch(err => console.error('搜索失败:', err));
-          }
-        }));
-        
-        menu.append(new MenuItem({
-          label: '复制',
-          accelerator: 'CmdOrCtrl+C',
-          role: 'copy'
-        }));
-        
-        menu.append(new MenuItem({ type: 'separator' }));
-      }
-      
-      // 输入框编辑选项（仅在点击输入框时显示）
-      if (params.isEditable) {
-        menu.append(new MenuItem({
-          label: '剪切',
-          accelerator: 'CmdOrCtrl+X',
-          role: 'cut'
-        }));
-        
-        menu.append(new MenuItem({
-          label: '粘贴',
-          accelerator: 'CmdOrCtrl+V',
-          role: 'paste'
-        }));
-        
-        menu.append(new MenuItem({ type: 'separator' }));
-      }
-      
-      // 基本编辑选项
-      menu.append(new MenuItem({
-        label: '全选',
-        accelerator: 'CmdOrCtrl+A',
-        role: 'selectall'
-      }));
-      
-      menu.append(new MenuItem({ type: 'separator' }));
-      
-      // 打印功能
-      menu.append(new MenuItem({
-        label: '打印',
-        accelerator: 'Ctrl+P',
-        click: () => {
-          webContents.print();
-        }
-      }));
-
-      menu.append(new MenuItem({ type: 'separator' }));
-
-      // 在系统浏览器中打开当前页面（放在最底部）
-      menu.append(new MenuItem({
-        label: '在系统浏览器中打开',
-        click: () => {
-          shell.openExternal(webContents.getURL());
-        }
-      }));
-      
-      if (menu.items.length > 0) {
-        menu.popup({ window });
-      }
-    });
-  }
-
-  /**
-   * 设置导航窗口事件监听
-   */
-  setupNavigationWindowEvents(window) {
-    // 监听窗口关闭事件，从集合中移除
-    window.on('closed', () => {
-      this.navigationWindows.delete(window);
-    });
-
-    // 监听页面导航，更新窗口状态
-    const webContents = window.webContents;
-    webContents.on('did-finish-load', () => {
-      if (webContents.getTitle()) {
-        window.setTitle(webContents.getTitle());
-        console.log('导航窗口页面加载完成，标题：', webContents.getTitle());
-      }
-    });
-
-    // 为导航窗口设置右键菜单（只在窗口创建时设置一次）
-    console.log('为导航窗口设置右键菜单...');
-    webContents.on('context-menu', (event, params) => {
-      console.log('导航窗口右键菜单事件触发');
-      // 创建右键菜单
-      const menu = new Menu();
-      
-      // 浏览器核心功能（放在最前面）
-      menu.append(new MenuItem({
-        label: '后退',
-        enabled: webContents.navigationHistory.canGoBack(),
-        accelerator: 'Alt+Left',
-        click: () => {
-          webContents.navigationHistory.goBack();
-        }
-      }));
-      
-      menu.append(new MenuItem({
-        label: '前进',
-        enabled: webContents.navigationHistory.canGoForward(),
-        accelerator: 'Alt+Right',
-        click: () => {
-          webContents.navigationHistory.goForward();
-        }
-      }));
-      
-      menu.append(new MenuItem({
-        label: '刷新',
-        accelerator: 'F5',
-        click: () => {
-          window.reload();
-        }
-      }));
-
-      menu.append(new MenuItem({ type: 'separator' }));
-
-      // 链接相关功能（如果有链接）
-      if (params.linkURL) {
-        menu.append(new MenuItem({
-          label: '复制链接地址',
-          accelerator: 'Ctrl+Shift+C',
-          click: () => {
-            clipboard.writeText(params.linkURL);
-          }
-        }));
-        
-        menu.append(new MenuItem({
-          label: '跳转到链接',
-          click: () => {
-            // 在当前窗口加载链接，而不是创建新窗口
-            window.loadURL(params.linkURL).catch(err => console.error('跳转失败:', err));
-          }
-        }));
-
-        menu.append(new MenuItem({
-          label: '在系统浏览器中打开链接',
-          click: () => {
-            shell.openExternal(params.linkURL);
-          }
-        }));
-        
-        menu.append(new MenuItem({ type: 'separator' }));
-      }
-      
-      // 文本相关功能
-      if (params.selectionText) {
-        menu.append(new MenuItem({
-          label: '搜索 "' + params.selectionText + '"',
-          click: () => {
-            const searchUrl = `https://www.bing.com/search?q=${encodeURIComponent(params.selectionText)}`;
-            // 在当前窗口加载搜索结果，而不是创建新窗口
-            window.loadURL(searchUrl).catch(err => console.error('搜索失败:', err));
-          }
-        }));
-        
-        menu.append(new MenuItem({
-        label: '复制',
-        accelerator: 'CmdOrCtrl+C',
-        role: 'copy'
-      }));
-      
-      menu.append(new MenuItem({ type: 'separator' }));
-    }
-    
-    // 输入框编辑选项（仅在点击输入框时显示）
-    if (params.isEditable) {
-      menu.append(new MenuItem({
-        label: '剪切',
-        accelerator: 'CmdOrCtrl+X',
-        role: 'cut'
-      }));
-      
-      menu.append(new MenuItem({
-        label: '粘贴',
-        accelerator: 'CmdOrCtrl+V',
-        role: 'paste'
-      }));
-      
-      menu.append(new MenuItem({ type: 'separator' }));
-    }
-    
-    // 基本编辑选项
-    menu.append(new MenuItem({
-      label: '全选',
-      accelerator: 'CmdOrCtrl+A',
-      role: 'selectall'
-    }));
-    
-    menu.append(new MenuItem({ type: 'separator' }));
-    
-    // 打印功能
-    menu.append(new MenuItem({
-      label: '打印',
-      accelerator: 'Ctrl+P',
-      click: () => {
-        webContents.print();
-      }
-    }));
-
-      menu.append(new MenuItem({ type: 'separator' }));
-
-      // 在系统浏览器中打开当前页面（放在最底部）
-      menu.append(new MenuItem({
-        label: '在系统浏览器中打开',
-        click: () => {
-          shell.openExternal(webContents.getURL());
-        }
-      }));
-      
-      if (menu.items.length > 0) {
-        menu.popup({ window });
-      }
-    });
-  }
-
-  /**
-   * 设置提取窗口事件监听
-   */
-  setupExtractionWindowEvents(window) {
-    // 监听窗口关闭事件，从集合中移除
-    window.on('closed', () => {
-      this.extractionWindows.delete(window);
     });
   }
 
@@ -835,7 +536,6 @@ class WindowManager {
       try {
         // 从对应的集合中移除
         this.browserWindows.delete(window);
-        this.navigationWindows.delete(window);
         this.extractionWindows.delete(window);
         
         // 如果是主窗口，清除主窗口引用
@@ -858,41 +558,39 @@ class WindowManager {
   }
 
   /**
-   * 在导航窗口中导航到指定URL
+   * 在浏览器窗口中导航到指定URL（如果已存在则复用）
    * @param {string} url 要导航的URL
    */
   jumpurl(url) {
     console.log('跳转窗口:', url);
     try {
-      // 如果没有导航窗口，创建新的导航窗口
-      if (this.navigationWindows.size === 0) {
-        const navigationWindow = this.createNavigationWindow(url);
-        navigationWindow.show();
-        return navigationWindow;
+      // 如果没有浏览器窗口，创建新的
+      if (this.browserWindows.size === 0) {
+        const browserWindow = this.createBrowserWindow(url);
+        browserWindow.show();
+        return browserWindow;
       } else {
-        // 如果已有导航窗口，在第一个导航窗口中打开链接
-        const firstNavigationWindow = this.navigationWindows.values().next().value;
-        if (firstNavigationWindow && !firstNavigationWindow.isDestroyed()) {
-          firstNavigationWindow.show();
-          firstNavigationWindow.loadURL(url).catch((error) => {
-            console.error('导航窗口加载失败:', error);
-            this.destroyWindow(firstNavigationWindow);
-            // 如果加载失败，创建新的导航窗口
-            const newNavigationWindow = this.createNavigationWindow(url);
-            newNavigationWindow.show();
-            return newNavigationWindow;
+        // 如果已有浏览器窗口，在第一个窗口中打开链接
+        const firstWindow = this.browserWindows.values().next().value;
+        if (firstWindow && !firstWindow.isDestroyed()) {
+          firstWindow.show();
+          firstWindow.loadURL(url).catch((error) => {
+            console.error('窗口加载失败:', error);
+            this.destroyWindow(firstWindow);
+            const newWindow = this.createBrowserWindow(url);
+            newWindow.show();
+            return newWindow;
           });
-          return firstNavigationWindow;
+          return firstWindow;
         } else {
-          // 如果现有窗口已销毁，创建新的导航窗口
-          this.navigationWindows.clear(); // 清理已销毁的窗口引用
-          const navigationWindow = this.createNavigationWindow(url);
-          navigationWindow.show();
-          return navigationWindow;
+          this.browserWindows.clear(); // 清理已销毁的引用
+          const browserWindow = this.createBrowserWindow(url);
+          browserWindow.show();
+          return browserWindow;
         }
       }
     } catch (error) {
-      console.error('导航窗口导航失败:', error);
+      console.error('导航失败:', error);
       throw error;
     }
   }
@@ -911,9 +609,8 @@ class WindowManager {
     return {
       main: this.mainWindow ? 1 : 0,
       browser: this.browserWindows.size,
-      navigation: this.navigationWindows.size,
       extraction: this.extractionWindows.size,
-      total: (this.mainWindow ? 1 : 0) + this.browserWindows.size + this.navigationWindows.size + this.extractionWindows.size
+      total: (this.mainWindow ? 1 : 0) + this.browserWindows.size + this.extractionWindows.size
     };
   }
 }

@@ -46,6 +46,9 @@
             --bg-glass: rgba(255, 255, 255, 0.65);
             --bg-menu: rgba(255, 255, 255, 0.95);
             --shadow-accent: 0 4px 12px rgba(67, 97, 238, 0.25);
+            
+            /* Font Scaling */
+            --font-scale: 1.0;
         }
 
         [data-theme="dark"] {
@@ -1474,7 +1477,7 @@
             border: none;
             background: transparent;
             color: var(--text-primary);
-            font-size: 16px;
+            font-size: calc(16px * var(--font-scale));
             line-height: 1.8;
             outline: none;
             overflow-y: auto; /* Scroll inside */
@@ -1730,7 +1733,7 @@
         }
 
         .result-title {
-            font-size: 18px;
+            font-size: calc(18px * var(--font-scale));
             font-weight: 600;
             color: var(--text-primary);
             transition: transform 0.3s ease;
@@ -1777,14 +1780,14 @@
         }
 
         .initial-title {
-            font-size: 22px;
+            font-size: calc(22px * var(--font-scale));
             font-weight: 600;
             margin-bottom: 12px;
             color: var(--text-primary);
         }
 
         .initial-description {
-            font-size: 15px;
+            font-size: calc(15px * var(--font-scale));
             line-height: 1.6;
             max-width: 420px;
         }
@@ -1874,7 +1877,7 @@
         .score-details { flex: 1; }
 
         .score-label {
-            font-size: 14px;
+            font-size: calc(14px * var(--font-scale));
             color: var(--text-secondary);
             margin-bottom: 6px;
             text-transform: uppercase;
@@ -1883,14 +1886,14 @@
         }
 
         .score-value {
-            font-size: 32px;
+            font-size: calc(32px * var(--font-scale));
             font-weight: 800;
             color: var(--text-primary);
             letter-spacing: -1px;
         }
 
         .score-description {
-            font-size: 15px;
+            font-size: calc(15px * var(--font-scale));
             color: var(--text-secondary);
             margin-top: 6px;
             line-height: 1.5;
@@ -1908,7 +1911,7 @@
         }
 
         .analysis-title {
-            font-size: 18px;
+            font-size: calc(18px * var(--font-scale));
             font-weight: 600;
             margin-bottom: 16px;
             color: var(--text-primary);
@@ -1967,7 +1970,7 @@
 
         .analysis-text {
             flex: 1;
-            font-size: 15px;
+            font-size: calc(15px * var(--font-scale));
             line-height: 1.6;
             color: var(--text-primary);
             word-wrap: break-word;
@@ -2129,6 +2132,12 @@
         }
         .loading-state.active { display: flex; }
 
+        .loading-text {
+            font-size: calc(15px * var(--font-scale));
+            color: var(--text-primary);
+            margin-top: 8px;
+        }
+
         .loading-spinner-large {
             width: 50px;
             height: 50px;
@@ -2168,7 +2177,7 @@
         }
 
         .parsed-title {
-            font-size: 20px;
+            font-size: calc(20px * var(--font-scale));
             font-weight: 700;
             margin-bottom: 20px;
             color: var(--text-primary);
@@ -2178,7 +2187,7 @@
         }
 
         .parsed-text {
-            font-size: 16px;
+            font-size: calc(16px * var(--font-scale));
             line-height: 1.8;
             color: var(--text-primary);
             white-space: pre-wrap;
@@ -2431,7 +2440,7 @@
         }
 
         .analysis-text {
-            font-size: 14px;
+            font-size: calc(14px * var(--font-scale));
             line-height: 1.5;
             color: var(--text-primary);
         }
@@ -2460,13 +2469,13 @@
         }
 
         .error-message {
-            font-size: 16px;
+            font-size: calc(16px * var(--font-scale));
             font-weight: 500;
             margin-bottom: 8px;
         }
 
         .error-detail {
-            font-size: 14px;
+            font-size: calc(14px * var(--font-scale));
             color: var(--text-secondary);
             max-width: 300px;
         }
@@ -2716,7 +2725,7 @@
             background: var(--bg-glass);
             backdrop-filter: blur(10px);
             -webkit-backdrop-filter: blur(10px);
-            z-index: 50;
+            z-index: 1000;
             opacity: 0;
             pointer-events: none;
             transition: opacity 0.2s ease;
@@ -3659,6 +3668,9 @@
                 const pxStr = pxVal + 'px';
                 const scaleStr = currentFontScale.toFixed(1);
 
+                // 更新全局字体缩放变量
+                document.documentElement.style.setProperty('--font-scale', scaleStr);
+
                 // Update More Menu display (show only multiplier)
                 const fontVal = document.getElementById('fontVal');
                 if (fontVal) fontVal.textContent = scaleStr;
@@ -3666,13 +3678,6 @@
                 // Update Edit Toolbar display if present (show multiplier)
                 const editFontVal = document.getElementById('editFontVal');
                 if (editFontVal) editFontVal.textContent = scaleStr;
-
-                // Apply computed pixel size to editor and parsed content
-                if (textInput) textInput.style.fontSize = pxStr;
-                const parsedText = document.getElementById('parsedText');
-                if (parsedText) parsedText.style.fontSize = pxStr;
-                const parsedContent = document.getElementById('parsedContent');
-                if (parsedContent) parsedContent.style.fontSize = pxStr;
 
                 localStorage.setItem('editorFontScale', currentFontScale);
             };
@@ -3997,7 +4002,59 @@
                 const containerRect = container.getBoundingClientRect();
                 let leftWidth = clientX - containerRect.left;
                 
-                // Batch Mode Constraint: Limit left panel to 60% max
+                // 异步处理逻辑：根据拖动方向显示模糊遮罩
+                // 向右拖动 (clientX > lastClientX) -> 扩展左侧，遮挡右侧
+                // 向左拖动 (clientX < lastClientX) -> 扩展右侧，遮挡左侧
+                if (clientX > lastClientX) {
+                    if (rightMask) {
+                        rightMask.style.opacity = 1;
+                        rightMask.style.pointerEvents = 'auto';
+                    }
+                    if (leftMask) {
+                        leftMask.style.opacity = 0;
+                        leftMask.style.pointerEvents = 'none';
+                    }
+                    // 冻结右侧内容：锁定宽度防止重排
+                    const resultContent = rightPanel.querySelector('.result-content');
+                    if (resultContent && !rightPanel.dataset.frozen) {
+                        const currentWidth = rightPanel.clientWidth;
+                        resultContent.style.width = currentWidth + 'px';
+                        rightPanel.style.overflow = 'hidden';
+                        rightPanel.dataset.frozen = 'true';
+                    }
+                    // 解冻左侧
+                    const leftContent = leftPanel.querySelector('.left-content');
+                    if (leftContent && leftPanel.dataset.frozen) {
+                        leftContent.style.width = '';
+                        leftPanel.style.overflow = '';
+                        delete leftPanel.dataset.frozen;
+                    }
+                } else if (clientX < lastClientX) {
+                    if (leftMask) {
+                        leftMask.style.opacity = 1;
+                        leftMask.style.pointerEvents = 'auto';
+                    }
+                    if (rightMask) {
+                        rightMask.style.opacity = 0;
+                        rightMask.style.pointerEvents = 'none';
+                    }
+                    // 冻结左侧内容：锁定宽度防止重排
+                    const leftContent = leftPanel.querySelector('.left-content');
+                    if (leftContent && !leftPanel.dataset.frozen) {
+                        const currentWidth = leftPanel.clientWidth;
+                        leftContent.style.width = currentWidth + 'px';
+                        leftPanel.style.overflow = 'hidden';
+                        leftPanel.dataset.frozen = 'true';
+                    }
+                    // 解冻右侧
+                    const resultContent = rightPanel.querySelector('.result-content');
+                    if (resultContent && rightPanel.dataset.frozen) {
+                        resultContent.style.width = '';
+                        rightPanel.style.overflow = '';
+                        delete rightPanel.dataset.frozen;
+                    }
+                }
+
                 if (typeof isBatchMode !== 'undefined' && isBatchMode) {
                     const maxLeftWidth = containerRect.width * 0.6;
                     if (leftWidth > maxLeftWidth) {
@@ -4010,22 +4067,6 @@
                 
                 lastClientX = clientX;
 
-                // Mask Opacity Logic
-                const percentage = currentPercentage;
-                if (percentage < 40) {
-                    const opacity = (40 - percentage) / 10;
-                    if (leftMask) leftMask.style.opacity = Math.min(Math.max(opacity, 0), 1);
-                } else {
-                    if (leftMask) leftMask.style.opacity = 0;
-                }
-
-                if (percentage > 55) {
-                    const opacity = (percentage - 55) / 10;
-                    if (rightMask) rightMask.style.opacity = Math.min(Math.max(opacity, 0), 1);
-                } else {
-                    if (rightMask) rightMask.style.opacity = 0;
-                }
-
                 // Use percentage for left panel to maintain ratio on resize
                 leftPanel.style.flex = `0 0 ${currentPercentage}%`;
                 rightPanel.style.flex = `1`;
@@ -4035,6 +4076,7 @@
             resizer.addEventListener('mousedown', function(e) {
                 isResizing = true;
                 lastClientX = e.clientX;
+                initialMouseX = e.clientX;
                 document.body.classList.add('resizing');
                 document.body.style.cursor = 'col-resize';
             });
@@ -4051,6 +4093,27 @@
                     document.body.classList.remove('resizing');
                     document.body.style.cursor = 'default';
                     
+                    // 重置遮罩和滚动效果
+                    if (leftMask) {
+                        leftMask.style.opacity = 0;
+                        leftMask.style.pointerEvents = 'none';
+                    }
+                    if (rightMask) {
+                        rightMask.style.opacity = 0;
+                        rightMask.style.pointerEvents = 'none';
+                    }
+                    
+                    // 解冻所有面板
+                    const leftContent = leftPanel.querySelector('.left-content');
+                    if (leftContent) leftContent.style.width = '';
+                    const resultContent = rightPanel.querySelector('.result-content');
+                    if (resultContent) resultContent.style.width = '';
+                    
+                    leftPanel.style.overflow = '';
+                    rightPanel.style.overflow = '';
+                    delete leftPanel.dataset.frozen;
+                    delete rightPanel.dataset.frozen;
+                    
                     const minPercent = 30;
                     const maxPercent = 65;
 
@@ -4058,17 +4121,12 @@
                     if (currentPercentage <= minPercent) {
                         // Trigger Detection Fullscreen
                         document.body.classList.add('detection-fullscreen');
-                        if (leftMask) leftMask.style.opacity = 0;
                     } else if (currentPercentage >= maxPercent) {
                         // Trigger Edit Mode
                         const editBtn = document.getElementById('editBtn');
                         if (editBtn && !document.body.classList.contains('edit-mode')) {
                             editBtn.click();
                         }
-                        if (rightMask) rightMask.style.opacity = 0;
-                    } else {
-                        if (leftMask) leftMask.style.opacity = 0;
-                        if (rightMask) rightMask.style.opacity = 0;
                     }
                 }
             });
@@ -4094,21 +4152,37 @@
                     document.body.classList.remove('resizing');
                     document.body.style.cursor = 'default';
                     
+                    // 重置遮罩和滚动效果
+                    if (leftMask) {
+                        leftMask.style.opacity = 0;
+                        leftMask.style.pointerEvents = 'none';
+                    }
+                    if (rightMask) {
+                        rightMask.style.opacity = 0;
+                        rightMask.style.pointerEvents = 'none';
+                    }
+                    
+                    // 解冻所有面板
+                    const leftContent = leftPanel.querySelector('.left-content');
+                    if (leftContent) leftContent.style.width = '';
+                    const resultContent = rightPanel.querySelector('.result-content');
+                    if (resultContent) resultContent.style.width = '';
+
+                    leftPanel.style.overflow = '';
+                    rightPanel.style.overflow = '';
+                    delete leftPanel.dataset.frozen;
+                    delete rightPanel.dataset.frozen;
+
                     const minPercent = 30;
                     const maxPercent = 65;
 
                     if (currentPercentage <= minPercent) {
                         document.body.classList.add('detection-fullscreen');
-                        if (leftMask) leftMask.style.opacity = 0;
                     } else if (currentPercentage >= maxPercent) {
                         const editBtn = document.getElementById('editBtn');
                         if (editBtn && !document.body.classList.contains('edit-mode')) {
                             editBtn.click();
                         }
-                        if (rightMask) rightMask.style.opacity = 0;
-                    } else {
-                        if (leftMask) leftMask.style.opacity = 0;
-                        if (rightMask) rightMask.style.opacity = 0;
                     }
                 }
             });
@@ -6145,12 +6219,12 @@
                             renderPreview(result.content, result.images, result.title);
                             showToast('网页预览已生成', 'success');
                         } else {
-                            // 提取成功，进度设为50%
-                            progressBar.style.width = '50%';
+                            // 提取成功，进度设为40%
+                            progressBar.style.width = '40%';
                             loadingText.textContent = '正在分析新闻中...';
                             
                             // showExtractedResult(result);
-                            showToast('提取完成，正在进行AI分析...', 'success');
+                            showToast('提取完成，正在进行新闻分析...', 'success');
                             // 传递 true 表示从提取流程进入
                             // 优先使用纯文本进行分析，如果没有则使用HTML内容
                             analyzeContent(result.textContent || result.content, result.images, true);
@@ -6210,7 +6284,7 @@
                         renderPreview(mockResult.content, mockResult.images, mockResult.title);
                         showToast('网页预览已生成', 'success');
                     } else {
-                        progressBar.style.width = '50%';
+                        progressBar.style.width = '40%';
                         loadingText.textContent = '正在分析新闻中...';
                         
                         showToast('提取完成', 'success');
@@ -6789,6 +6863,14 @@
                 });
                 */
 
+                // 监听分析过程中的搜索事件
+                window.electronAPI.on('analysis-searching', function(event, data) {
+                    const loadingText = document.getElementById('loadingText');
+                    if (loadingText) {
+                        loadingText.textContent = '正在联网搜索相关信息...';
+                    }
+                });
+
                 // 监听导出操作
                 window.electronAPI.on('menu-action-export', function() {
                     exportResult();
@@ -7082,7 +7164,7 @@
         }
 
      
-        // AI分析功能
+        // 新闻AI分析功能
         async function analyzeContent(text, images, fromExtraction = false, htmlContent = null) {
             const detectBtn = document.getElementById('detectBtn');
             const previewBtn = document.getElementById('previewBtn');
@@ -7136,12 +7218,8 @@
                     progressBar.style.width = progress + '%';
                     
                     // 动态更新加载提示词
-                    if (progress > 30 && progress < 65) {
-                        if (loadingText.textContent !== '正在联网搜索相关信息...') {
-                            loadingText.textContent = '正在联网搜索相关信息...';
-                        }
-                    } else if (progress >= 65) {
-                        if (loadingText.textContent !== '正在进行深度分析...') {
+                    if (progress >= 70) {
+                        if (loadingText.textContent === '正在联网搜索相关信息...' || loadingText.textContent === '正在初始化分析...') {
                             loadingText.textContent = '正在进行深度分析...';
                         }
                     }

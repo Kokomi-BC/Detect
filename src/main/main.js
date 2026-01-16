@@ -649,8 +649,50 @@ class DetectApp {
     // 大模型分析事件
     ipcMain.handle('analyze-content', async (event, { text, imageUrls, url }) => {
       try {
-        console.log('收到大模型分析请求:', { textLength: text ? text.length : 0, imageCount: imageUrls ? imageUrls.length : 0, url });
-        const result = await this.llmService.analyzeContent(text, imageUrls, url);
+        console.log('大模型分析请求:', { textLength: text ? text.length : 0, imageCount: imageUrls ? imageUrls.length : 0, url });
+        
+        // 关键修复：将本地图片路径（如 file://）转换为 Base64，否则大模型（Doubao/OpenAI）无法处理
+        // 历史记录中的图片被保存为本地文件，再次检测时必须转换回 Base64
+        const processedImageUrls = [];
+        if (imageUrls && Array.isArray(imageUrls)) {
+          for (let imgUrl of imageUrls) {
+            if (imgUrl && (imgUrl.startsWith('file://') || /^[a-zA-Z]:\\/.test(imgUrl))) {
+                try {
+                    let filePath = imgUrl.startsWith('file://') ? imgUrl.slice(7) : imgUrl;
+                    // 处理 Windows 路径: file:///C:/... -> /C:/... -> C:/...
+                    if (process.platform === 'win32' && filePath.startsWith('/') && filePath[2] === ':') {
+                        filePath = filePath.slice(1);
+                    }
+                    
+                    const decodedPath = decodeURIComponent(filePath);
+                    if (fs.existsSync(decodedPath)) {
+                        const buffer = fs.readFileSync(decodedPath);
+                        const base64 = buffer.toString('base64');
+                        const ext = path.extname(decodedPath).substring(1).toLowerCase() || 'jpeg';
+                        const mimeType = (ext === 'jpg' || ext === 'jpeg') ? 'jpeg' : (ext === 'png' ? 'png' : (ext === 'webp' ? 'webp' : 'jpeg'));
+                        processedImageUrls.push(`data:image/${mimeType};base64,${base64}`);
+                        continue;
+                    }
+                } catch (imgError) {
+                    console.error('转换本地图片失败:', imgError);
+                }
+            }
+            // HTTP/HTTPS 或 已经是 Base64 的直接使用
+            processedImageUrls.push(imgUrl);
+          }
+        }
+
+        const result = await this.llmService.analyzeContent(
+          text, 
+          processedImageUrls, 
+          url,
+          (query) => {
+            // 当大模型开始联网搜索时，通知前端更新加载状态
+            if (event.sender && !event.sender.isDestroyed()) {
+              event.sender.send('analysis-searching', { query });
+            }
+          }
+        );
         return { success: true, data: result };
       } catch (error) {
         console.error('分析内容失败:', error);

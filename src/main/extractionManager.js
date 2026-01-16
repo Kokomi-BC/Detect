@@ -298,7 +298,7 @@ class ExtractionManager {
 
         // 等待2秒后如果没有其他事件，就认为加载完成了
         loadTimeout = setTimeout(() => {
-          console.log(`页面停止加载，强制触发完成: ${url}`);
+          console.log(`页面加载完成: ${url}`);
           onLoadSuccess(); 
         }, 2000);
       };

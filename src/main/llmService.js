@@ -75,7 +75,7 @@ class LLMService {
           date: item.datePublished || '未知'
         }));
         const toonResult = this.jsonToToon(results);
-        console.log('联网搜索结果 (TOON格式):\n', toonResult);
+        console.log('联网搜索结果 (类json格式):\n', toonResult);
         return toonResult;
       }
       console.log('联网搜索结果: 未找到相关内容');
@@ -91,9 +91,10 @@ class LLMService {
    * @param {string} text 文本内容
    * @param {string[]} imageUrls 图片URL数组
    * @param {string} sourceUrl 来源URL（可选）
+   * @param {Function} onSearchStart 联网搜索开始时的回调函数（可选）
    * @returns {Promise<Object>} 分析结果
    */
-  async analyzeContent(text, imageUrls = [], sourceUrl = '') {
+  async analyzeContent(text, imageUrls = [], sourceUrl = '', onSearchStart = null) {
     const currentDate = new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' });
     const systemPrompt = `You are a professional fake news detection assistant. Current date: ${currentDate}.
   Analyze the provided content and determine its authenticity. You can request a web search for verification. If images are provided, you MUST also check text-image consistency (图文一致性): extract visible text from images (OCR mentally), identify key entities/objects/scenes/time/watermarks, and compare with the written claims and captions. Flag mismatches explicitly.
@@ -106,7 +107,9 @@ class LLMService {
   "probability": number,   // Float (0-1) of being true.
   "type": number,          // 1: Real (>=0.8), 2: Mixed/Uncertain (0.2-0.8), 3: Fake (<=0.2).
   "explanation": string,   // Brief judgment summary (Simplified Chinese).
-  "analysis_points": [     // Exactly 3 points: source reliability, linguistic objectivity, and factual consistency (include image-text consistency when images exist) (Simplified Chinese).
+  "analysis_points": [     // Variable length points (Simplified Chinese).
+    // Rule 1: If NO images exist, provide EXACTLY 3 points (source reliability, linguistic objectivity, factual consistency).
+    // Rule 2: If images exist, add a 4th point: "图文一致性分析" (Image-Text Consistency) to evaluate if labels/captions/context match the image content.
     { "description": "Analysis detail", "status": "positive"|"warning"|"negative" }
   ],
   "fake_parts": [          // Only if type is 2 or 3. List specific fake segments and reasons (Simplified Chinese). Include image-text mismatches clearly, e.g., reason starts with "图文不一致:".
@@ -117,7 +120,7 @@ class LLMService {
 ### Core Rules:
 1. **Search Priority**: If facts are unclear or time-sensitive, set "needs_search": true with concise Chinese keywords.
 2. **Finality**: If search results are provided, "needs_search" MUST be false. Prioritize search evidence.
-3. **Image-Text Consistency**: When images exist, assess whether images support, contradict, or are unrelated to textual claims. If contradiction or likely mismatch is found, lower the probability accordingly and put the specific claim into "fake_parts" with reason prefixed by "图文不一致" or "图文疑似不一致"; reference visible cues (e.g.,人物/地点/时间/水印/画面元素)。
+3. **Image-Text Consistency**: When images exist, assess whether images support, contradict, or are unrelated to textual claims. If contradiction or likely mismatch is found, lower the probability accordingly and put the specific claim into "fake_parts" with reason prefixed by "图文不一致" or "图文疑似不一致"; reference visible cues (e.g., 人物/地点/时间/水印/画面元素). Also, explicitly include a "图文一致性分析" point in "analysis_points".
 4. **Language**: All descriptive fields MUST be in Simplified Chinese.
 5. **Format**: Return ONLY raw JSON. No markdown blocks.
 
@@ -153,7 +156,7 @@ Summary: Use concise Chinese keywords for search; output strictly valid JSON; al
 
     try {
       // 第一次调用
-      console.log('Requesting LLM analysis (第一次调用)...');
+      console.log('第一次调用...');
       let response = await this.client.chat.completions.create({
         model: this.model,
         messages: messages,
@@ -166,6 +169,11 @@ Summary: Use concise Chinese keywords for search; output strictly valid JSON; al
       if (result.needs_search && result.search_query) {
         console.log(`Model requests search: ${result.search_query}`);
         
+        // 执行回调通知前端
+        if (typeof onSearchStart === 'function') {
+          onSearchStart(result.search_query);
+        }
+
         // 执行搜索
         const searchResults = await this.performWebSearch(result.search_query);
         
@@ -176,7 +184,7 @@ Summary: Use concise Chinese keywords for search; output strictly valid JSON; al
           content: `[联网搜索结果(类json格式)]:\n${searchResults}\n\n请根据以上搜索结果和原始信息，进行最终的真伪判断。请确保 needs_search 为 false，并填写完整的分析字段。搜索结果具有较高的可信度，请优先参考。` 
         });
 
-        console.log('Requesting LLM analysis (第二次调用)...');
+        console.log('第二次调用...');
         response = await this.client.chat.completions.create({
           model: this.model,
           messages: messages,
