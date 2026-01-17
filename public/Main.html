@@ -302,7 +302,7 @@
         }
 
         .search-results-header {
-            padding: 10px 16px; /* Reduced padding */
+            padding: 18px 16px; /* Reduced padding */
             border-bottom: 1px solid var(--border-color);
             display: flex;
             justify-content: space-between;
@@ -317,7 +317,7 @@
 
         .search-results-header h3 {
             margin: 0;
-            font-size: 14px; /* Slightly smaller */
+            font-size: calc(16px * var(--font-scale)); 
         }
 
         .search-results-close {
@@ -1648,6 +1648,27 @@
             transition: font-size 0.4s cubic-bezier(0.4, 0, 0.2, 1), line-height 0.4s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
+        /* Optimization: Disable heavy paints during edit mode transition */
+        body.edit-mode-transitioning .content-area {
+            mask-image: none !important;
+            -webkit-mask-image: none !important;
+        }
+
+        body.edit-mode-transitioning .editor-status-bar {
+            backdrop-filter: none !important;
+            -webkit-backdrop-filter: none !important;
+            background: var(--bg-secondary) !important;
+            opacity: 0 !important; /* Temporarily hide status bar */
+        }
+        
+        body.edit-mode-transitioning .text-input {
+            transition: none !important; /* CRITICAL: Prevent expensive font-size re-layout animation */
+        }
+
+        body.edit-mode-transitioning * {
+             pointer-events: none !important; /* Prevent interactions during transition */
+        }
+        
         /* Edit Mode Overrides */
         body.edit-mode .content-area {
             overflow-y: auto; /* Enable scroll on container */
@@ -2817,6 +2838,7 @@
             opacity: 0;
             overflow: hidden;
             transform: translateX(-20px);
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1); /* Ensure smooth transition for all props */
         }
 
         body.detection-fullscreen .right-panel {
@@ -2825,7 +2847,12 @@
         }
 
         body.detection-fullscreen .resizer {
-            display: none;
+            /* display: none; Removed to allow animation */
+            width: 0;
+            opacity: 0;
+            pointer-events: none;
+            overflow: hidden;
+            border: none;
         }
 
         /* Exit Button for Detection Fullscreen */
@@ -4164,13 +4191,15 @@
             // Exit Detection Fullscreen
             if (exitDetectionBtn) {
                 exitDetectionBtn.addEventListener('click', () => {
+                    // Remove class immediately to prevent infinite loop with toggleSearchResults
+                    document.body.classList.remove('detection-fullscreen');
+                    
+                    // Close search results if open - user explicitly wants to restore layout
+                    toggleSearchResults(false);
+
                     // Smooth transition back
                     leftPanel.style.flex = `1`;
                     rightPanel.style.flex = `1`;
-                    
-                    requestAnimationFrame(() => {
-                        document.body.classList.remove('detection-fullscreen');
-                    });
                     
                     currentPercentage = 50;
                 });
@@ -4514,6 +4543,12 @@
 
             // Toggle Edit Mode
             function toggleEditMode(active) {
+                // Performance Optimization: Add transitioning class
+                document.body.classList.add('edit-mode-transitioning');
+                setTimeout(() => {
+                    document.body.classList.remove('edit-mode-transitioning');
+                }, 400); // Match transition duration
+
                 // Preserve scroll positions
                 const textScrollBefore = textInput.scrollTop;
                 const contentScrollBefore = contentArea.scrollTop;
@@ -7098,10 +7133,25 @@
                 overlay.classList.add('active');
                 // backdrop.classList.add('active'); // Removed backdrop
                 document.body.classList.add('search-results-active'); // Add squeeze class
+                
+                // Trigger resize logic immediately to check if we need to hide left panel
+                window.dispatchEvent(new Event('resize'));
             } else {
                 overlay.classList.remove('active');
                 // backdrop.classList.remove('active'); // Removed backdrop
                 document.body.classList.remove('search-results-active'); // Remove squeeze class
+
+                // Always restore left panel and resizer when search results close
+                const leftPanel = document.getElementById('leftPanel');
+                
+                // If we were in forced fullscreen mode, exit it to restore left panel
+                if (document.body.classList.contains('detection-fullscreen')) {
+                    const exitDetectionBtn = document.getElementById('exitDetectionBtn');
+                    if (exitDetectionBtn) exitDetectionBtn.click(); // Reuse the smooth transition logic
+                } else {
+                     // Fallback just in case
+                     if (leftPanel) leftPanel.style.display = ''; 
+                }
             }
         }
 
@@ -7114,12 +7164,34 @@
              
              // Global click listener to close when clicking outside
              document.addEventListener('click', (e) => {
-                 const isClickInside = panel.contains(e.target);
-                 // Check if the click is on a trigger button or element that opens the panel to prevent immediate closing
-                 // However, the analysis item click handler uses stopPropagation(), so we don't need to worry about the trigger.
+                 // Requirement 1: Only close when clicking specific left sidebar areas
+                 // (including sidebar toggle, history button, preview button which refresh right interface)
+                 const panel = document.getElementById('searchResultsOverlay');
+                 if (!panel || !panel.classList.contains('active')) return;
                  
-                 // If panel is active and click is OUTSIDE, close it.
-                 if (panel.classList.contains('active') && !isClickInside) {
+                 const sidebar = document.getElementById('leftSidebar');
+                 const toggleBtn = document.getElementById('sidebarToggleBtn');
+                 const previewBtn = document.getElementById('previewBtn');
+                 const historyBtn = document.getElementById('historyBtn');
+                 // Also batch mode toggle can refresh/change view
+                 const batchToggle = document.getElementById('batchModeToggle'); 
+
+                 const isClickInsidePanel = panel.contains(e.target);
+                 
+                 // If click is inside the search panel, do nothing (don't close)
+                 if (isClickInsidePanel) return;
+
+                 // Check if click target is one of the sidebar controls that should trigger close
+                 const isSidebarArea = (sidebar && sidebar.contains(e.target));
+                 const isToggleBtn = (toggleBtn && (toggleBtn === e.target || toggleBtn.contains(e.target)));
+                 const isPreviewBtn = (previewBtn && (previewBtn === e.target || previewBtn.contains(e.target)));
+                 const isHistoryBtn = (historyBtn && (historyBtn === e.target || historyBtn.contains(e.target)));
+                 const isBatchToggle = (batchToggle && (batchToggle === e.target || batchToggle.contains(e.target)));
+
+                 // If click is on these specific areas, close the search panel
+                 // Note: we mainly want to avoid closing when clicking on the Main Content Area (input/editor) 
+                 // unless the user explicitly interacts with navigation buttons.
+                 if (isSidebarArea || isToggleBtn || isPreviewBtn || isHistoryBtn || isBatchToggle) {
                      toggleSearchResults(false);
                  }
              });
@@ -7129,6 +7201,29 @@
                  e.stopPropagation();
              });
         })();
+
+        // Monitor window resize to auto-collapse left panel when search results are open
+        window.addEventListener('resize', () => {
+             const panel = document.getElementById('searchResultsOverlay');
+             const THRESHOLD_WIDTH = 1200; 
+
+             if (panel && panel.classList.contains('active')) {
+                const shouldHide = window.innerWidth < THRESHOLD_WIDTH;
+                const isFullscreen = document.body.classList.contains('detection-fullscreen');
+
+                if (shouldHide && !isFullscreen) {
+                    document.body.classList.add('detection-fullscreen');
+                } else if (!shouldHide && isFullscreen) {
+                    // Only restore (remove fullscreen) if we think it was auto-applied.
+                    // But for simplicity/user request: "当窗口大于该值时...将会自动开启"
+                    document.body.classList.remove('detection-fullscreen');
+                    const leftPanel = document.getElementById('leftPanel');
+                    const rightPanel = document.getElementById('rightPanel');
+                    if (leftPanel) leftPanel.style.flex = '1';
+                    if (rightPanel) rightPanel.style.flex = '1';
+                }
+             }
+        });
 
         // 初始化IPC通信
         function initIPC() {
@@ -9032,7 +9127,6 @@
                         item.score = Math.round(fakeProb * 100); // Assuming probability is the score (0-100)
                         item.status = 'done';
                         item.progress = 100;
-
                         // Save to history
                         const contentToSave = item.parsedContent || item.content;
                         const imagesToSave = item.parsedImages || item.images;

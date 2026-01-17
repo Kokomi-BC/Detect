@@ -251,9 +251,14 @@ class WindowManager {
     // 监听窗口关闭事件
     window.on('closed', () => {
       windowSet.delete(window);
+      // Explicitly nullify to help GC
+      window = null;
     });
 
     const webContents = window.webContents;
+    // Ensure webContents listeners are cleaned up when window closes purely by GC of window
+    // But we can also remove listeners if we kept references. 
+
     webContents.on('did-finish-load', () => {
       if (webContents.getTitle()) {
         window.setTitle(webContents.getTitle());
@@ -356,6 +361,7 @@ class WindowManager {
         allowRunningInsecureContent: true,
         plugins: true,
         experimentalFeatures: false,
+        // partition: 'temp_browser', // 已移除：使用默认会话以保留Cookies
         extraInfo: { windowType: WindowType.BROWSER }
       }
     });
@@ -368,8 +374,11 @@ class WindowManager {
 
     // 加载URL
     browserWindow.loadURL(url).catch((error) => {
-      console.error('浏览器窗口加载失败:', error);
-      this.destroyWindow(browserWindow);
+      // 忽略 ERR_ABORTED，这通常是因为页面立即重定向或setWindowOpenHandler干预
+      if (error.code !== 'ERR_ABORTED' && error.errno !== -3) {
+        console.error('浏览器窗口加载失败:', error);
+        this.destroyWindow(browserWindow);
+      }
     });
 
     // 设置浏览器窗口事件监听
@@ -386,7 +395,9 @@ class WindowManager {
     const webContents = window.webContents;
 
     // 设置链接处理：在同一窗口中导航，不创建新窗口
-    webContents.setWindowOpenHandler(({ url }) => {
+    webContents.setWindowOpenHandler((details) => {
+      const { url } = details;
+      
       // 检查是否是 http/https 协议
       if (url.startsWith('http://') || url.startsWith('https://')) {
         // 使用 setImmediate 确保当前事件循环完成，避免导航冲突
@@ -510,22 +521,23 @@ class WindowManager {
   }
 
   /**
-   * 创建微信文章专用的提取窗口
+   * 创建提取窗口
+   * @param {string} type 提取类型 ('wechat' | 'standard' | 'default')
    */
-  createWechatExtractionWindow() {
+  createExtractionTargetWindow(type = 'standard') {
+    const userAgents = {
+      wechat: 'Mozilla/5.0 (Linux; Android 13; SM-G998B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Mobile Safari/537.36 MicroMessenger/8.0.47.2560(Android 13;SM-G998B)',
+      standard: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36 Edg/120.0.0.0'
+    };
+
     return this.createExtractionWindow({
-      userAgent: 'Mozilla/5.0 (Linux; Android 13; SM-G998B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Mobile Safari/537.36 MicroMessenger/8.0.47.2560(Android 13;SM-G998B)'
+      userAgent: userAgents[type] || userAgents.standard
     });
   }
 
-  /**
-   * 创建标准浏览器提取窗口
-   */
-  createStandardExtractionWindow() {
-    return this.createExtractionWindow({
-      userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36 Edg/120.0.0.0'
-    });
-  }
+  // 保留旧方法以兼容性，但在内部重定向
+  createWechatExtractionWindow() { return this.createExtractionTargetWindow('wechat'); }
+  createStandardExtractionWindow() { return this.createExtractionTargetWindow('standard'); }
 
   /**
    * 关闭并清理窗口

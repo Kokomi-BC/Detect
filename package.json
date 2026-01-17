@@ -1,7 +1,7 @@
 {
   "name": "fake-news-detector",
-  "version": "2.1.0",
-  "description": "假新闻检测应用",
+  "version": "2.5.0",
+  "description": "假新闻检测系统",
   "main": "src/main/index.js",
   "scripts": {
     "start": "electron .",
@@ -17,7 +17,7 @@
   "keywords": [
     "electron",
     "fake-news",
-    "detector"
+    "Detector"
   ],
   "author": "Kokomi-BC",
   "license": "ISC",
@@ -77,12 +77,6 @@
           "arch": [
             "x64"
           ]
-        },
-        {
-          "target": "portable",
-          "arch": [
-            "x64"
-          ]
         }
       ],
       "signAndEditExecutable": false,
@@ -94,9 +88,6 @@
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
       "shortcutName": "假新闻检测"
-    },
-    "portable": {
-      "artifactName": "${productName}-${version}-portable.exe"
     },
     "publish": null
   }
